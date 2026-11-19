@@ -36,7 +36,7 @@ const coachSeen = c =>
       ? Infinity
       : (CO.clients[c.id] || {}).seen || 0;
 const unreadFrom = c => threadOf(c).filter(m => m.f === 'u' && m.ts > coachSeen(c)).length;
-const myUnread = () => myThread().filter(m => m.f === 'c' && m.ts > (P.seenC || 0)).length;
+const myUnread = () => (!FEATURES.coach ? 0 : myThread().filter(m => m.f === 'c' && m.ts > (P.seenC || 0)).length);
 const CHAT_QUICK = {
   c: ['Great work this week.', 'How did the session feel?', 'Send me a check-in when you can.'],
   u: ['Done for today.', 'Can we move my next session?', 'Feeling good after that one.'],
@@ -212,6 +212,7 @@ Recent messages, oldest first:\n${
 };
 /* A one-line way into the thread, for Today and Train. */
 function msgStrip() {
+  if (!FEATURES.coach) return '';
   const th = myThread();
   if (!th.length && Store.owner !== false) return '';
   const n = myUnread(),

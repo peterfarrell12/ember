@@ -1,7 +1,7 @@
 /* ---------- Gym: a prototype with one sample gym. Timetable, bookings with waitlists, check-in, members, coaches, plans, insights.
    No money moves and nobody outside this account can book: it exists to settle the flows before a standalone build. ---------- */
 let G = null;
-const isGym = () => P && P.mode === 'gym' && Store.owner !== false;
+const isGym = () => FEATURES.gym && P && P.mode === 'gym' && Store.owner !== false;
 const hs = s => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -102,6 +102,7 @@ function gymSeed() {
   };
 }
 async function loadGym() {
+  if (!FEATURES.gym) return null;
   if (G) return G;
   try {
     G = await Store.get('meta', 'gym');
@@ -513,6 +514,7 @@ A.gmPlan = ({ id }) => {
   toast('Membership changed to ' + p.n + '. Nothing was charged.');
 };
 function gymStrip() {
+  if (!FEATURES.gym) return '';
   if (!G) {
     loadGym().then(() => {
       if (!sheets.length && !isCoach() && !isGym()) render();

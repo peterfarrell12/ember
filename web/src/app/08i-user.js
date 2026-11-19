@@ -267,7 +267,7 @@ function viewMore() {
     ${grp('Your plan', [row('openTargets', 'target', 'Targets and profile', fmt(P.t.k) + ' kcal, ' + P.t.p + ' g protein'), row('cal', 'cal', 'Calendar and schedule', 'Training days, matches and what you did'), row('photos', 'camera', 'Progress photos', 'Private, with before and after')])}
     ${grp('Food', [row('openRecipes', 'book', 'Recipes and saved meals', nr ? nr + ' saved' : 'Build one once, log it in a tap'), row('openFoods', 'fork', 'My foods', nf ? nf + ' saved' : 'Add foods from a label'), row('ideas', 'spark', 'What can I eat?', 'Dishes sized to what you have left')])}
     ${grp('Body and devices', [row('openConnections', 'link', 'Connect a wearable', P.ad ? 'Synced ' + niceDate(P.ad.at.slice(0, 10)) : 'WHOOP, Garmin, Apple Health, Strava'), row('preview', 'spark', DEMO ? 'Exit the preview' : 'Preview with sample data', DEMO ? 'Back to your own data' : 'See Ember with a wearable, a workout and a full week')])}
-    ${grp('People', [row('chat', 'chat', 'Messages with your coach', un ? un + ' unread' : 'Ask about your plan'), own ? row('catalogue', 'search', 'Find a coach', 'Checked profiles, plans and reviews') : '', row('gym', 'home', 'My gym', 'Book classes, one-to-ones and spaces')])}
+    ${FEATURES.coach || FEATURES.gym ? grp('People', [FEATURES.coach ? row('chat', 'chat', 'Messages with your coach', un ? un + ' unread' : 'Ask about your plan') : '', FEATURES.coach && own ? row('catalogue', 'search', 'Find a coach', 'Checked profiles, plans and reviews') : '', FEATURES.gym ? row('gym', 'home', 'My gym', 'Book classes, one-to-ones and spaces') : '']) : ''}
     ${grp('App', [
       row('assistant', 'mic', 'Assistant', 'Talk or type to log, ask and plan'),
       row(
@@ -286,7 +286,7 @@ function viewMore() {
         P.theme || 'auto',
       )}</div></span></div>`,
     ])}
-    ${own && !DEMO ? grp('For professionals', [row('modeGo', 'users', 'Coach view', 'Clients, programs and messages', 'data-m="coach"'), row('modeGo', 'home', 'Gym view', 'Timetable, bookings and members', 'data-m="gym"')]) : ''}
+    ${own && !DEMO && (FEATURES.coach || FEATURES.gym) ? grp('For professionals', [FEATURES.coach ? row('modeGo', 'users', 'Coach view', 'Clients, programs and messages', 'data-m="coach"') : '', FEATURES.gym ? row('modeGo', 'home', 'Gym view', 'Timetable, bookings and members', 'data-m="gym"') : '']) : ''}
     <section class="card"><h2>How Ember keeps numbers honest</h2><div class="stack small" style="margin-top:10px">
       <div class="row" style="align-items:flex-start">${srcBadge('F')}<span>Everyday foods come from USDA FoodData Central, measured in a lab or a national survey.</span></div>
       <div class="row" style="align-items:flex-start">${srcBadge('B')}<span>Branded products use the printed label, from Open Food Facts.</span></div>

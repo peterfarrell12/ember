@@ -38,6 +38,21 @@ prototype/run-tests.sh --update t22    # rewrite a test's baseline after an inte
 
 Tests need Python 3, Node, `pip install playwright pillow` and Google Chrome.
 
+The product is built in `web/`. It starts from a copy of the prototype's source and is built with Vite:
+
+```bash
+cd web && npm ci
+npm run dev          # serves the app on http://localhost:8765 with live reload
+npm test             # builds, then runs the same browser tests against the build
+npm run lint         # ESLint
+npm run typecheck    # TypeScript over the files that opt in with // @ts-check
+npm run format       # Prettier
+```
+
+`prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
+
+Coach and gym are behind `FEATURES` in `web/src/app/01-core.js`, off by default. With a flag off, the entry points are hidden, the actions do nothing and the shared documents are neither read nor written. `web/src/app/08z-features.js` lists the gated actions.
+
 The prototype runs without Claude: with no `window.claude` it stores everything in `localStorage` and hides the AI features. That makes it a usable reference at every stage.
 
 ## The platform seams

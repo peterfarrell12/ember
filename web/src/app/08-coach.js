@@ -1,7 +1,7 @@
 /* ================= v3: coach view ================= */
 let CO = { clients: {}, seeded: false },
   LIVE = {};
-const isCoach = () => P && P.mode === 'coach' && Store.owner !== false;
+const isCoach = () => FEATURES.coach && P && P.mode === 'coach' && Store.owner !== false;
 const daysAgo = k => (k ? Math.round((pdate(today()) - pdate(k)) / 864e5) : null);
 const initials = n =>
   String(n || '?')
@@ -765,6 +765,7 @@ function coFeed() {
 /* ---------- live clients: shared status and assignments, for people in the same Claude organisation ---------- */
 let lastPub = 0;
 async function publishStatus() {
+  if (!FEATURES.coach) return;
   if (DEMO || Store.mode !== 'cloud' || Store.owner !== false || Date.now() - lastPub < 60000) return;
   lastPub = Date.now();
   try {
@@ -780,6 +781,7 @@ async function publishStatus() {
   } catch (e) {}
 }
 async function loadLive() {
+  if (!FEATURES.coach) return;
   if (Store.mode !== 'cloud' || Store.owner === false) return;
   try {
     const qs = await withTimeout(Store.db.collection('clients').limit(200).get());
@@ -793,6 +795,7 @@ async function loadLive() {
 }
 /* A client's app picks up what their coach assigned. */
 async function pullAssign() {
+  if (!FEATURES.coach) return;
   if (Store.mode !== 'cloud' || Store.owner !== false) return;
   try {
     const s = await withTimeout(Store.db.doc('assign/' + Store.uid).get());

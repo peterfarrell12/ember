@@ -140,7 +140,7 @@ function phNew(file) {
   const url = URL.createObjectURL(file);
   openSheet(`${sh('New progress photo')}<div class="sheet-b"><img class="phprev" alt="The photo you picked" src="${url}">
     ${segHtml('phPose', Object.entries(POSES), 'front')}<label class="f">Date<input class="inp" type="date" id="phD" value="${today()}" max="${today()}"></label>
-    ${PN.cid ? '' : `<button class="chk" data-act="phShareNew" aria-pressed="false"><span class="tb"></span><span>Let my coach see this one</span></button>`}</div>
+    ${PN.cid || !FEATURES.coach ? '' : `<button class="chk" data-act="phShareNew" aria-pressed="false"><span class="tb"></span><span>Let my coach see this one</span></button>`}</div>
     <div class="sheet-f"><button class="btn ember" data-act="phSave" id="phGoBtn">Save photo</button></div>`);
   SEG.phPose = v => {
     PN.pose = v;
@@ -204,7 +204,7 @@ A.phView = ({ id, cid }) => {
   openSheet(
     `${sh(niceDate(p.d))}<div class="sheet-b"><img class="phbig" alt="${POSES[p.pose] || 'Photo'}" src="${photoUrl(p)}"><div class="row" style="flex-wrap:wrap;gap:6px"><span class="pill">${POSES[p.pose] || 'Photo'}</span>${p.kg ? `<span class="pill">${p.kg} kg</span>` : ''}${p.sh && mine ? `<span class="pill good">Shared with your coach</span>` : ''}</div>
     ${ps.length > 1 ? `<button class="btn" data-act="phCompare" data-id="${id}" data-cid="${cid || ''}">${ic('swap')} Compare with another</button>` : ''}
-    ${mine ? `<button class="btn ghost" data-act="phShare">${ic(p.sh ? 'lock' : 'users')} ${p.sh ? 'Stop sharing with my coach' : 'Share with my coach'}</button>` : ''}
+    ${mine && FEATURES.coach ? `<button class="btn ghost" data-act="phShare">${ic(p.sh ? 'lock' : 'users')} ${p.sh ? 'Stop sharing with my coach' : 'Share with my coach'}</button>` : ''}
     ${mine || coachOwned ? `<button class="link" data-act="phDel" style="color:var(--bad);align-self:center">Delete this photo</button>` : ''}</div>`,
     true,
   );

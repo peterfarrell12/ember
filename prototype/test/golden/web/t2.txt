@@ -1,0 +1,18 @@
+sync class: sync 
+dictated: two scrambled eggs on toast
+Egg omelet or scrambled egg, no added fat | USDA | 172 kcal | 2 eggs | Amount and unit | Swap food | grams
+Bread, whole grain white, toasted | USDA | 183 kcal | 2 slices | Amount and unit | Swap food | grams
+Irische Butter | Kerrygold | LABEL | 75 kcal | 1 tsp | Amount and unit | Swap food | grams
+dragonf.... kombucha smoothie bowl | ESTIMATE | 255 kcal | 1 bowl | Amount and unit | Swap food | ml
+Rice, white, cooked, as ingredient | USDA | 234 kcal | 1 cup | Amount and unit | Swap food | grams
+barcode food: Organic Jumbo Oats | units: ['g', '1 serving (40 g)', '1 pack (1000 g)', 'kg', 'oz', 'lb']
+bcOut: <div class="card stack"><b>That barcode is not in the database yet</b><span class="small muted">Add it once from its label and it will scan from then on.</span><button class="btn sm ghost" data-act="newFood" data-code="999000111...."><svg class="ic " aria-hidden="true"><use href="#i-plus"></use></svg> Add this product</button></div>
+label -> Protein Bar 380 0.6 60 999000111....
+custom food sheet: Protein Bar
+recipe per serving: 497
+recipe log units: ['g', '1 serving (300 g)', 'kg', 'oz', 'lb'] 498
+padel 75min kcal: 500
+db paths: ['data/users/u_test123/profile', 'data/users/u_test123/profile/days/2026-11-19', 'data/users/u_test123/profile/foods/k7ffdan....', 'data/users/u_test123/profile/recipes/ykmrui0....']
+xp 180 gems 60 hist {'2026-11-19': {'k': 2118, 'p': 102, 'c': 236, 'f': 59, 'n': 9, 'w': 3000, 'ex': 500, 'xm': 75, 'ts': 0, 'cf': 0, 'm3': 0, 'd': 1, 'zn': 0}} st {'logs': 9, 'say': 1, 'photo': 0, 'scan': 1, 'zone': 0, 'prot': 0, 'water': 1, 'closed': 1, 'weigh': 1, 'quests': 2, 'work': 1, 'boss': 0, 'sess': 0, 'prs': 0, 'rehab': 0, 'mob': 0, 'ready': 0} writes 49
+reload kv: Eaten 2,118 Exercise +500 Budget 2,380
+ERRS []

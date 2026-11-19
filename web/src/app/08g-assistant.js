@@ -566,6 +566,7 @@ async function asDo(a) {
       AS.after = () => A.trainStart();
       return '';
     case 'message_coach': {
+      if (!FEATURES.coach) return '';
       const t = String(a.text || '')
         .trim()
         .slice(0, 800);
@@ -582,6 +583,7 @@ async function asDo(a) {
     }
     case 'book_class':
     case 'cancel_class': {
+      if (!FEATURES.gym) return '';
       await loadGym();
       const dt = asDate(a.date) || tk,
         q = String(a.class || '').toLowerCase(),
@@ -613,9 +615,12 @@ async function asDo(a) {
     case 'open': {
       const s = a.screen,
         go =
-          { calendar: () => A.cal({}), photos: () => A.photos(), caffeine: () => A.caf(), messages: () => A.chat({}) }[
-            s
-          ] || (['today', 'train', 'progress', 'quests'].includes(s) ? () => A.tab({ tab: s }) : null);
+          {
+            calendar: () => A.cal({}),
+            photos: () => A.photos(),
+            caffeine: () => A.caf(),
+            messages: () => (FEATURES.coach ? A.chat({}) : null),
+          }[s] || (['today', 'train', 'progress', 'quests'].includes(s) ? () => A.tab({ tab: s }) : null);
       if (go) AS.after = go;
       return '';
     }
@@ -679,9 +684,8 @@ You never save anything yourself. You ask the app to act by adding to "actions";
 - {"do":"checkin","sleep_hours","sleep_quality","soreness","energy","stress"}: the recovery check-in; the last four are 1 to 5.
 - {"do":"event","title","kind":"match"|"class"|"cardio"|"appt"|"rest"|"other","date":"YYYY-MM-DD","time":"HH:MM" or "","minutes","weekly": boolean}
 - {"do":"move_session","from":"YYYY-MM-DD","to":"YYYY-MM-DD"} | {"do":"skip_session","date"} | {"do":"start_session"}
-- {"do":"book_class","class": class name,"date":"YYYY-MM-DD","time":"HH:MM" optional} | {"do":"cancel_class","class","date"}: classes at their gym, from the timetable below.
-- {"do":"message_coach","text"} | {"do":"set_target","kcal","protein"}: each shows a card to confirm first.
-- {"do":"open","screen":"today"|"train"|"progress"|"quests"|"calendar"|"photos"|"caffeine"|"messages"}
+${FEATURES.gym ? `- {"do":"book_class","class": class name,"date":"YYYY-MM-DD","time":"HH:MM" optional} | {"do":"cancel_class","class","date"}: classes at their gym, from the timetable below.\n` : ''}${FEATURES.coach ? `- {"do":"message_coach","text"} | {"do":"set_target","kcal","protein"}: each shows a card to confirm first.` : `- {"do":"set_target","kcal","protein"}: shows a card to confirm first.`}
+- {"do":"open","screen":"today"|"train"|"progress"|"quests"|"calendar"|"photos"|"caffeine"${FEATURES.coach ? '|"messages"' : ''}}
 
 Food: if what they said is too vague to estimate within about a fifth (a fry, a sandwich, a takeaway, "dinner"), ask before logging. One short question at a time, three at most in the whole exchange: what was in it, how many or how much, how it was cooked. Put the likely answers in "chips". Once you can estimate, send the food action. If they do not know, estimate sensibly and say it is an estimate. If a card is waiting and they change something, send a corrected food action; do not send one if they only asked a question. A coffee or tea that is part of a meal goes in the food items.
 Questions: answer from the app state below with the actual numbers. No medical advice; for pain or an injury that sounds serious, tell them to see a physio or doctor. If they ask for something the app cannot do, say so plainly.
@@ -693,7 +697,7 @@ ${diary}
 Plan for the next 8 days:
 ${planL}
 ${
-  G
+  FEATURES.gym && G
     ? 'Gym timetable (' +
       G.name +
       '):\n' +
@@ -711,7 +715,7 @@ ${
         .join('\n') +
       '\n'
     : ''
-}${myUnread() ? 'Unread messages from their coach: ' + myUnread() + '.\n' : ''}${coachContext()}
+}${myUnread() ? 'Unread messages from their coach: ' + myUnread() + '.\n' : ''}${FEATURES.coach ? coachContext() : ''}
 A card is waiting for: ${pend}.
 
 Conversation so far:
