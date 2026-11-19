@@ -14,7 +14,7 @@ export default [
   // a directive needed in the joined pass looks unused in the per-file pass
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   {
-    files: ['src/app/**/*.js'],
+    files: ['src/app/0*.js'],
     languageOptions: { ...shared, sourceType: 'script' },
     rules: {
       ...js.configs.recommended.rules,
@@ -28,7 +28,7 @@ export default [
   },
   {
     files: ['.cache/app.joined.js'],
-    languageOptions: { ...shared, sourceType: 'script' },
+    languageOptions: { ...shared, sourceType: 'module' },
     rules: {
       'no-undef': 'error',
       'no-redeclare': 'error',
@@ -36,8 +36,13 @@ export default [
     },
   },
   {
-    files: ['src/main.js', 'vite.config.js', 'eslint.config.js', 'build/**/*.js'],
+    files: ['src/main.js', 'src/app/[a-z]*.js', 'vite.config.js', 'eslint.config.js', 'build/**/*.js'],
     languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
-    rules: js.configs.recommended.rules,
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+      'no-useless-escape': 'off', // style only
+    },
   },
 ];

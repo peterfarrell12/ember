@@ -2,6 +2,19 @@
 
 Everything in `prototype/` is the app as last published inside Claude on 18 November 2026.
 
+## The web app (`web/`)
+
+`web/` is the product. It began as a copy of `prototype/src` and is built with Vite. `prototype/` stays as a frozen reference; the rest of this document describes the code in both.
+
+- `web/index.html` is the prototype's `shell.html`. `web/src/style.css` and `web/src/fonts.css` are the styles and the two self-hosted typefaces.
+- `web/src/app/` holds the app code in two forms:
+  - **Real ES modules**: `util.js` (helpers with no dependencies), `features.js` (the coach and gym switches) and `traindata.js` (exercise library, templates, rehab protocols). They import only from each other.
+  - **The numbered files**, which still share one scope exactly as in the prototype. `web/build/app-source.js` joins them in name order inside one function and gives them the modules' exports as imports.
+- A numbered file becomes a module by moving its code to a named file, adding `export`, and adding the file to `MODULES` in `web/build/app-source.js`. `node web/build/deps.js` shows what each numbered file uses from the others. Most still use names from ten or more files, in both directions, and seven shared variables (`P`, `TR`, `SV`, `CO`, `lastPub`, `lastLog`, `celeOpen`) are reassigned from other files, which imports do not allow. Untangling that means deciding where shared state lives; it is a design step, not a mechanical one, and has not been done.
+- `web/src/types.d.ts` describes the main data shapes. `01-core.js` and `04-flows.js` are type-checked (`// @ts-check`).
+- The food lists are served from `prototype/app/` by `web/build/food-data.js`; there is one copy in the repo.
+- fflate and ZXing are npm dependencies, loaded on demand. Nothing is fetched from another site at runtime.
+
 ## How it is built
 
 `scripts/build.py` joins `src/shell.html`, `src/style.css` and every `src/0*.js` file, in name order, into one page: `app/index.html`. All the JavaScript sits inside a single function, so **every file shares one scope** and a file can only use what an earlier file declared at load time. The three food data files sit beside the page and are fetched on demand.

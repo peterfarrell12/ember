@@ -152,12 +152,12 @@ neck|Neck side stretch|mobility|bw|Ear towards the shoulder, opposite arm long.
 foamquad|Foam roll quads|mobility|other|Slow passes, pause on tender spots.
 foamcalf|Foam roll calves|mobility|other|Cross one leg over for more pressure.
 foamback|Foam roll upper back|mobility|other|Hands behind the head, extend over the roller.`;
-const EXS = {};
+export const EXS = {};
 EX_RAW.split('\n').forEach(l => {
   const [id, n, g, eq, cue] = l.split('|');
   EXS[id] = { id, n, g, eq, cue };
 });
-const GROUPS = {
+export const GROUPS = {
   legs: 'Legs',
   glutes: 'Glutes',
   chest: 'Chest',
@@ -170,7 +170,7 @@ const GROUPS = {
   rehab: 'Rehab',
   mobility: 'Mobility',
 };
-const EQUIP = {
+export const EQUIP = {
   bb: 'Barbell',
   db: 'Dumbbells',
   kb: 'Kettlebell',
@@ -180,7 +180,7 @@ const EQUIP = {
   band: 'Band',
   other: 'Other kit',
 };
-const LIFT_GROUPS = ['legs', 'glutes', 'chest', 'back', 'shoulders', 'arms', 'core'];
+export const LIFT_GROUPS = ['legs', 'glutes', 'chest', 'back', 'shoulders', 'arms', 'core'];
 
 /* Program templates. Day: [name, focus, [[exercise, sets, reps, rest seconds, note]]] */
 const DAY = (n, focus, items) => ({
@@ -194,7 +194,7 @@ const DAY = (n, focus, items) => ({
     ...(note ? { note } : {}),
   })),
 });
-const TEMPLATES = [
+export const TEMPLATES = [
   {
     id: 't-full3',
     n: 'Full body, 3 days',
@@ -451,16 +451,16 @@ const TEMPLATES = [
 ];
 
 /* Rehab protocols. Phase: [name, goal, [[exercise, sets, reps, note]]] */
-const GATE =
+export const GATE =
   'Move on when pain stays at 3 out of 10 or less during the session and has settled by the next morning, for a week running.';
-const FLAGS =
+export const FLAGS =
   'See a physio or doctor before starting if the joint gave way or locked, you cannot put weight through it, the swelling is getting worse, there is numbness or pins and needles, or pain wakes you at night.';
 const PHS = (n, goal, items) => ({
   n,
   goal,
   items: items.map(([ex, sets, reps, note]) => ({ ex, sets, reps: String(reps), rest: 30, ...(note ? { note } : {}) })),
 });
-const REHAB = [
+export const REHAB = [
   {
     id: 'r-hip',
     n: 'Hip and groin',
@@ -681,7 +681,7 @@ const side = (n, s, cue) => [
   [n + ', left', s, cue],
   [n + ', right', s, cue],
 ];
-const ROUTINES = [
+export const ROUTINES = [
   {
     id: 'q-morning',
     n: 'Morning mobility',
