@@ -4,7 +4,7 @@ on:
   pull_request:
 jobs:
   prototype-tests:
-    name: Build and core browser tests
+    name: Build and core browser tests (prototype and web)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -20,6 +20,11 @@ jobs:
       # The tests drive Google Chrome (channel="chrome"), which the ubuntu-latest image already has.
       - name: Build the prototype and run the core tests
         run: prototype/run-tests.sh --jobs 2
+      - name: Build the web app and run the same tests against it
+        working-directory: web
+        run: |
+          npm ci
+          npm test -- --jobs 2
       - name: Keep the test output when a test fails
         if: failure()
         uses: actions/upload-artifact@v4

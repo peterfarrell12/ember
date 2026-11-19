@@ -1,0 +1,15 @@
+{
+  "name": "ember-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vite build && APP_DIR=\"$PWD/dist\" ../prototype/run-tests.sh"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
+  }
+}
