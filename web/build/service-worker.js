@@ -41,8 +41,8 @@ self.addEventListener('fetch', e => {
     // the page: network first, the kept copy when there is no answer within a few seconds
     e.respondWith(
       Promise.race([fetch(req), new Promise((_, no) => setTimeout(no, 4000))])
-        .then(res => { if (res.ok) caches.open(CACHE).then(c => c.put('./index.html', res.clone())); return res; })
-        .catch(() => caches.match('./index.html', { ignoreSearch: true }).then(r => r || fetch(req))),
+        .then(res => { if (res.ok && !res.redirected) caches.open(CACHE).then(c => c.put('./', res.clone())); return res; })
+        .catch(() => caches.match('./', { ignoreSearch: true }).then(r => r || fetch(req))),
     );
     return;
   }
@@ -63,7 +63,9 @@ export default function serviceWorker() {
       const files = Object.keys(bundle).filter(f => !/^foods-|^_headers$|\.map$/.test(f));
       // plus the icons and manifest, which Vite copies from public/ without listing them in the bundle
       const extra = ['./manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png'];
-      const shell = ['./index.html', ...files.filter(f => f !== 'index.html').map(f => './' + f), ...extra];
+      // the page is kept as './' and not './index.html': some hosts redirect one to the other, and a browser will not
+      // open a redirected page from the offline store
+      const shell = ['./', ...files.filter(f => f !== 'index.html').map(f => './' + f), ...extra];
       const version = crypto
         .createHash('sha256')
         .update(JSON.stringify(Object.keys(bundle).sort()))
