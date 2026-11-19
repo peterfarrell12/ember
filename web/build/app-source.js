@@ -21,6 +21,7 @@ export const MODULES = [
   'dictation.js',
   'scanner.js',
   'product-server.js',
+  'errors.js',
 ];
 
 export const numbered = dir =>

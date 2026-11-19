@@ -9,6 +9,7 @@ import * as m6 from './ai-server.js';
 import * as m7 from './dictation.js';
 import * as m8 from './scanner.js';
 import * as m9 from './product-server.js';
+import * as m10 from './errors.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -64,4 +65,6 @@ declare global {
   const browserDictation: typeof m7.browserDictation;
   const startScanner: typeof m8.startScanner;
   const lookupBarcode: typeof m9.lookupBarcode;
+  const describeError: typeof m10.describeError;
+  const reportErrors: typeof m10.reportErrors;
 }

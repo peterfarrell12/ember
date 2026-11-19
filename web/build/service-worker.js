@@ -61,7 +61,9 @@ export default function serviceWorker() {
     apply: 'build',
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).filter(f => !/^foods-|^_headers$|\.map$/.test(f));
-      const shell = ['./index.html', ...files.filter(f => f !== 'index.html').map(f => './' + f)];
+      // plus the icons and manifest, which Vite copies from public/ without listing them in the bundle
+      const extra = ['./manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png'];
+      const shell = ['./index.html', ...files.filter(f => f !== 'index.html').map(f => './' + f), ...extra];
       const version = crypto
         .createHash('sha256')
         .update(JSON.stringify(Object.keys(bundle).sort()))

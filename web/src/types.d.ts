@@ -134,3 +134,6 @@ interface Window {
   ZXing?: any;
   fflate?: any;
 }
+
+declare const __APP_VERSION__: string;
+declare const __FOOD_FILES__: { gen: string; br: string; more: string };

@@ -175,6 +175,28 @@ try {
       'Pack says 488',
     );
   });
+  await check('an error report can be filed as yourself, and read by nobody but the owner', async () => {
+    const row = {
+      name: 'TypeError',
+      message: 'x is not a function',
+      stack: 'render index.js:1:1',
+      version: 'abc1234',
+      screen: 'today',
+      agent: 'test',
+    };
+    assert.equal((await a.client.from('client_errors').insert(row)).error, null);
+    assert.ok((await a.client.from('client_errors').select('*')).error, 'not even your own');
+    assert.ok(
+      (await b.client.from('client_errors').insert({ ...row, user_id: a.id })).error,
+      'not in someone else`s name',
+    );
+    assert.ok(
+      (await a.client.from('client_errors').insert({ ...row, message: 'x'.repeat(301) })).error,
+      'sizes are capped',
+    );
+    assert.ok((await visitor.from('client_errors').insert(row)).error);
+    assert.equal((await admin.from('client_errors').select('name').eq('user_id', a.id)).data.length, 1);
+  });
   // progress photos: private storage, one folder per person
   const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
   const path = a.id + '/policy.jpg';

@@ -1774,6 +1774,7 @@ function dayChecks() {
   checkBoss();
   if (used || lg || (hadBoss && !P.boss)) saveProfile();
 }
+let errorsWired = false;
 async function boot() {
   const h = location.hash.slice(1);
   if (['today', 'train', 'progress', 'quests', 'you'].includes(h)) S.tab = h;
@@ -1810,6 +1811,18 @@ async function boot() {
   else flushCele();
   if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
   if (Store.durable) setInterval(refresh, 8000); // another device's changes show within a few seconds
+  if (Store.durable && !errorsWired) {
+    // unexpected errors go to the project's own database, stripped of anything that could be diary content (errors.js)
+    errorsWired = true;
+    reportErrors({
+      version: __APP_VERSION__,
+      screen: () => S.tab,
+      send: async row => {
+        const { error } = await (await supabaseClient()).from('client_errors').insert(row);
+        if (error) throw error;
+      },
+    });
+  }
   initAI();
   loadDB('gen');
   pullAssign();
