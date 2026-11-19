@@ -38,7 +38,7 @@ const LS = {
    - local: this device only (localStorage)
    - claude: the document store of the Claude page the prototype ran in. Still used by the browser tests
      and by the coach and gym code, which reads shared documents through Store.db
-   - supabase: the signed-in person's rows in user_docs (backend-supabase.js) */
+   - supabase: the signed-in person's rows in user_docs (backend-supabase.js). Store.account is their email */
 const localBackend = {
   /** @param {StoreKind} kind @param {string} [id] */
   key: (kind, id) => 'ember:' + kind + (id ? ':' + id : ''),
@@ -108,6 +108,17 @@ const Store = {
       this.mode = 'local';
       this.owner = true;
       this.backend = localBackend;
+      try {
+        const user = await signedInUser();
+        if (user) {
+          this.mode = 'cloud';
+          this.uid = user.id;
+          this.account = user.email || '';
+          this.backend = supabaseBackend(await supabaseClient(), user.id);
+        }
+      } catch (e) {
+        console.warn('sign-in check failed', e);
+      }
     }
     setSync();
   },

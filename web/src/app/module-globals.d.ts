@@ -2,6 +2,8 @@
 import * as m0 from './util.js';
 import * as m1 from './features.js';
 import * as m2 from './traindata.js';
+import * as m3 from './backend-supabase.js';
+import * as m4 from './auth.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -37,4 +39,12 @@ declare global {
   const FLAGS: typeof m2.FLAGS;
   const REHAB: typeof m2.REHAB;
   const ROUTINES: typeof m2.ROUTINES;
+  const storeError: typeof m3.storeError;
+  const supabaseBackend: typeof m3.supabaseBackend;
+  const authConfigured: typeof m4.authConfigured;
+  const signInLinkFailed: typeof m4.signInLinkFailed;
+  const supabaseClient: typeof m4.supabaseClient;
+  const signedInUser: typeof m4.signedInUser;
+  const sendSignInLink: typeof m4.sendSignInLink;
+  const signOut: typeof m4.signOut;
 }

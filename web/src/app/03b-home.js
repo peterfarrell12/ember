@@ -297,7 +297,7 @@ function viewToday() {
       ? `<button class="btn" data-act="closeDay">${ic('check')} Close out ${isToday ? 'today' : 'this day'}</button>`
       : '';
   return `
-  ${Store.mode === 'local' ? `<div class="banner">${ic('lock')}<span>Saved on this device only. Open Ember while signed in to Claude to keep your diary in your account.</span></div>` : ''}
+  ${Store.mode === 'local' ? (authConfigured() ? `<div class="banner" data-act="signIn" role="button" tabindex="0">${ic('lock')}<span>Saved on this device only. Sign in to keep your diary safe and use it on your other devices.</span></div>` : `<div class="banner">${ic('lock')}<span>Saved on this device only.</span></div>`) : ''}
   <div class="datenav"><button class="icon-btn solid" data-act="shiftDate" data-n="-1" aria-label="Previous day">${ic('chev-l')}</button><button class="d" data-act="cal" aria-label="${niceDate(S.date)}, open the calendar">${ic('cal')}${niceDate(S.date)}</button><button class="icon-btn solid" data-act="shiftDate" data-n="1" aria-label="Next day">${ic('chev-r')}</button></div>
   <div class="week">${week}</div>
   ${heroCard(d, t, z)}

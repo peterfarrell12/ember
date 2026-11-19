@@ -274,7 +274,7 @@ function viewMore() {
         'openData',
         'db',
         'Your data',
-        Store.mode === 'cloud' ? 'Saved to your Claude account' : 'Saved on this device only',
+        Store.mode === 'cloud' ? 'Saved to your account' : 'Saved on this device only',
       ),
       `<div class="navrow" style="cursor:default"><span class="ni">${ic('moon')}</span><span class="grow"><b>Appearance</b><div style="margin-top:8px">${segHtml(
         'theme',

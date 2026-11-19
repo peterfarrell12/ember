@@ -18,3 +18,5 @@ web/.cache/
 # local Supabase state
 supabase/.branches
 supabase/.temp
+
+web/dist-local/

@@ -1644,7 +1644,7 @@ A.openData = () => {
   const cnt = k => (DB[k] ? fmt(DB[k].length) : DB.st[k] === 'loading' ? 'loading' : 'not loaded yet');
   openSheet(
     `${sh('Data and sources')}<div class="sheet-b">
-    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your Claude account as you go, private to you, and available on any device where you open Ember signed in.' : 'Saved in this browser only, because account storage is not available in this view. Open Ember from Claude while signed in to sync it.'}</p><button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button></div>
+    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button>${Store.account ? `<button class="btn ghost" data-act="signOut">Sign out</button>` : ''}</div>
     <div class="card stack"><h2>Food database</h2><div class="kv small"><span>Everyday foods, USDA FoodData Central</span><b>${cnt('gen')}</b><span>Branded products, Ireland and UK first</span><b>${cnt('br')}</b><span>More branded products</span><b>${cnt('more')}</b></div>
       <p class="small muted">Everyday foods: U.S. Department of Agriculture, FoodData Central (Foundation Foods, FNDDS and SR Legacy), public domain. Branded products: <a href="https://world.openfoodfacts.org" class="link">Open Food Facts</a> contributors, Open Database Licence. Entries whose stated calories disagree with their macros by more than a fifth were left out.</p></div>
     <div class="card stack"><h2>Targets</h2><p class="small muted">Suggested calories use the Mifflin-St Jeor equation and your activity level. They are a starting point, not medical advice.</p></div></div>`,
@@ -1727,6 +1727,7 @@ async function boot() {
   if (['today', 'train', 'progress', 'quests', 'you'].includes(h)) S.tab = h;
   await Store.init();
   try {
+    await offerMove();
     const p = await Store.get('profile');
     P = p ? fixProfile(p) : defaultProfile();
     const [rs, fs] = await Promise.all([Store.list('recipes'), Store.list('foods')]);
@@ -1754,6 +1755,7 @@ async function boot() {
   render();
   if (!P.onboarded) openTargets(true);
   else flushCele();
+  if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
   initAI();
   loadDB('gen');
   pullAssign();

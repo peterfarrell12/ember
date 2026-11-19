@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as espree from 'espree';
 
-export const MODULES = ['util.js', 'features.js', 'traindata.js'];
+export const MODULES = ['util.js', 'features.js', 'traindata.js', 'backend-supabase.js', 'auth.js'];
 
 export const numbered = dir =>
   fs

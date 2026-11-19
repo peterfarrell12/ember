@@ -5,7 +5,8 @@
   "scripts": {
     "start": "supabase start -x studio,imgproxy,logflare,vector,supavisor,edge-runtime,realtime,mailpit,postgres-meta",
     "stop": "supabase stop",
-    "test": "node tests/policy.test.mjs"
+    "test": "node tests/policy.test.mjs",
+    "test:e2e": "node tests/account.e2e.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.119.2",

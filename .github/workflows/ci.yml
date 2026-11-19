@@ -54,3 +54,9 @@ jobs:
       - name: Policy test
         working-directory: supabase
         run: npm test
+      - name: Accounts and sync in a real browser (sign in, move a diary, second browser, sign out)
+        run: |
+          (cd web && npm ci)
+          cd supabase
+          npm install --no-save playwright
+          npm run test:e2e

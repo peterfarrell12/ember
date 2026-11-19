@@ -3,3 +3,4 @@ node_modules
 package-lock.json
 .cache
 src/app/module-globals.d.ts
+dist-local
