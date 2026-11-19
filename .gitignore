@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+__pycache__/
+.DS_Store
+# screenshots the tests write; one image is a fixture
+prototype/test/*.png
+!prototype/test/01-onboard.png
