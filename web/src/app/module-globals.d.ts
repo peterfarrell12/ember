@@ -7,6 +7,7 @@ import * as m4 from './auth.js';
 import * as m5 from './ai-tasks.js';
 import * as m6 from './ai-server.js';
 import * as m7 from './dictation.js';
+import * as m8 from './scanner.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -58,4 +59,5 @@ declare global {
   const eventReader: typeof m6.eventReader;
   const serverSample: typeof m6.serverSample;
   const browserDictation: typeof m7.browserDictation;
+  const startScanner: typeof m8.startScanner;
 }

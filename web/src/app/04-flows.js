@@ -1003,10 +1003,58 @@ A.revGo = () => {
 };
 
 /* ---------- barcode ---------- */
+/* The barcode sheet opens with the camera already scanning. The number field and the photo option stay
+   underneath for when the camera is refused, missing, or the bars will not read. */
+let bcStop = null;
 A.barcode = () => {
-  openSheet(`${sh('Find by barcode')}<div class="sheet-b"><label class="f">Number under the bars<input class="inp" id="bcNum" inputmode="numeric" placeholder="5099801003339" autocomplete="off"></label>
+  openSheet(`${sh('Find by barcode')}<div class="sheet-b"><div class="scan" id="bcScan"><video id="bcVideo" muted playsinline></video><span class="scan-line"></span></div><p class="small muted" id="bcHint">Point the camera at the barcode.</p>
+    <label class="f">Number under the bars<input class="inp" id="bcNum" inputmode="numeric" placeholder="5099801003339" autocomplete="off"></label>
     <button class="btn" data-act="bcFind">${ic('search')} Find product</button><button class="btn ghost" data-act="bcPhoto">${ic('camera')} Read it from a photo</button><div id="bcOut"></div></div>`);
+  sheets[sheets.length - 1]._onClose = bcScanStop;
+  A.bcScan();
 };
+function bcScanStop() {
+  if (bcStop) bcStop();
+  bcStop = null;
+}
+A.bcScan = async () => {
+  bcScanStop();
+  const box = $('#bcScan'),
+    hint = $('#bcHint');
+  if (!box) return;
+  box.classList.remove('hide');
+  hint.textContent = 'Point the camera at the barcode.';
+  if ($('#bcOut')) $('#bcOut').innerHTML = '';
+  try {
+    const stop = await startScanner(/** @type {HTMLVideoElement} */ ($('#bcVideo')), code => {
+      bcStop = null;
+      if (!$('#bcNum')) return;
+      if (navigator.vibrate) navigator.vibrate(40);
+      $('#bcScan').classList.add('hide');
+      $('#bcHint').innerHTML = `Read ${esc(code)}. <button class="link" data-act="bcScan">Scan again</button>`;
+      $('#bcNum').value = code;
+      A.bcFind();
+    });
+    // the sheet may have been closed while the camera was opening
+    if ($('#bcVideo')) bcStop = stop;
+    else stop();
+  } catch (e) {
+    if (!$('#bcScan')) return;
+    $('#bcScan').classList.add('hide');
+    $('#bcHint').textContent =
+      e && e.code === 'denied'
+        ? 'The camera is switched off for Ember. Type the number under the bars, or read it from a photo.'
+        : 'The camera could not be opened. Type the number under the bars, or read it from a photo.';
+  }
+};
+document.addEventListener('visibilitychange', () => {
+  // do not keep the camera running behind a locked phone or another app
+  if (document.hidden && bcStop) {
+    bcScanStop();
+    if ($('#bcHint')) $('#bcHint').innerHTML = `Paused. <button class="link" data-act="bcScan">Scan again</button>`;
+    if ($('#bcScan')) $('#bcScan').classList.add('hide');
+  }
+});
 A.bcPhoto = () => $('#fileCode').click();
 A.bcFind = async () => {
   const code = ($('#bcNum').value || '').replace(/\D/g, '');

@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "lint": "node build/join.js && eslint .",
     "typecheck": "tsc -p .",
-    "test:unit": "node --test \"test/*.test.mjs\""
+    "test:unit": "node --test \"test/*.test.mjs\"",
+    "test:scanner": "vite build --logLevel error && node test/browser/scanner.e2e.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
