@@ -6,6 +6,7 @@ import * as m3 from './backend-supabase.js';
 import * as m4 from './auth.js';
 import * as m5 from './ai-tasks.js';
 import * as m6 from './ai-server.js';
+import * as m7 from './dictation.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -56,4 +57,5 @@ declare global {
   const looseJson: typeof m6.looseJson;
   const eventReader: typeof m6.eventReader;
   const serverSample: typeof m6.serverSample;
+  const browserDictation: typeof m7.browserDictation;
 }

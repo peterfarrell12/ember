@@ -600,6 +600,7 @@ async function initAI() {
       if (Store.durable) {
         AI.sample = serverSample(aiAccess);
         AI.images = true;
+        AI.dict = browserDictation(); // null where the browser cannot do it, which hides the microphone
       }
       return;
     }
@@ -623,6 +624,8 @@ async function initAI() {
 }
 const AI_MSG = {
   rate_limited: 'Claude is busy or you have hit a usage limit. Try again in a bit.',
+  daily_limit:
+    'Today’s AI allowance for Ember is used up. It starts again at midnight. You can still search and log by hand.',
   session_expired: 'Sign in again, then retry.',
   refused: 'Claude could not work with that. Try rewording it.',
   image_rejected: 'That image could not be read. Try another photo.',

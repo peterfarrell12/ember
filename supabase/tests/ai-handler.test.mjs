@@ -146,7 +146,7 @@ test('once the day`s ceiling is reached nothing more is sent to Claude', async (
   const { handle, claude } = setup({ spent: DAILY_CEILING_USD });
   const r = await ask(handle, { task: 'parse_text', vars: { text: 'eggs' } });
   assert.equal(r.status, 429);
-  assert.equal(r.body.error.code, 'rate_limited');
+  assert.equal(r.body.error.code, 'daily_limit');
   assert.equal(claude.calls.length, 0);
   const under = setup({ spent: DAILY_CEILING_USD - 0.01 });
   assert.equal((await ask(under.handle, { task: 'parse_text', vars: { text: 'eggs' } })).status, 200);

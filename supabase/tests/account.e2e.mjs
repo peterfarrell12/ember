@@ -45,7 +45,7 @@ const link = async () => {
 };
 const rows = async () => (await admin.from('user_docs').select('kind, id, data').eq('user_id', uid)).data;
 const until = async (what, test, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     if (await test()) return;
     await new Promise(r => setTimeout(r, 200));
   }

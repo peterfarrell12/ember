@@ -122,7 +122,7 @@ export function createHandler({
     if (req.error) return req.error;
     const day = now().toISOString().slice(0, 10);
     if ((await spentToday(day)) >= ceiling)
-      return fail(429, 'rate_limited', 'Today`s Claude allowance for Ember is used up. It resets at midnight UTC.');
+      return fail(429, 'daily_limit', 'Today`s allowance is used up. It starts again at midnight UTC.');
     const model = MODELS[req.task.tier] || MODELS.default;
     let message;
     try {

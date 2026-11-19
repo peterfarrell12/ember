@@ -18,6 +18,7 @@ export const MODULES = [
   'auth.js',
   'ai-tasks.js',
   'ai-server.js',
+  'dictation.js',
 ];
 
 export const numbered = dir =>
