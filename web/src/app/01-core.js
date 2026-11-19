@@ -34,10 +34,50 @@ const LS = {
     return [...out];
   },
 };
+/* Where documents are kept. Each backend offers the same four operations; Store picks one at start-up.
+   - local: this device only (localStorage)
+   - claude: the document store of the Claude page the prototype ran in. Still used by the browser tests
+     and by the coach and gym code, which reads shared documents through Store.db
+   - supabase: the signed-in person's rows in user_docs (backend-supabase.js) */
+const localBackend = {
+  /** @param {StoreKind} kind @param {string} [id] */
+  key: (kind, id) => 'ember:' + kind + (id ? ':' + id : ''),
+  async get(kind, id) {
+    return LS.get(this.key(kind, id));
+  },
+  async list(kind) {
+    return LS.keys(this.key(kind) + ':')
+      .map(k => LS.get(k))
+      .filter(Boolean);
+  },
+  set(kind, id, data) {
+    LS.set(this.key(kind, id), data);
+  },
+  remove(kind, id) {
+    LS.del(this.key(kind, id));
+  },
+};
+const claudeBackend = base => ({
+  ref: (kind, id) => (kind === 'profile' ? base : base.collection(kind).doc(id)),
+  async get(kind, id) {
+    const s = await withTimeout(this.ref(kind, id).get());
+    return s.exists ? clone(s.data()) : null;
+  },
+  async list(kind) {
+    const qs = await withTimeout(base.collection(kind).limit(500).get());
+    return qs.docs.map(d => ({ ...clone(d.data()), id: d.id }));
+  },
+  set(kind, id, data) {
+    return this.ref(kind, id).set(data);
+  },
+  remove(kind, id) {
+    return this.ref(kind, id).delete();
+  },
+});
 const Store = {
   mode: 'boot',
   db: null,
-  base: null,
+  backend: null,
   q: {},
   busy: 0,
   failed: false,
@@ -63,19 +103,13 @@ const Store = {
       this.mode = 'cloud';
       this.db = db;
       this.uid = id;
-      this.base = db.doc('data/users/' + id + '/profile');
+      this.backend = claudeBackend(db.doc('data/users/' + id + '/profile'));
     } else {
       this.mode = 'local';
       this.owner = true;
+      this.backend = localBackend;
     }
     setSync();
-  },
-  /**
-   * @param {StoreKind} kind
-   * @param {string} [id]
-   */
-  ref(kind, id) {
-    return kind === 'profile' ? this.base : this.base.collection(kind).doc(id);
   },
   /**
    * The localStorage key for a document in local mode.
@@ -83,7 +117,7 @@ const Store = {
    * @param {string} [id]
    */
   key(kind, id) {
-    return 'ember:' + kind + (id ? ':' + id : '');
+    return localBackend.key(kind, id);
   },
   /**
    * Read one document, or null when there is none.
@@ -92,11 +126,7 @@ const Store = {
    * @returns {Promise<any>}
    */
   async get(kind, id) {
-    if (this.mode === 'cloud') {
-      const s = await withTimeout(this.ref(kind, id).get());
-      return s.exists ? clone(s.data()) : null;
-    }
-    return LS.get(this.key(kind, id));
+    return this.backend.get(kind, id);
   },
   /**
    * Read every document of a kind (at most 500).
@@ -104,13 +134,7 @@ const Store = {
    * @returns {Promise<any[]>}
    */
   async list(kind) {
-    if (this.mode === 'cloud') {
-      const qs = await withTimeout(this.base.collection(kind).limit(500).get());
-      return qs.docs.map(d => ({ ...clone(d.data()), id: d.id }));
-    }
-    return LS.keys(this.key(kind) + ':')
-      .map(k => LS.get(k))
-      .filter(Boolean);
+    return this.backend.list(kind);
   },
   /**
    * Save a document. Returns at once; the write is queued, and for one document the last write wins.
@@ -139,7 +163,7 @@ const Store = {
    */
   enqueue(kind, id, job) {
     if (this.mode !== 'cloud') {
-      job.del ? LS.del(this.key(kind, id)) : LS.set(this.key(kind, id), job.data);
+      job.del ? localBackend.remove(kind, id) : localBackend.set(kind, id, job.data);
       return;
     }
     const k = kind + '/' + (id || '');
@@ -155,8 +179,7 @@ const Store = {
       const job = q.next;
       q.next = null;
       try {
-        const ref = this.ref(kind, id);
-        await (job.del ? ref.delete() : ref.set(job.data));
+        await (job.del ? this.backend.remove(kind, id) : this.backend.set(kind, id, job.data));
         this.failed = false;
       } catch (e) {
         if (e && e.code === 'unavailable' && !job.retried) {
