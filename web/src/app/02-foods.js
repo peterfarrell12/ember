@@ -48,8 +48,20 @@ const SRC = {
   AI: ['Estimate', 'e', 'Estimated by Claude, not from a database'],
   AK: ['Recalled', 'e', "The maker's figures as Claude remembers them. Not in the product database, so check the pack"],
   LB: ['Label', 'l', 'Read from the packaging or ticket in your photo'],
+  WB: ['Web', 'e', "From the maker's or a shop's website, found by a web search. Check it against the pack"],
   DR: ['Standard', 'l', 'Worked out from standard values for milk and sugar'],
   Q: ['Quick add', '', 'Entered by hand'],
+};
+/* For figures found on the web: a link to the page they came from, named by its site. Only http(s) addresses. */
+const webSource = food => {
+  if (food.src !== 'WB' || !/^https?:\/\//i.test(food.url || '')) return '';
+  let site = '';
+  try {
+    site = new URL(food.url).hostname.replace(/^www\./, '');
+  } catch (e) {
+    return '';
+  }
+  return ` · <a class="link" href="${esc(food.url)}" target="_blank" rel="noopener noreferrer">${esc(site)}</a>`;
 };
 const srcBadge = s => {
   const x = SRC[s] || SRC.Q;
@@ -1017,7 +1029,37 @@ async function matchAll(raw) {
       /* keep the closest match the page found */
     }
   }
+  await lookupMissing(items);
   return items;
+}
+/* A branded product that is in none of the lists would otherwise go in with Claude's own figures (Estimate or
+   Recalled). Where the server can look things up, ask it for the maker's or a shop's published figures instead.
+   At most three per meal, side by side, and never for long: if nothing comes back the estimate stays. */
+async function lookupMissing(items) {
+  if (!(AI.sample && AI.sample.lookup)) return;
+  const missing = items.filter(x => x.food && x.food.b && (x.food.src === 'AI' || x.food.src === 'AK')).slice(0, 3);
+  await Promise.all(
+    missing.map(async x => {
+      const r = await withTimeout(AI.sample.lookup(x.food.b, x.food.n), 25000).catch(() => null);
+      if (!r) return;
+      x.food = {
+        id: '',
+        n: r.name || x.food.n,
+        b: r.brand || x.food.b,
+        k: r1(r.kcal),
+        p: r1(r.p),
+        c: r1(r.c),
+        f: r1(r.f),
+        fi: r.fi == null ? 0 : r1(r.fi),
+        su: r.su == null ? null : r1(r.su),
+        sf: r.sf == null ? null : r1(r.sf),
+        na: r.salt == null ? null : r0(r.salt * 400),
+        ports: r.serving_g > 0 ? [['1 serving', r.serving_g]] : x.food.ports,
+        src: 'WB',
+        url: r.url,
+      };
+    }),
+  );
 }
 /* Keyword fallback used when Claude is not available. */
 const WORDNUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, half: 0.5, couple: 2 };

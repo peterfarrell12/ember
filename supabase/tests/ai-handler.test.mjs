@@ -2,7 +2,15 @@
 // and Anthropic. No network, no cost.   node --test supabase/tests/ai-handler.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHandler, readRequest, costOf, MODELS, DAILY_CEILING_USD } from '../functions/ai/handler.js';
+import {
+  createHandler,
+  readRequest,
+  costOf,
+  checkProduct,
+  MODELS,
+  DAILY_CEILING_USD,
+  SEARCHES_PER_PERSON_PER_DAY,
+} from '../functions/ai/handler.js';
 import { TASKS } from '../functions/_shared/ai-tasks.js';
 
 /** A stand-in Anthropic client that records what it was asked and replies as told. */
@@ -23,7 +31,7 @@ function fakeClaude(reply = {}) {
         return {
           model: params.model,
           stop_reason: reply.stop_reason || 'end_turn',
-          content: [
+          content: reply.content || [
             { type: 'thinking', thinking: '' },
             { type: 'text', text },
           ],
@@ -42,7 +50,9 @@ function setup(over = {}) {
     whoIs: async t => (t === 'good' ? { id: 'u1' } : null),
     spentToday: async () => over.spent ?? 0,
     record: over.record || (async (id, day, u) => void recorded.push({ id, day, ...u })),
-    now: () => new Date('2026-11-19T12:00:00Z'),
+    now: over.now || (() => new Date('2026-11-19T12:00:00Z')),
+    products: over.products,
+    searchesToday: async () => over.searches ?? 0,
   });
   return { handle, claude, recorded };
 }
@@ -209,4 +219,108 @@ test('every task builds from exactly the values it declares', () => {
     for (const n of t.vars) assert.ok(text.includes('<' + n + '>'), `${name} uses ${n}`);
     assert.ok(!text.includes('undefined'), `${name} has no missing value`);
   }
+});
+
+/* ----- product lookup on the web ----- */
+const good = {
+  found: true,
+  name: 'Protein Yogurt Vanilla',
+  brand: 'Glenisk',
+  kcal: 62,
+  p: 10,
+  c: 4.5,
+  f: 0.4,
+  sf: 0.2,
+  su: 4.2,
+  fi: null,
+  salt: 0.1,
+  serving_g: 150,
+  url: 'https://www.glenisk.com/products/protein-vanilla',
+};
+const results = ['https://www.glenisk.com/products/protein-vanilla', 'https://www.tesco.ie/groceries/product/123'];
+
+test('a looked-up product is trusted only when its figures are plausible and its source is a page the search returned', () => {
+  assert.deepEqual(checkProduct(good, results), good);
+  assert.equal(checkProduct({ found: false }, results), null);
+  assert.equal(
+    checkProduct({ ...good, url: 'https://made-up.example/yogurt' }, results),
+    null,
+    'source not among the results',
+  );
+  assert.equal(checkProduct({ ...good, url: 'javascript:alert(1)' }, results), null);
+  assert.equal(checkProduct({ ...good, url: undefined }, results), null);
+  assert.equal(checkProduct({ ...good, kcal: 6200 }, results), null);
+  assert.equal(checkProduct({ ...good, p: 80, c: 60 }, results), null, 'more than 100 g of macros per 100 g');
+  assert.equal(checkProduct({ ...good, kcal: 20, f: 30 }, results), null, 'far more energy in the macros than stated');
+  assert.equal(checkProduct({ ...good, p: '10' }, results), null, 'figures must be numbers');
+  // a pint of stout: most of its energy is alcohol, so the macros account for less than the label says
+  assert.ok(checkProduct({ ...good, kcal: 35, p: 0.3, c: 3, f: 0 }, results));
+  assert.ok(checkProduct({ ...good, url: 'https://tesco.ie/other/page' }, results), 'same site, www or not');
+});
+
+function shop() {
+  const rows = new Map();
+  return {
+    rows,
+    get: async k => rows.get(k) || null,
+    put: async p => void rows.set(p.key, { ...p, checked_at: p.checked_at || '2026-11-19T12:00:00Z' }),
+  };
+}
+const searchReply = (ans, searches = 1) => ({
+  content: [
+    { type: 'server_tool_use', name: 'web_search', input: { query: 'glenisk protein vanilla nutrition' } },
+    { type: 'web_search_tool_result', content: results.map(url => ({ type: 'web_search_result', url })) },
+    { type: 'text', text: JSON.stringify(ans) },
+  ],
+  usage: { input_tokens: 8000, output_tokens: 300, server_tool_use: { web_search_requests: searches } },
+});
+const find = h => ask(h, { task: 'find_product', vars: { brand: 'Glenisk', name: 'Protein Yogurt Vanilla' } });
+
+test('a product not seen before is searched for once, checked, saved, and charged including the search', async () => {
+  const products = shop();
+  const { handle, claude, recorded } = setup({ products, reply: searchReply(good) });
+  const r = await find(handle);
+  assert.deepEqual(JSON.parse(r.body.text), good);
+  const sent = claude.calls[0];
+  assert.equal(sent.model, MODELS.quick.id);
+  assert.equal(sent.tools[0].name, 'web_search');
+  assert.equal(sent.tools[0].max_uses, 2);
+  assert.equal(recorded[0].searches, 1);
+  assert.ok(Math.abs(recorded[0].cost - ((8000 * 0.1 + 300 * 0.5) / 1e6 + 0.01)) < 1e-9);
+  assert.equal(products.rows.get('glenisk|protein yogurt vanilla').found, true);
+  // the next person to ask gets it from the saved copy: no search, no charge
+  assert.deepEqual(JSON.parse((await find(handle)).body.text), good);
+  assert.equal(claude.calls.length, 1);
+  assert.equal(recorded.length, 1);
+});
+
+test('an answer that fails the checks is not passed on, and the miss is remembered for a month', async () => {
+  const products = shop();
+  let today = '2026-11-19T12:00:00Z';
+  const { handle, claude } = setup({
+    products,
+    now: () => new Date(today),
+    reply: searchReply({ ...good, url: 'https://made-up.example/x' }),
+  });
+  assert.deepEqual(JSON.parse((await find(handle)).body.text), { found: false });
+  assert.equal(products.rows.get('glenisk|protein yogurt vanilla').found, false);
+  await find(handle);
+  assert.equal(claude.calls.length, 1, 'not searched for again straight away');
+  today = '2026-12-25T12:00:00Z';
+  await find(handle);
+  assert.equal(claude.calls.length, 2, 'searched for again after a month');
+});
+
+test('lookups stop at the person`s daily number and at the day`s spending ceiling, and a failed search costs nothing', async () => {
+  const capped = setup({ products: shop(), searches: SEARCHES_PER_PERSON_PER_DAY, reply: searchReply(good) });
+  assert.deepEqual(JSON.parse((await find(capped.handle)).body.text), { found: false });
+  assert.equal(capped.claude.calls.length, 0);
+  const spent = setup({ products: shop(), spent: DAILY_CEILING_USD, reply: searchReply(good) });
+  assert.deepEqual(JSON.parse((await find(spent.handle)).body.text), { found: false });
+  assert.equal(spent.claude.calls.length, 0);
+  const products = shop();
+  const down = setup({ products, reply: { throw: Object.assign(new Error('boom'), { status: 500 }) } });
+  assert.deepEqual(JSON.parse((await find(down.handle)).body.text), { found: false });
+  assert.equal(down.recorded.length, 0);
+  assert.equal(products.rows.size, 0, 'a failure is not remembered as a miss');
 });

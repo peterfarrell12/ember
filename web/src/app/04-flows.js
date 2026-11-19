@@ -620,7 +620,7 @@ function openFood(food, opts = {}) {
       return o ? `<optgroup label="${label}">${o}</optgroup>` : '';
     };
   openSheet(`${sh(food.n)}<div class="sheet-b">
-    <div class="row small muted">${srcBadge(food.src)}<span>${esc([food.b, (SRC[food.src] || SRC.Q)[2]].filter(Boolean).join(' · '))}</span></div>
+    <div class="row small muted">${srcBadge(food.src)}<span>${esc([food.b, (SRC[food.src] || SRC.Q)[2]].filter(Boolean).join(' · '))}${webSource(food)}</span></div>
     <div class="amt"><label class="f">Serving size<input class="inp" id="fdQty" inputmode="decimal" value="${qty}" data-on="fd"></label>
       <label class="f">Unit<select class="inp" id="fdUnit" data-on="fdUnit">${units.map((u, i) => (u.alt ? '' : opt(u, i))).join('')}${grp('Weighed before cooking', 'raw')}${grp('Convert from', 'conv')}</select></label></div>
     <div class="amt"><div class="f"><label for="fdSv">Number of servings</label><div class="stp"><button data-act="fdStep" data-d="-1" aria-label="Fewer servings">${ic('minus')}</button><input class="inp" id="fdSv" inputmode="decimal" value="${sv}" data-on="fdSv"><button data-act="fdStep" data-d="1" aria-label="More servings">${ic('plus')}</button></div></div>

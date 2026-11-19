@@ -38,6 +38,68 @@ export function costOf(model, usage) {
 
 const fail = (status, code, message) => ({ status, body: { error: { code, message } } });
 
+/* ----- product lookup on the web ----- */
+export const SEARCH_PRICE_USD = 0.01; // per web search, on top of tokens
+export const SEARCHES_PER_PERSON_PER_DAY = 20;
+const RECHECK_MISS_DAYS = 30; // a product that was not found is searched for again after this long
+const productKey = (brand, name) => (brand + '|' + name).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
+const host = u => {
+  try {
+    const h = new URL(u);
+    return /^https?:$/.test(h.protocol) ? h.hostname.replace(/^www\./, '') : '';
+  } catch {
+    return '';
+  }
+};
+const numOrNull = x => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : null);
+
+/**
+ * Decide whether a web lookup's answer can be trusted, and tidy it. Returns the product or null.
+ * The figures must be plausible per 100 g, and the page they are said to come from must be one the
+ * search actually returned, so a made-up address is never shown to anyone as a source.
+ * @param {any} ans the model's parsed reply
+ * @param {string[]} seenUrls the addresses in the search results
+ */
+export function checkProduct(ans, seenUrls) {
+  if (!ans || ans.found !== true) return null;
+  const k = numOrNull(ans.kcal),
+    p = numOrNull(ans.p),
+    c = numOrNull(ans.c),
+    f = numOrNull(ans.f);
+  if (k === null || p === null || c === null || f === null) return null;
+  if (k > 900 || p > 100 || c > 100 || f > 100 || p + c + f > 105) return null;
+  // macros cannot account for much more energy than the label states (less is fine: alcohol, fibre)
+  if (4 * p + 4 * c + 9 * f > k * 1.25 + 25) return null;
+  const from = host(ans.url);
+  if (!from || !seenUrls.some(u => host(u) === from)) return null;
+  return {
+    found: true,
+    name: String(ans.name || '').slice(0, 80),
+    brand: String(ans.brand || '').slice(0, 40),
+    kcal: k,
+    p,
+    c,
+    f,
+    sf: numOrNull(ans.sf),
+    su: numOrNull(ans.su),
+    fi: numOrNull(ans.fi),
+    salt: numOrNull(ans.salt),
+    serving_g: numOrNull(ans.serving_g),
+    url: String(ans.url).slice(0, 500),
+  };
+}
+const PRODUCT_FIELDS = ['found', 'name', 'brand', 'kcal', 'p', 'c', 'f', 'sf', 'su', 'fi', 'salt', 'serving_g', 'url'];
+const firstJson = text => {
+  const a = text.indexOf('{'),
+    b = text.lastIndexOf('}');
+  if (a < 0 || b <= a) return null;
+  try {
+    return JSON.parse(text.slice(a, b + 1));
+  } catch {
+    return null;
+  }
+};
+
 /** Check a request body and turn it into the task and the content to send. Returns { error } or { task, messages }. */
 export function readRequest(body) {
   if (!body || typeof body !== 'object') return { error: fail(400, 'bad_request', 'Expected a JSON object.') };
@@ -112,15 +174,71 @@ export function createHandler({
   spentToday,
   record,
   claude,
+  products = null,
+  searchesToday = async () => 0,
   now = () => new Date(),
   ceiling = DAILY_CEILING_USD,
 }) {
+  /* Look a product up: from what an earlier search saved if there is one, otherwise with one paid web search. */
+  async function lookup(user, req, vars, day) {
+    const reply = product => ({ status: 200, body: { text: JSON.stringify(product || { found: false }) } });
+    if (!products) return reply(null);
+    const key = productKey(vars.brand, vars.name);
+    const saved = await products.get(key).catch(() => null);
+    if (saved && (saved.found || now() - new Date(saved.checked_at) < RECHECK_MISS_DAYS * 864e5))
+      return reply(
+        saved.found
+          ? Object.fromEntries(PRODUCT_FIELDS.map(k => [k, saved[k] ?? (k === 'found' ? true : null)]))
+          : null,
+      );
+    if ((await spentToday(day)) >= ceiling) return reply(null);
+    if ((await searchesToday(user.id, day)) >= SEARCHES_PER_PERSON_PER_DAY) return reply(null);
+    let message;
+    try {
+      message = await claude.messages
+        .stream({
+          model: MODELS.quick.id,
+          max_tokens: 4000,
+          output_config: { effort: 'low' },
+          messages: req.messages,
+          tools: [
+            {
+              type: 'web_search_20250305',
+              name: 'web_search',
+              max_uses: 2,
+              user_location: { type: 'approximate', country: 'IE', timezone: 'Europe/Dublin' },
+            },
+          ],
+        })
+        .finalMessage();
+    } catch (e) {
+      return reply(null); // a lookup that fails just leaves the estimate in place
+    }
+    const blocks = message.content || [];
+    const used = costOf(message.model || MODELS.quick.id, message.usage || {});
+    used.searches = ((message.usage || {}).server_tool_use || {}).web_search_requests || 0;
+    used.cost += used.searches * SEARCH_PRICE_USD;
+    await record(user.id, day, used).catch(() => {});
+    const seen = blocks
+      .filter(b => b.type === 'web_search_tool_result' && Array.isArray(b.content))
+      .flatMap(b => b.content.map(r => r && r.url).filter(Boolean));
+    const text = blocks
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+    const product = message.stop_reason === 'end_turn' ? checkProduct(firstJson(text), seen) : null;
+    await products
+      .put({ key, found: !!product, ...(product || { name: vars.name, brand: vars.brand }) })
+      .catch(() => {});
+    return reply(product);
+  }
   return async function handle({ token, body, onText }) {
     const user = token ? await whoIs(token) : null;
     if (!user) return fail(401, 'session_expired', 'Sign in again.');
     const req = readRequest(body);
     if (req.error) return req.error;
     const day = now().toISOString().slice(0, 10);
+    if (req.task.search) return lookup(user, req, body.vars, day);
     if ((await spentToday(day)) >= ceiling)
       return fail(429, 'daily_limit', 'Today`s allowance is used up. It starts again at midnight UTC.');
     const model = MODELS[req.task.tier] || MODELS.default;

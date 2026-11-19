@@ -103,6 +103,15 @@ export function serverSample(access) {
     return { text: end.text };
   };
   sample.json = async (input, o) => looseJson((await sample(input, o)).text);
+  /** Look a branded product up on the web. Returns its per-100 figures and source page, or null. Never throws. */
+  sample.lookup = async (brand, name) => {
+    try {
+      const r = await sample.json(['find_product', { brand, name }]);
+      return r && r.found === true ? r : null;
+    } catch (e) {
+      return null;
+    }
+  };
   sample.limits = async () => ({ images: { maxCount: 4, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } });
   return sample;
 }

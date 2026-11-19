@@ -23,6 +23,53 @@ const claude = new Anthropic({
 
 const handle = createHandler({
   claude,
+  products: {
+    async get(key: string) {
+      const { data } = await admin.from('products').select('*').eq('key', key).maybeSingle();
+      if (!data) return null;
+      // the table's column names, back to the names the app uses
+      return {
+        found: data.found,
+        checked_at: data.checked_at,
+        name: data.name,
+        brand: data.brand,
+        kcal: data.kcal,
+        p: data.protein,
+        c: data.carbs,
+        f: data.fat,
+        sf: data.saturates,
+        su: data.sugars,
+        fi: data.fibre,
+        salt: data.salt,
+        serving_g: data.serving_g,
+        url: data.source_url,
+      };
+    },
+    async put(p: any) {
+      const { error } = await admin.from('products').upsert({
+        key: p.key,
+        found: p.found,
+        name: p.name || '',
+        brand: p.brand || '',
+        kcal: p.kcal ?? null,
+        protein: p.p ?? null,
+        carbs: p.c ?? null,
+        fat: p.f ?? null,
+        saturates: p.sf ?? null,
+        sugars: p.su ?? null,
+        fibre: p.fi ?? null,
+        salt: p.salt ?? null,
+        serving_g: p.serving_g ?? null,
+        source_url: p.url ?? null,
+        checked_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+    },
+  },
+  async searchesToday(userId: string, day: string) {
+    const { data } = await admin.from('ai_usage').select('searches').eq('user_id', userId).eq('day', day).maybeSingle();
+    return data ? data.searches : 0;
+  },
   async whoIs(token: string) {
     const { data, error } = await admin.auth.getUser(token);
     return error || !data.user ? null : { id: data.user.id };

@@ -81,3 +81,14 @@ test('an error part-way through a stream keeps the text so far', async () => {
     e => e.code === 'upstream_error' && e.text === 'Heat ',
   );
 });
+
+test('a product lookup returns the product when found and null otherwise, and never throws', async () => {
+  const found = serverSample(
+    access(async () => reply(200, { text: '{"found":true,"name":"Protein Yogurt","kcal":62,"url":"https://x.ie/p"}' })),
+  );
+  assert.equal((await found.lookup('Glenisk', 'Protein Yogurt')).kcal, 62);
+  const missing = serverSample(access(async () => reply(200, { text: '{"found":false}' })));
+  assert.equal(await missing.lookup('Glenisk', 'Protein Yogurt'), null);
+  const down = serverSample(access(async () => Promise.reject(new TypeError('Failed to fetch'))));
+  assert.equal(await down.lookup('Glenisk', 'Protein Yogurt'), null);
+});

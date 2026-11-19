@@ -136,6 +136,18 @@ try {
     assert.ok((await visitor.rpc('ai_spend_on', { p_day: day })).error);
     assert.equal((await a.client.from('ai_usage').select('calls')).data[0].calls, 2);
   });
+  await check('the saved products are reachable only by the server', async () => {
+    const row = { key: 'policy|test', name: 'Test', brand: 'Policy', found: false };
+    assert.equal((await admin.from('products').upsert(row)).error, null);
+    for (const c of [a.client, visitor]) {
+      const r = await c.from('products').select('key');
+      assert.ok(r.error || r.data.length === 0);
+      assert.ok((await c.from('products').upsert({ ...row, key: 'planted' })).error);
+      await c.from('products').delete().eq('key', 'policy|test');
+    }
+    assert.equal((await admin.from('products').select('key').eq('key', 'policy|test')).data.length, 1);
+    await admin.from('products').delete().eq('key', 'policy|test');
+  });
   // progress photos: private storage, one folder per person
   const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
   const path = a.id + '/policy.jpg';

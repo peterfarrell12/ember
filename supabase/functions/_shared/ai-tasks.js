@@ -27,6 +27,19 @@ export const COACH_RULES =
 export const IDEA_FORMAT = `Reply with only a JSON array of exactly 3 options, no other text: {"title": short name, "why": one short sentence with the kcal and protein and why it fits, "items": [ up to 4 foods ]} where each food is {"name": short database-style name, "grams": number, "amount": the amount in words, "kcal100": kcal per 100 g, "p100": protein g per 100 g, "c100": carbs g per 100 g, "f100": fat g per 100 g}. Keep each option at or under the calories left.`;
 
 export const TASKS = {
+  // New in the web app (not from the prototype): look a branded product up on the web when it is in none
+  // of the lists. Runs with the web search tool; the server checks the answer before trusting it.
+  find_product: {
+    tier: 'quick',
+    json: true,
+    search: true,
+    vars: ['brand', 'name'],
+    build: v =>
+      `Find the nutrition information for this packaged food or drink sold in Ireland or the UK: brand "${v.brand}", product "${v.name}".
+Search for the maker's own page or a major retailer's product page (for example Tesco, Dunnes Stores, SuperValu, Sainsbury's) that prints the nutrition table. Use only figures printed on such a page for this exact product and variant. Do not estimate, and do not use figures for a similar product.
+Reply with only JSON, no other text: {"found": true, "name": product name as printed, "brand": brand, "kcal": kcal per 100 g or 100 ml, "p": protein g per 100, "c": carbohydrate g per 100, "f": fat g per 100, "sf": saturates g per 100 or null, "su": sugars g per 100 or null, "fi": fibre g per 100 or null, "salt": salt g per 100 or null, "serving_g": the serving or pack size in g or ml if printed else null, "url": the address of the page the figures came from}
+If you cannot find a page that prints the figures for this exact product, reply {"found": false}. If energy is only in kJ, divide by 4.184.`,
+  },
   read_barcode: {
     tier: 'quick',
     images: 1,
