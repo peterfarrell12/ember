@@ -7,6 +7,20 @@ A.signIn = () => {
     <div class="sheet-f" id="siFoot"><button class="btn ember" data-act="signInGo" id="siGo">Email me a link</button></div>`,
   );
 };
+/* Ember needs an account: nobody uses the app signed out. This is the whole screen until they sign in.
+   (The browser tests, and anyone developing without a backend, can ask for the old device-only mode with the
+   localStorage key ember:device-only; it only ever shows that device's own data.) */
+const mustSignIn = () => Store.mode === 'local' && authConfigured() && !LS.get('ember:device-only');
+function signInGate() {
+  document.body.classList.add('gate');
+  $('#main').innerHTML =
+    `<div class="boot"><div class="card stack" style="width:min(340px,100%);text-align:left;color:var(--ink);font-weight:400"><h2>Sign in to Ember</h2>
+    <div class="stack" id="siBody"><p class="small">Enter your email and we will send you a link. No password needed.</p>
+    <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label></div>
+    <div id="siFoot"><button class="btn ember" data-act="signInGo" id="siGo">Email me a link</button></div></div></div>`;
+  if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
+}
+A.signInAgain = () => signInGate();
 A.signInGo = async () => {
   const email = String(($('#siEmail') || {}).value || '').trim();
   if (!validEmail(email)) return toast('Enter your email address.');
@@ -16,7 +30,9 @@ A.signInGo = async () => {
     await sendSignInLink(email);
     $('#siBody').innerHTML =
       `<p>Check your email. The link signs you in on this device.</p><p class="small muted">Sent to ${esc(email)}.</p>`;
-    $('#siFoot').innerHTML = `<button class="btn ghost" data-act="close">Done</button>`;
+    $('#siFoot').innerHTML = S.ready
+      ? `<button class="btn ghost" data-act="close">Done</button>`
+      : `<button class="btn ghost" data-act="signInAgain">Use a different email</button>`;
   } catch (e) {
     go.disabled = false;
     toast(
@@ -56,14 +72,16 @@ async function offerMove() {
   if (await Store.get('profile')) return;
   const docs = localDocs(),
     days = docs.filter(d => d[0] === 'days').length;
+  document.body.classList.add('gate');
   const choice = await new Promise(res => {
     A.moveYes = () => res(true);
     A.moveNo = () => res(false);
     $('#main').innerHTML =
-      `<div class="boot"><div class="card stack" style="max-width:340px;text-align:left"><h2>Bring your diary with you?</h2>
+      `<div class="boot"><div class="card stack" style="max-width:340px;text-align:left;color:var(--ink);font-weight:400"><h2>Bring your diary with you?</h2>
       <p class="small">This device has a diary${days ? ' with ' + days + (days === 1 ? ' day' : ' days') + ' in it' : ''}. Move it into your account so it is saved and on your other devices.</p>
       <button class="btn ember" data-act="moveYes">Move it to my account</button><button class="btn ghost" data-act="moveNo">Start fresh</button></div></div>`;
   });
+  document.body.classList.remove('gate');
   if (!choice) return LS.set('ember:move:' + Store.uid, 'no');
   $('#main').innerHTML = `<div class="boot"><div class="busy"><div class="spinner"></div>Moving your diary</div></div>`;
   try {

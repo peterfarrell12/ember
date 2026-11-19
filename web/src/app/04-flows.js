@@ -1726,6 +1726,7 @@ async function boot() {
   const h = location.hash.slice(1);
   if (['today', 'train', 'progress', 'quests', 'you'].includes(h)) S.tab = h;
   await Store.init();
+  if (mustSignIn()) return signInGate();
   try {
     await offerMove();
     const p = await Store.get('profile');

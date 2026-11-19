@@ -21,6 +21,11 @@ SEEDED_RANDOM = """(() => { let a = 0x9e3779b9; Math.random = () => { a |= 0; a 
 FEATURE_TESTS = {'t7', 't8', 't9', 't10', 't15', 't16', 't18'}
 FEATURES_ON = """try { localStorage.setItem('ember:features', JSON.stringify({ coach: true, gym: true })); } catch (e) {}"""
 
+# The web app asks everyone to sign in before using it. These tests are about the app itself, not accounts,
+# so they ask for the device-only mode instead (accounts are covered by supabase/tests/account.e2e.mjs).
+# Tests that load mock.js are unaffected either way; the prototype ignores the key.
+DEVICE_ONLY = """try { localStorage.setItem('ember:device-only', '1'); } catch (e) {}"""
+
 _new_context = Browser.new_context
 
 
@@ -28,6 +33,7 @@ async def new_context(self, *args, **kwargs):
     ctx = await _new_context(self, *args, **kwargs)
     await ctx.clock.install(time=NOW)
     await ctx.add_init_script(SEEDED_RANDOM)
+    await ctx.add_init_script(DEVICE_ONLY)
     if os.path.splitext(os.path.basename(sys.argv[0]))[0] in FEATURE_TESTS:
         await ctx.add_init_script(FEATURES_ON)
     return ctx

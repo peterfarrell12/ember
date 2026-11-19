@@ -45,7 +45,7 @@ const link = async () => {
 };
 const rows = async () => (await admin.from('user_docs').select('kind, id, data').eq('user_id', uid)).data;
 const until = async (what, test, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     if (await test()) return;
     await new Promise(r => setTimeout(r, 200));
   }
@@ -77,6 +77,7 @@ const closeSheets = async pg => {
   }
 };
 
+const extra = [];
 const browser = await chromium.launch({ channel: 'chrome', args: ['--no-sandbox'] });
 const results = [];
 const step = async (name, run) => {
@@ -96,46 +97,48 @@ const step = async (name, run) => {
   }
 };
 try {
-  const a = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  const phone = { viewport: { width: 390, height: 844 } };
+  const a = await (await browser.newContext(phone)).newPage();
   const errs = [];
   a.on('pageerror', e => errs.push(String(e)));
+  const setUp = async pg => {
+    await pg.waitForSelector('#tgBody');
+    await pg.fill('[data-k="age"]', '34');
+    await pg.fill('[data-k="cm"]', '183');
+    await pg.fill('[data-k="kg"]', '86');
+    await pg.click('[data-act="saveTargets"]');
+    await pg.click('[data-act="celeNext"]');
+  };
+  const entries = async () => ((await rows()).find(x => x.kind === 'days') || { data: { e: [] } }).data.e.length;
 
-  await step('a new device starts device-only and offers sign-in', async () => {
+  await step('before sign-in there is only the sign-in screen', async () => {
     await a.goto(APP);
-    await a.waitForSelector('#tgBody');
-    await a.fill('[data-k="age"]', '34');
-    await a.fill('[data-k="cm"]', '183');
-    await a.fill('[data-k="kg"]', '86');
-    await a.click('[data-act="saveTargets"]');
-    await a.click('[data-act="celeNext"]');
-    await logFood(a, 'banana');
-    await closeSheets(a);
-    assert.match(await a.innerText('.banner'), /Saved on this device only\. Sign in to keep your diary safe/);
-    await a.click('.banner');
-    assert.match(await a.innerText('.sheet >> nth=-1'), /Sign in to Ember[\s\S]*Email me a link/);
-    assert.deepEqual(await rows(), []);
+    await a.waitForSelector('#siEmail');
+    assert.match(await a.innerText('#main'), /Sign in to Ember[\s\S]*No password needed[\s\S]*Email me a link/);
+    assert.equal(await a.locator('#tgBody').count(), 0, 'no setup before sign-in');
+    for (const sel of ['nav.tabs', '#chipYou', '#chipCal', '#sync'])
+      assert.equal(await a.isVisible(sel), false, sel + ' is hidden');
+    await a.click('[data-act="signInGo"]');
+    assert.equal(await a.locator('#siEmail').count(), 1, 'an empty email is not accepted');
   });
-  await step('opening the emailed link signs in and offers to move the diary', async () => {
-    await a.goto(await link());
-    await a.waitForSelector('[data-act="moveYes"]');
-    assert.match(await a.innerText('#main'), /Bring your diary with you\?[\s\S]*1 day in it/);
-  });
-  await step('moving puts the profile and the day in the account', async () => {
-    await a.click('[data-act="moveYes"]');
-    await ready(a);
-    await until('profile and day rows', async () => {
-      const r = await rows();
-      return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
-    });
-    assert.equal(await a.locator('.banner[data-act="signIn"]').count(), 0);
-  });
+  await step(
+    'opening the emailed link signs in; a new account goes through setup and saves to the account',
+    async () => {
+      await a.goto(await link());
+      await setUp(a);
+      await logFood(a, 'banana');
+      await until('profile and day rows', async () => {
+        const r = await rows();
+        return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
+      });
+      for (const sel of ['nav.tabs', '#chipYou']) assert.equal(await a.isVisible(sel), true, sel + ' is back');
+      assert.equal(await a.locator('.banner[data-act="signIn"]').count(), 0);
+    },
+  );
   await step('what is logged next is saved to the account', async () => {
     await logFood(a, 'porridge');
-    await until('two entries in the day row', async () =>
-      (await rows()).some(x => x.kind === 'days' && x.data.e.length === 2),
-    );
+    await until('two entries in the day row', async () => (await entries()) === 2);
   });
-  const entries = async () => ((await rows()).find(x => x.kind === 'days') || { data: { e: [] } }).data.e.length;
   await step('logging with no connection is kept, shown as offline, and sent on reconnect', async () => {
     await a.context().setOffline(true);
     await logFood(a, 'apple');
@@ -166,31 +169,57 @@ try {
     await until('four entries on the server', async () => (await entries()) === 4, 40000);
   });
   await step('a second browser signed in as the same person sees the same diary, with no setup', async () => {
-    const b = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+    const b = await (await browser.newContext(phone)).newPage();
     await b.goto(await link());
     await ready(b);
     await b.waitForTimeout(800);
-    assert.equal(await b.locator('#tgBody').count(), 0, 'no onboarding');
+    assert.equal(await b.locator('#tgBody').count(), 0, 'no setup');
     assert.equal(await b.locator('[data-act="moveYes"]').count(), 0, 'nothing to move');
-    const text = (await b.innerText('#main')).toLowerCase();
-    assert.match(text, /4 foods/, 'all four entries show, including the two logged without a connection');
+    assert.match((await b.innerText('#main')).toLowerCase(), /4 foods/, 'all four entries show');
     await b.click('#chipYou');
     assert.match(await b.innerText('#main'), /Saved to your account/);
     await b.click('[data-act="openData"]');
     assert.match(await b.innerText('.sheet >> nth=-1'), new RegExp('Signed in as ' + email.replace(/[.+]/g, '\\$&')));
     await b.click('[data-act="signOut"]');
-    await b.waitForSelector('#tgBody');
+    await b.waitForSelector('#siEmail');
+    assert.equal(await b.isVisible('nav.tabs'), false, 'signed out: back to the sign-in screen only');
   });
   await step('the first device is unaffected by the second one signing out', async () => {
     await a.reload();
     await ready(a);
-    assert.equal(await a.locator('#tgBody').count(), 0);
+    assert.equal(await a.locator('#siEmail').count(), 0);
+  });
+  await step('a device that already holds a diary is offered the move on first sign-in', async () => {
+    // a diary made on the device before accounts existed (the device-only mode the tests and the prototype use)
+    const c = await (await browser.newContext(phone)).newPage();
+    await c.goto(APP);
+    await c.evaluate(() => localStorage.setItem('ember:device-only', '1'));
+    await c.reload();
+    await setUp(c);
+    await logFood(c, 'banana');
+    await c.evaluate(() => localStorage.removeItem('ember:device-only'));
+    const email2 = `e2e-move-${Date.now()}@example.test`;
+    const { data: u2 } = await admin.auth.admin.createUser({ email: email2, email_confirm: true });
+    extra.push(u2.user.id);
+    const l2 = await admin.auth.admin.generateLink({ type: 'magiclink', email: email2, options: { redirectTo: APP } });
+    await c.goto(l2.data.properties.action_link);
+    await c.waitForSelector('[data-act="moveYes"]');
+    assert.match(await c.innerText('#main'), /Bring your diary with you\?[\s\S]*1 day in it/);
+    assert.equal(await c.isVisible('nav.tabs'), false, 'nothing else can be tapped while the question shows');
+    await c.click('[data-act="moveYes"]');
+    await ready(c);
+    await until('the moved rows', async () => {
+      const r = (await admin.from('user_docs').select('kind, data').eq('user_id', u2.user.id)).data;
+      return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
+    });
+    assert.equal(await c.isVisible('nav.tabs'), true);
   });
   await step('no page errors', async () => assert.deepEqual(errs, []));
 } finally {
   await browser.close();
   server.kill();
   await admin.auth.admin.deleteUser(uid).catch(() => {});
+  for (const id of extra) await admin.auth.admin.deleteUser(id).catch(() => {});
 }
 for (const [s, n] of results) console.log(s, n);
 const failed = results.filter(r => r[0] === 'FAIL').length;

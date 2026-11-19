@@ -51,6 +51,8 @@ npm run format       # Prettier
 
 `prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
 
+Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.
+
 Coach and gym are behind `FEATURES` in `web/src/app/01-core.js`, off by default. With a flag off, the entry points are hidden, the actions do nothing and the shared documents are neither read nor written. `web/src/app/08z-features.js` lists the gated actions.
 
 The prototype runs without Claude: with no `window.claude` it stores everything in `localStorage` and hides the AI features. That makes it a usable reference at every stage.
