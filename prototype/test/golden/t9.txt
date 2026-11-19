@@ -1,0 +1,13 @@
+clients: ['You', 'Aoife Brennan', 'Conor Devlin', 'Niamh Kilroy', 'Darragh Feeney', 'Sinead Fahy', 'Tomas Hegarty', 'Ciara Mulvey', 'Eoin Brannigan']
+stats: 9 Clients 69% Sessions done 3 Need a look
+catalogue: ['Orla Tierney', 'Fergal Noone', 'Maeve Costigan', 'Grainne Hession', 'Cathal Rattigan', 'Ruairi Lenehan', 'Jay Maddox Fitness']
+checked only: 5
+rehab filter: ['Maeve Costigan']
+reviews shown 4 labelled sample 4
+my profile: C | Your name | What you do, and where | Plans | Online coaching | €140 a month | Example | Program, weekly review and messaging | 12-week Hyrox block | €299 | Example | Four sessions a week with a simulation every third week | 0 reviews |  | No reviews yet. Only a client this coach has set a plan for can leave one, and the coac
+plans now: ['Hybrid coaching']
+shared reviews docs: [] | published plans: [{'n': 'Hybrid coaching', 'price': '€160 a month', 'about': ''}]
+after remove: ['You']
+catalogue cards after remove: 0
+restored: 9
+ERRS []

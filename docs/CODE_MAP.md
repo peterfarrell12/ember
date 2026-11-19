@@ -74,18 +74,20 @@ Errors arrive as `{code, message}`; `AI_MSG` in `02-foods.js` maps codes to word
 - `seed.js` and `seed3.js` create a month of history, recents and yesterday's diary
 - `ff/` and `zx/` hold local copies of the two libraries the app loads from unpkg at runtime (fflate for Apple Health exports, ZXing for barcodes on browsers without a built-in detector), so tests run offline. Bundle both properly in Phase 0
 
-The tests print what they see; they do not assert. A run passes when it finishes with no traceback and `ERRS []`. Read the printed lines when a change touches that area.
+The tests print what they see. `run-tests.sh` compares each test's printed output with a stored baseline in `test/golden/<name>.txt`, so a run passes only when it finishes with no traceback and prints exactly what it printed before. When a change is meant to alter what a test prints, run `prototype/run-tests.sh --update <name>`, read the diff of the baseline file, and commit it with the change.
+
+To make the output repeatable, `test/harness.py` gives every browser context a fixed start time (Thursday 19 November 2026, 09:42; time then runs at normal speed) and a seeded `Math.random`. `test/normalise.py` masks the few values that still vary: timings, the clock-derived tail of ids, seconds in saved timestamps, and the sample gym's attendance figures.
 
 | Test | Covers |
 |---|---|
 | `t1`, `t2` | logging by search, voice text, photo; recipes; barcode; custom food from a label; editing an entry |
 | `t4` | barcode decoding from an image |
 | `t5` | weight, progress, wearable setup and sync against a fake connector |
-| `t6` | live workout, rest timer, hold, resume and draft restore all run; the script then stops at a step written for an older Train layout. **Stale, needs updating** |
+| `t6` | live workout, rest timer, hold, resume and draft restore, progression tip, AI and custom programs, rehab, routines, tasks. Moves the clock on a day twice, because the Train tab has no link to the program once today's session is done |
 | `t8`, `t9` | coach view, clients, squad, catalogue, reviews |
 | `t7` | older coach walkthrough; stops at a step written for an older layout. **Stale** |
 | `t10`, `t13` | caffeine and drinks, linked calories |
-| `t11` | Today usuals and undo (depends on the time of day: passes before 11:00) |
+| `t11` | Today usuals and undo (needs a morning clock, which the fixed test time provides) |
 | `t14`, `t26` | calendar, training days, rest-day view on Train |
 | `t15` | messaging and progress photos |
 | `t16` | voice assistant |
@@ -98,7 +100,7 @@ The tests print what they see; they do not assert. A run passes when it finishes
 
 `t3`, `t6b` and `t12` are older layout checks kept for reference.
 
-Baseline on 19 November 2026, run from a clean copy of this folder: every test in the table passes except `t6` and `t7` as noted. `t1` reports two blocked font requests, which is the test blocking Google Fonts on purpose.
+The core set that `run-tests.sh` runs by default is every test in the table except `t7`, 25 in all. `t7` is still stale and belongs to the coach phase. `t1` reports two blocked font requests, which is the test blocking Google Fonts on purpose.
 
 ## Known gaps in the prototype
 

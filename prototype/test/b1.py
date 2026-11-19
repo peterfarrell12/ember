@@ -1,5 +1,5 @@
 import asyncio, json
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 CASES = [
  ("Guinness","Draught 0.0 alcohol free stout",17),("Guinness","0.0 non-alcoholic stout",20),("Guinness","Guinness 0.0",35),("Guinness","Draught stout",36),
  ("Coca-Cola","Zero Sugar",0),("Coca-Cola","Original Taste",42),("Heinz","Baked Beanz in tomato sauce",80),("Tayto","Cheese & Onion crisps",520),

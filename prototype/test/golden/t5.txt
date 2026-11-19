@@ -1,0 +1,36 @@
+WEIGHT: Progress | Food | Weight | Activity | Training | Trend weight | 86.3 kg | Weigh-in | Scale 85.9 kg · Today | -1.7 kg since Tue 20 Oct | 82 | 85 | 88 | Goal 82 | Tue 20 Oct | Today | 1 month | 3 months | 1 year | All |  | The line is your trend, smoothed so water and salt do not throw it. Dots are what the scale said. |  | Goal 82 kg | Edit | 1.7 of 6 kg | 4.3 kg to go |  | At your pace of 0.4 kg a week you reach 82 kg around 8 February 2027. |  | 86 | 84 | 82 | -0.5 kg | Last 7 days | -1.7 kg | Last 30 days | -0.4 kg | Pace per week | 25.8 | BMI | What you really burn | 2,610 | kcal a day | High confidence |  | Worked out from 25 logged days averaging 2,181 kcal and how your trend weight moved over 28 days. The formula guessed 2,527. |  | Retune my calorie target | Weigh-ins | Import | Today | 85.9 kg | Trend 86.3 kg · tap to remove | Tue 17 Nov | 86.2 kg | Trend 86.5 kg · tap to remove 
+  cele: 86 kg milestone
+  cele: Kindling
+  cele: One full week
+  cele: Milestone
+  cele: Level 5
+garmin.csv -> Added 2 workouts from the last 120 days. Anything already logged was skipped.
+strava.csv -> Added 1 workout from the last 120 days. Anything already logged was skipped.
+whoop.csv -> Added 1 workout from the last 120 days. Anything already logged was skipped.
+happyscale.csv -> Added 16 weigh-ins, converted from lb. 4 were already there or out of range.
+health -> Apple Health: found 134 days with a weight and 2 recent workouts. Added 124 weigh-ins and 2 workouts.
+ad setup -> athlete.... is connected, but it has no data to send yet
+
+No apps are connected yet. Step 1: connect at athlete.....health/dashboard/integrat..... Step 2: start the trial at athlete.....health/dashboa
+ad sync -> Synced. Added 2 workouts and 1 weigh-in, and updated steps and energy for 5 days.
+mcp calls: [["athlete....","get_daily_metrics",{"days":14}],["athlete....","apple_health_get_workouts",{"start_date":"2026-11-06","end_date":"2026-11-19"}],["athlete....","garmin_get_activities",{"start_date":"2026-11-06","end_date":"2026-11-19"}],["athlete....","whoop_get_workouts",{"start_date":"2026-11-06","end_date":"2026-11-19"}]]
+MOVE: Progress | Food | Weight | Activity | Training | This week | Workout | 132 | of 150 active minutes | 90 | M | T | 42 | W | T | F | S | S | 3 workouts | 1,110 kcal | 9,471 steps a day |  | 150 minutes a week is the World Health Organization's baseline for adults. |  | Recent workouts | Running | 480 | DEVICE | Yesterday · 42 min | Padel | 630 | DEVICE | Mon 16 Nov · 90 min | Padel | 400 | Mon 16 Nov · 60 min | Running | 612 | IMPORT | Sun 15 Nov · 45 min | Running | 455 | HEALTH | Sat 14 Nov · 42 min | Strength Training | 1,105 | IMPORT | Fri 13 Nov · 62 min | Weights | 310 | HEALTH | Thu 12 Nov · 55 min | Ride | 702 | IMPORT | Wed 11 Nov · 60 min | Paddle Tennis | 640 | IMPORT | Tue 10 Nov ·
+COACH CONTEXT tail: hu: no food logged, exercise 55 min (310 kcal)
+2026-11-13 Fri: no food logged, exercise 62 min (1105 kcal)
+2026-11-14 Sat: no food logged, exercise 42 min (455 kcal), devices say 2600 kcal burned, 8000 steps
+2026-11-15 Sun: no food logged, exercise 45 min (612 kcal), devices say 2400 kcal burned, 6000 steps
+2026-11-16 Mon: no food logged, exercise 90 min (630 kcal), devices say 3010 kcal burned, 12000 steps
+2026-11-17 Tue: 1983 kcal, protein 137 g, carbs 210 g, fat 70 g, 7 items, closed in zone, devices say 2510 kcal burned, 7001 steps
+2026-11-18 Wed: no food logged, exercise 42 min (480 kcal), devices say 2740 kcal burned, 9412 steps
+2026-11-19 Thu: no food logged (today, still in progress)
+idea review: ['Chicken breast, grilled with sauce, skin not eaten', '1 breast', 'Rice, white, cooked, as ingredient', '1 cup']
+after fix: ['Egg omelet or scrambled egg, no added fat', '3 eggs']
+  cele: 1-day streak
+photo prompt: These photos show one meal or product from different angles someone is logging in a calorie tracker. Identify each distinct food and how much of it was eaten, judging scale from plates, cutlery, hands and packaging.
+Read every word on any packaging before anyt
+  cele: Level 6
+  cele: The Stillness defeated
+  cele: Boss slayer
+wts 157 xlog [('2026-11-19', 'Running, steady', 160, 1971, 'm'), ('2026-11-18', 'Running', 42, 480, 'ad'), ('2026-11-16', 'Padel', 60, 400, 'm'), ('2026-11-16', 'Padel', 90, 630, 'ad'), ('2026-11-15', 'Running', 45, 612, 'csv'), ('2026-11-14', 'Running', 42, 455, 'ah'), ('2026-11-13', 'Strength Training', 62, 1105, 'csv'), ('2026-11-12', 'Weights', 55, 310, 'ah'), ('2026-11-11', 'Ride', 60, 702, 'csv')]
+ms {'86': '2026-11-19'} t {'k': 2200, 'p': 155, 'c': 260, 'f': 60, 'w': 3000} boss None st {'logs': 6, 'say': 0, 'photo': 1, 'scan': 0, 'zone': 0, 'prot': 0, 'water': 0, 'closed': 0, 'weigh': 0, 'quests': 0, 'work': 9, 'boss': 1, 'sess': 0, 'prs': 0, 'rehab': 0, 'mob': 0, 'ready': 0} ad {'at': '2026-11-19T09:42:SS.mmmZ', 'nx': 2, 'nw': 1, 'nd': 5}
+ERRS []

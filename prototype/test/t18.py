@@ -1,5 +1,5 @@
 import asyncio, json, sys, datetime
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -20,7 +20,7 @@ async def main():
         await pg.click('#chipYou'); await pg.click('[data-act="modeGo"][data-m="gym"]'); await pg.wait_for_selector('.thero'); await pg.wait_for_timeout(2800); await pg.screenshot(path=f'200-gym-today{sfx}.png'); print('HERO:', t(await pg.inner_text('.thero'), 260)); print('nav:', t(await pg.inner_text('nav.tabs')))
         await pg.evaluate("document.querySelector('#main').scrollTop=620"); await pg.wait_for_timeout(200); await pg.screenshot(path=f'201-gym-insights{sfx}.png')
         # timetable: tomorrow, open a class register
-        await pg.click('nav [data-tab="gtime"]'); tm = (datetime.date.today()+datetime.timedelta(days=1)).isoformat(); 
+        await pg.click('nav [data-tab="gtime"]'); tm = (TODAY+datetime.timedelta(days=1)).isoformat(); 
         sel = f'.wds [data-date="{tm}"]'
         if not await pg.query_selector(sel): await pg.click('[data-act="gWeek"][data-n="1"]')
         await pg.click(sel); await pg.wait_for_timeout(200); await pg.screenshot(path=f'202-gym-timetable{sfx}.png'); rows = await pg.query_selector_all('.pr[data-act="gSess"]'); print('classes tomorrow:', len(rows), '|', t(await rows[-1].inner_text(), 120))
@@ -31,6 +31,7 @@ async def main():
         # new class
         await pg.click('nav .fab'); await pg.click('.menu [data-act="gClass"]'); await pg.fill('#gcN','Kettlebells'); await pg.fill('#gcC','8'); await pg.click('[data-act="gClassSave"]'); await pg.wait_for_timeout(300); g = await gym(pg); print('classes now', len(g['classes']), g['classes'][-1])
         # people
+        await pg.wait_for_timeout(1600)  # the gym view reuses its visit stats for 1.5 s; wait so the list is worked out fresh
         await pg.click('nav [data-tab="gpeople"]'); await pg.wait_for_timeout(200); await pg.screenshot(path=f'204-gym-members{sfx}.png'); print('MEMBERS:', t(await pg.inner_text('#main'), 330))
         await pg.click('[data-act="gFilter"][data-v="risk"]'); await pg.wait_for_timeout(150); print('at risk rows:', len(await pg.query_selector_all('.crow')))
         await pg.click('[data-seg="gPeople"] [data-val="coach"]'); await pg.wait_for_timeout(150); await pg.screenshot(path=f'205-gym-coaches{sfx}.png'); await pg.click('.crow >> nth=3'); await pg.click('[data-act="gCoachFlag"][data-f="ver"]'); await pg.wait_for_timeout(200); await pg.click('[data-act="close"]'); g = await gym(pg); print('coach 4 verified now:', g['coaches'][3]['ver'])

@@ -1,0 +1,15 @@
+DRINK {'sv': '1', 'title': 'Guinness 0.0%', 'qty': '1', 'unit': '1 pint', 'eq': '568 ml', 'chips': '½ 1 1½ 2 3', 'kcal': '97', 'units': ['ml', '1 pint', '1 bottle, 330 ml', '1 can, 440 ml', '1 can, 500 ml', '1 half pint', 'litres', 'US cups', 'fl oz']}
+  -> pint {'qty': '1', 'sv': '1', 'eq': '568 ml', 'kcal': '97'}
+  -> + {'qty': '1', 'sv': '1.5', 'eq': '852 ml', 'kcal': '145'}
+  -> ml keeps amount {'qty': '568', 'sv': '1.5', 'eq': '852 ml', 'kcal': '145'}
+  -> litres {'qty': '0.568', 'sv': '1.5', 'eq': '852 ml', 'kcal': '145'}
+  diary: ('Guinness 0.0%', '1.5 × 0.568 l · 852 ml', 852, 145)
+RICE Rice, white, cooked, NS as to fat | 1 1 cup, cooked (163 g) 163 g | ['g', '1 cup, cooked (163 g)', 'g weighed dry, before cooking', 'kg', 'oz', 'lb']
+  -> dry {'qty': '54', 'sv': '1', 'eq': 'about 162 g cooked', 'kcal': '209'}
+  -> 80 g dry {'qty': '80', 'sv': '1', 'eq': 'about 240 g cooked', 'kcal': '310'}
+BUTTER Kerrygold Creamery Butter | 1 1 teaspoon (5 g) 5 g | ['g', '1 teaspoon (5 g)', '1 tablespoon (14 g)', '1 pack (227 g)', 'kg', 'oz', 'lb']
+  -> 2 {'qty': '1', 'sv': '2', 'unit': '1 teaspoon (5 g)', 'eq': '10 g', 'kcal': '74'}
+  -> g converts {'qty': '5', 'sv': '2', 'eq': '10 g', 'kcal': '74'}
+  -> oz converts {'qty': '0.18', 'sv': '2', 'eq': '10 g', 'kcal': '76'}
+BREAD Bread, white | 1 1 medium or regular slice (28 g) 28 g | ½ 1 1½ 2 3 | ['g', '1 small or thin/very thin slice (24 g)', '1 medium or regular slice (28 g)', '1 large or thick slice (43 g)', '1 slice, crust not eaten (13 g)', '1 slice, snack-size (10 g)']
+ERRS []

@@ -33,6 +33,7 @@ python3 prototype/scripts/build.py     # joins prototype/src into prototype/app/
 cd prototype/app && python3 -m http.server 8765   # then open http://localhost:8765
 prototype/run-tests.sh                 # build, serve, run the core browser tests
 prototype/run-tests.sh t22 t27         # run named tests
+prototype/run-tests.sh --update t22    # rewrite a test's baseline after an intended change; read the diff
 ```
 
 Tests need Python 3, Node, `pip install playwright pillow` and Google Chrome.

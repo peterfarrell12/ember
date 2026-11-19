@@ -1,5 +1,5 @@
 import asyncio, sys, json
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def main():
     async with async_playwright() as p:
@@ -12,7 +12,7 @@ async def main():
         await pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
         await pg.goto(URL)
         await pg.wait_for_selector('#tgBody')
-        await pg.screenshot(path='01-onboard.png')
+        await pg.screenshot(path='01-onboarding.png')
         await pg.fill('[data-k="age"]','34'); await pg.fill('[data-k="cm"]','183'); await pg.fill('[data-k="kg"]','86')
         print('target', await pg.input_value('#tgK'), await pg.input_value('#tgP'), await pg.input_value('#tgC'), await pg.input_value('#tgF'))
         await pg.click('[data-act="saveTargets"]')

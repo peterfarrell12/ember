@@ -1,5 +1,5 @@
 import asyncio
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)

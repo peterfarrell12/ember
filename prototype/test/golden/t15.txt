@@ -1,0 +1,15 @@
+photos: [('2026-10-20', 'front', 88, False, True, False), ('2026-11-04', 'side', 87, False, True, False), ('2026-11-19', 'front', 85.9, True, True, False)] | uploads 3
+CMP: Before | After | Tue 20 Oct | 88 kg | Today | 85.9 kg |  | 30 days apart, 2.1 kg lighter. |  | Pick the two to compare | Today | Wed 4 Nov | Tue 20 Oct | clip inset(0px 70% 0px 0px)
+after share+delete: [('2026-11-04', True), ('2026-11-19', True)] | asset deletes 1
+coach sees my shared photos: 2
+sample thread bubbles: 2 | mine 1
+after: bubbles 4
+draft: 
+INBOX: Messages | 0 unread | AB | Aoife Brennan | Sample | Today | Tired but fine. Ready for Thursday. | Y | You | You | Today | You: Nice work on Day A. Keep the squat depth honest this week. | SF | Sinead Fahy | Sample | Tue 17 Nov | Thanks, that helps. Will do. | TH | Tomas Hegarty | Sample | Mon 16 Nov
+TODAY strip: New message from your coach | Nice work on Day A. Keep the squat depth honest this week. | 1
+unread strip gone on Today: True
+coach row badge: 1
+thread: [('c', 'Nice work on Day A. Keep'), ('u', 'Will do. Depth felt bett')]
+s0 thread len 4
+after reload photos: 2
+ERRS []

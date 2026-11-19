@@ -1,5 +1,5 @@
 import asyncio, json
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel='chrome', args=['--no-sandbox'])

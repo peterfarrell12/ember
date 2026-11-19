@@ -1,0 +1,10 @@
+auto: Each dish: up to 590 kcal with about 45 g protein. That leaves 1,390 kcal for the rest of today.
+b -> Each dish: up to 590 kcal with about 45 g protein. That leaves 1,390 kcal for the rest of today.
+s -> Each dish: up to 240 kcal with about 10 g protein. That leaves 1,740 kcal for the rest of today.
+d -> Each dish: up to 890 kcal with about 65 g protein. That leaves 1,090 kcal for the rest of today.
+snack 200: Each dish: up to 200 kcal with about 15 g protein. That leaves 1,780 kcal for the rest of today.
+PROMPT: Size: each dish must come to between 160 and 200 kcal in total, never more, with 15 g of protein or more where the dish allows. Add up your own ingredient figures and adjust the amounts until each dish fits before you answer. That is snack size: suggest proper snacks, not shrunken meals. For the whole day they have 1980 kcal, 155 g protein, 205 g carbs and 60 g fat left, so lean away from whichever of carbs or fat is nearly used up. Count the oil, butter, sauces and cheese honestly. / Already eaten today: nothing yet
+card (asked 200, mock gives 508): Chicken and rice bowl 1 | 508 kcal · 52 g protein |  | Over the size you asked for by 308 kcal · 56 g carbs, 6 g fat |  | About 520 kcal and 45 g protein, built from foods you eat. |  | 1 breast chicken breast, grilled, 1 cup whit
+card (asked 600): Chicken and rice bowl 1 | 508 kcal · 52 g protein |  | Fits. Leaves 1,473 kcal for today · 56 g carbs, 6 g fat |  | About 520 kcal and 45 g protein, built from foods you eat. |  | 1 breast chicken breast, grilled, 1 cup white rice
+all: Each dish: up to 1,980 kcal with about 70 g protein. That leaves 0 kcal for the rest of today.
+ERRS []

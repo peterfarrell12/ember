@@ -1,5 +1,5 @@
 import asyncio, json, sys, datetime
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -16,7 +16,7 @@ async def main():
         pg = await ctx.new_page(); errs=[]
         pg.on('console', lambda m: errs.append(m.type+': '+m.text) if m.type in ('error','warning') and 'ERR_FAILED' not in m.text else None); pg.on('pageerror', lambda e: errs.append('PAGEERROR: '+str(e)))
         await pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
-        wd = datetime.date.today().weekday(); days = sorted({wd, (wd+2)%7, (wd+4)%7})
+        wd = TODAY.weekday(); days = sorted({wd, (wd+2)%7, (wd+4)%7})
         await pg.goto(URL+'#train'); await pg.wait_for_selector('.thero'); await cont(pg)
         await pg.click('[data-act="progs"]'); await pg.click('[data-act="tplView"][data-id="t-full3"]'); await pg.click('[data-act="progUse"]'); await pg.wait_for_timeout(300)
         await pg.click('.th-links [data-act="cal"]'); await pg.wait_for_selector('#calBody .pwk'); await pg.screenshot(path=f'160-plan-empty{sfx}.png'); await pg.click('[data-seg="calMode"] [data-val="month"]'); await pg.wait_for_selector('#calBody .calgrid')
@@ -26,13 +26,13 @@ async def main():
         await pg.evaluate("document.querySelector('#calBody').scrollTop=0"); print('TODAY ITEMS:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:260])
         marks = await pg.evaluate("[...document.querySelectorAll('.cd')].filter(c=>c.querySelector('.cm i')).length"); print('cells with marks:', marks)
         # select the next planned day, move it, skip, put back
-        nxt = (datetime.date.today()+datetime.timedelta(days=2)).isoformat(); await pg.click(f'.cd[data-date="{nxt}"]'); await pg.wait_for_timeout(150); print('NEXT DAY:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:200])
-        await pg.click('[data-act="calMove"]'); await pg.wait_for_selector('[data-act="calMoveTo"]'); tgt = (datetime.date.today()+datetime.timedelta(days=3)).isoformat(); await pg.click(f'[data-act="calMoveTo"][data-to="{tgt}"]'); await pg.wait_for_timeout(300); print('after move sel:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:160]); pr = await prof(pg); print('moved:', pr['plan']['moved'])
+        nxt = (TODAY+datetime.timedelta(days=2)).isoformat(); await pg.click(f'.cd[data-date="{nxt}"]'); await pg.wait_for_timeout(150); print('NEXT DAY:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:200])
+        await pg.click('[data-act="calMove"]'); await pg.wait_for_selector('[data-act="calMoveTo"]'); tgt = (TODAY+datetime.timedelta(days=3)).isoformat(); await pg.click(f'[data-act="calMoveTo"][data-to="{tgt}"]'); await pg.wait_for_timeout(300); print('after move sel:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:160]); pr = await prof(pg); print('moved:', pr['plan']['moved'])
         await pg.click('[data-act="calSkip"]'); await pg.wait_for_timeout(300); pr = await prof(pg); print('skip:', pr['plan']['skip'], 'moved:', pr['plan']['moved'])
         await pg.click(f'.cd[data-date="{nxt}"]'); await pg.wait_for_timeout(150); print('skipped day:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:160]); await pg.click('[data-act="calUnskip"]'); await pg.wait_for_timeout(200)
         # events: weekly match today, one-off physio tomorrow
         await pg.click('[data-act="calToday"]'); await pg.click('#calBody [data-act="calEv"]'); await pg.fill('#evT','Padel doubles'); await pg.click('[data-seg="evRep"] [data-val="week"]'); await pg.fill('#evTm','20:00'); await pg.fill('#evMin','90'); await pg.screenshot(path=f'161-event{sfx}.png'); await pg.click('[data-act="calEvSave"]'); await pg.wait_for_timeout(300)
-        tm = (datetime.date.today()+datetime.timedelta(days=1)).isoformat(); await pg.click(f'.cd[data-date="{tm}"]'); await pg.click('#calBody [data-act="calEv"]'); await pg.click('#evKinds [data-v="appt"]'); await pg.fill('#evT','Physio'); await pg.fill('#evTm','09:30'); await pg.click('[data-act="calEvSave"]'); await pg.wait_for_timeout(300)
+        tm = (TODAY+datetime.timedelta(days=1)).isoformat(); await pg.click(f'.cd[data-date="{tm}"]'); await pg.click('#calBody [data-act="calEv"]'); await pg.click('#evKinds [data-v="appt"]'); await pg.fill('#evT','Physio'); await pg.fill('#evTm','09:30'); await pg.click('[data-act="calEvSave"]'); await pg.wait_for_timeout(300)
         await pg.click('[data-act="calToday"]'); await pg.wait_for_timeout(200); await pg.screenshot(path=f'162-cal-month{sfx}.png'); print('TODAY NOW:', (await pg.inner_text('#calBody section:nth-of-type(1)')).replace('\n',' | ')[:300])
         await pg.click('[data-act="calTick"]'); await pg.wait_for_timeout(300); print('tick toast:', (await pg.inner_text('#toasts')).replace('\n',' | ')); pr = await prof(pg); print('done keys:', list(pr['plan']['done'].keys()), 'ev:', [(e['t'],e['k'],e.get('wd'),e.get('d'),e['tm']) for e in pr['plan']['ev']])
         await pg.click('[data-seg="calMode"] [data-val="plan"]'); await pg.wait_for_selector('#calBody .pwk'); await pg.wait_for_timeout(2600); await pg.screenshot(path=f'163-plan{sfx}.png'); print('plan rows:', len(await pg.query_selector_all('.pr')), '| weeks', len(await pg.query_selector_all('.pwk')), '| HEAD:', (await pg.inner_text('#calBody .thero')).replace('\n',' | ')[:200])

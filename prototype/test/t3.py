@@ -1,5 +1,5 @@
 import asyncio, json, sys
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 QS=sys.argv[1:] or ['rice','chicken breast','egg','eggs','milk','semi skimmed milk','bread','apple','porridge','pasta','coffee','potato','cheddar','salmon','avocado','olive oil','butter','yoghurt','crisps','tayto','brennans','guinness','pizza','mince','chips','rasher','weetabix','protein bar','banana','steak','toast','tea','orange juice','beef']
 async def main():
     async with async_playwright() as p:

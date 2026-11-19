@@ -8,3 +8,6 @@ __pycache__/
 # screenshots the tests write; one image is a fixture
 prototype/test/*.png
 !prototype/test/01-onboard.png
+
+# raw and filtered output of the last test run
+prototype/test/out/

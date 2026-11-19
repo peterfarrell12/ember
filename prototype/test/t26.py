@@ -1,5 +1,5 @@
 import asyncio, json, datetime
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -13,7 +13,7 @@ async def main():
         pg = await ctx.new_page(); errs=[]
         pg.on('console', lambda m: errs.append(m.type+': '+m.text) if m.type in ('error','warning') and 'ERR_FAILED' not in m.text else None); pg.on('pageerror', lambda e: errs.append('PAGEERROR: '+str(e)))
         await pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
-        wd = datetime.date.today().weekday(); days = sorted({(wd+1)%7, (wd+3)%7, (wd+5)%7})
+        wd = TODAY.weekday(); days = sorted({(wd+1)%7, (wd+3)%7, (wd+5)%7})
         await pg.goto(URL+'#train'); await pg.wait_for_selector('.thero'); await cont(pg)
         await pg.click('[data-act="progs"]'); await pg.click('[data-act="tplView"][data-id="t-full3"]'); await pg.click('[data-act="progUse"]'); await pg.wait_for_timeout(300)
         print('NO DAYS SET:', (await pg.inner_text('.thero')).replace('\n',' | ')[:300])

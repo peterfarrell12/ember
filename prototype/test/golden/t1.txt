@@ -1,0 +1,8 @@
+target 1980 155 205 60
+results ['Banana, raw', 'Banana, baked', 'Bananas, overripe, raw', 'Bananas, ripe and slightly ripe, raw', 'Bananas, raw', 'Banana split']
+review ['Egg, whole, boiled or poached', '2 eggs', 'Chicken breast, grilled without sauce, skin not eaten', '150g chicken breast', 'Bread, whole wheat', 'a slice of wholemeal bread', 'Oatmeal, regular or quick, made with milk, fat added', 'porridge']
+after reload eaten: Eaten
+897
+Budget
+1,980
+ERRS ['error: Failed to load resource: net::ERR_FAILED', 'error: Failed to load resource: net::ERR_FAILED']

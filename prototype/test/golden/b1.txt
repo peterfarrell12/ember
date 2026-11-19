@@ -1,0 +1,115 @@
+ms N
+Guinness | Draught 0.0 alcohol free stout
+    SURE 0.96 Guinness Draught Alcohol Free Stout (Guinness) 17
+    => B Guinness Draught Alcohol Free Stout 17
+Guinness | 0.0 non-alcoholic stout
+    SURE 1.00 Guinness Draught Alcohol Free Stout (Guinness) 17
+    => B Guinness Draught Alcohol Free Stout 17
+Guinness | Guinness 0.0
+    SURE 1.00 Guinness 0.0% (Guinness) 17
+    => B Guinness 0.0% 17
+Guinness | Draught stout
+    maybe 0.45 Guinness draught (Guiness) 35
+    => AK Draught stout 36 [ask: Guinness draught / Guinness Draught Alcohol Free Stout]
+Coca-Cola | Zero Sugar
+    SURE 1.00 Coca-Cola Zero Sugar (Coca Cola) 0
+    => B Coca-Cola Zero Sugar 0
+Coca-Cola | Original Taste
+    SURE 1.00 Coca-Cola Original Taste (Coca-Cola) 42
+    => B Coca-Cola Original Taste 42
+Heinz | Baked Beanz in tomato sauce
+    maybe 0.70 Beans In a rich tomato sauce (Heinz) 81
+    => B Beans In a rich tomato sauce 81 [ask: Beans In a rich tomato sauce / Beanz in a rich tomato sauce / Heinz Beanz in a rich tomato sauce / Heinz Beanz In a rich tomato sauce / BEANZ in a ric]
+Tayto | Cheese & Onion crisps
+    SURE 1.00 Cheese and onion crisps (Tayto) 517
+    => B Cheese and onion crisps 517
+Cadbury | Dairy Milk chocolate
+    SURE 1.00 Dairy Milk Chocolate (Cadbury) 534
+    => B Dairy Milk Chocolate 534
+Fulfil | Chocolate Salted Caramel protein bar
+    SURE 1.00 CHOCOLATE SALTED CARAMEL FLAVOUR VITAMIN & PROTEIN BAR (FULFIL) 373
+    => B CHOCOLATE SALTED CARAMEL FLAVOUR VITAMIN & PROTEIN BAR 373
+Avonmore | Protein Milk
+    SURE 1.00 Protein Milk (Avonmore) 49
+    => B Protein Milk 49
+Brennans | Wholemeal bread
+    SURE 1.00 wholemeal sandwich breads (Brennans) 240
+    => B wholemeal sandwich breads 240
+Glenisk | Organic Greek style natural yoghurt 0% fat
+    maybe 0.42 Greek style yoghurt (Glenisk) 121
+    => AK Organic Greek style natural yoghurt 0% fat 60 [ask: Greek style yoghurt / Whole Bio Organic natural live yoghurt / Natural Yogurt / Baby yoghurt / Organic 0% Fat Strained Protein Yogurt / Glenisk bio or]
+Kerrygold | Butter
+    SURE 1.00 Irische Butter (Kerrygold) 748
+    => B Irische Butter 748
+Pret A Manger | Chicken Caesar and bacon baguette
+    SURE 1.00 Chicken Caesar Bacon Baguette (Pret) 273
+    => B Chicken Caesar Bacon Baguette 273
+Red Bull | Sugarfree energy drink
+    maybe 0.57 ENERGY DRINK (Red Bull) 3
+    => AK Sugarfree energy drink 3 [ask: ENERGY DRINK / The Peach Edition Sugarfree White Peach Energy Drink / Red bull sugar free / Energy Drink / Energy Drink with sweeteners / Red Bull Zer]
+Monster | Ultra Zero energy drink
+    maybe 0.74 Zero Ultra (Monster Energy) 2
+    => B Zero Ultra 2 [ask: Zero Ultra / ZERO SUGA MONSTE ENERG ULTRA / Ultra Watermelon Zero Sugar / Ultra Zero Sugar / Monster Energy Zero Sugar / Monster Energy Zero Sugar]
+Flahavan's | Progress Oatlets porridge oats
+    maybe 0.63 Progress Oatlets (Flahavan's) 371
+    => B Progress Oatlets 371 [ask: Progress Oatlets / Flahavan's Progress Oatlets / Organic Porridge Oats / Organic Porridge Oats / Irish Porridge Oats / Flahavan's Organic Porridge Oat]
+Lucozade | Sport Orange
+    SURE 1.00 Lucozade Sport Orange (Lucozade) 27
+    => B Lucozade Sport Orange 27
+Barry's | Gold Blend tea
+    SURE 1.00 Barry’s Tea Gold Blend (Barry’s Tea) 0
+    => B Barry’s Tea Gold Blend 0
+Heineken | 0.0 alcohol free lager
+    maybe 0.77 Heineken 0 alcohol (Heineken) 21
+    => B Heineken 0 alcohol 21 [ask: Heineken 0 alcohol / Heineken 0.0 / Heineken 0.0% Boks Alkoholfri, 6 x 0,33l, 1,98 l]
+Dunnes Stores | Chicken tikka masala with rice ready meal
+    maybe 0.33 Chicken Tikka Pieces (Dunnes Stores) 121
+    => AK Chicken tikka masala with rice ready meal 130 [ask: Chicken Tikka Pieces / Chicken / Basmati Rice / Vegetable Rice / Thai Green Chicken Curry & Basmati Rice / chicken curry]
+Zzyzx Farms | Mystery bar
+    no brand
+    => AK Mystery bar 400
+Ballygowan | Still water
+    maybe 0.81 Sports Water (Ballygowan) 0
+    => B Sports Water 0 [ask: Sports Water / Ballygowan water]
+Nutella | Hazelnut spread
+    SURE 1.00 Nutella Hazelnut Spread (Nutella) 539
+    => B Nutella Hazelnut Spread 539
+Weetabix | Original
+    maybe 1.00 Original (Weetabix) 362
+    => B Original 362 [ask: Original / Original / Weetabix Original / Weetabix Original / Alpen Original Muesli / Ready Brek Original]
+Koka | Chicken noodles
+    SURE 1.00 Signature Instant Noodle Chicken Flavor (Koka) 444
+    => B Signature Instant Noodle Chicken Flavor 444
+Pringles | Sour Cream & Onion
+    SURE 1.00 Sour Cream & Onion (Pringles) 525
+    => B Sour Cream & Onion 525
+Red Bull | Energy Drink
+    SURE 1.00 Red Bull Energy Drink (Red Bull GmbH) 46
+    => B Red Bull Energy Drink 46
+Coca-Cola | Coke
+    SURE 1.00 Coke (Coca cola) 38
+    => B Coke 38
+Coca-Cola | Diet Coke
+    SURE 1.00 Diet Coke (Coca-Cola) 0
+    => B Diet Coke 0
+Guinness | Draught
+    SURE 1.00 Guinness draught (Guiness) 35
+    => B Guinness draught 35
+Jacob's | Cream Crackers
+    SURE 1.00 Cream Crackers (Jacob’s) 440
+    => B Cream Crackers 440
+Denny | Gold Medal sausages
+    maybe 1.00 Denny & Sons Gold Medal 8 Original Pork Sausages (Henry Denny & Sons) 296
+    => B Denny & Sons Gold Medal 8 Original Pork Sausages 296 [ask: Denny & Sons Gold Medal 8 Original Pork Sausages / Denny sausages]
+Clonakilty | Blackpudding
+    SURE 1.00 Blackpudding (Clonakilty) 298
+    => B Blackpudding 298
+Fulfil | Peanut Butter protein bar
+    SURE 1.00 Chocolate and Peanut Butter Flavour Vitamin & Protein Bar (Fulfil) 373
+    => B Chocolate and Peanut Butter Flavour Vitamin & Protein Bar 373
+Cadbury | Dairy Milk Caramel
+    SURE 1.00 Dairy Milk Caramel (Cadbury) 496
+    => B Dairy Milk Caramel 496
+Avonmore | Fresh Milk
+    maybe 1.00 Fresh 3.5% Fat Milk (Avonmore) 64
+    => B Fresh 3.5% Fat Milk 64 [ask: Fresh 3.5% Fat Milk / Fresh Banana Milk / Avonmore Milk 2 Litre]

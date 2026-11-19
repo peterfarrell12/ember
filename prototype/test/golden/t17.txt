@@ -1,0 +1,7 @@
+FAIL banner: That image could not be read. Try another photo. | thumbs 1 | btn: Try again
+image sent: [{'size': 12010, 'type': 'image/jpeg', 'name': 'photo.jpg'}]
+REVIEW: Breakfast | Lunch | Dinner | Snacks | Chicken Caesar and bacon baguette | Pret A Manger | LABEL | 599 kcal | 1 baguette | Amount and unit | Swap food | grams |  | Figures marked Label were read from the print in your photo. Check them against the pack. |  | Fix
+diary: [('Chicken Caesar and bacon baguette', 'Pret A Manger', 250, 599, 33, 55, 27.5, 'LB')]
+recent top: Chicken Caesar and bacon baguette LB
+entry row: Chicken Caesar and bacon baguette | 599 | LABEL | Pret A Manger · 1 baguette · 250 g
+ERRS []

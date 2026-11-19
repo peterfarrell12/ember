@@ -1,0 +1,3 @@
+BarcodeDetector in window: False
+decoded -> Organic Jumbo Oats
+ERRS []
