@@ -302,7 +302,7 @@ test('an answer that fails the checks is not passed on, and the miss is remember
     now: () => new Date(today),
     reply: searchReply({ ...good, url: 'https://made-up.example/x' }),
   });
-  assert.deepEqual(JSON.parse((await find(handle)).body.text), { found: false });
+  assert.equal(JSON.parse((await find(handle)).body.text).found, false);
   assert.equal(products.rows.get('glenisk|protein yogurt vanilla').found, false);
   await find(handle);
   assert.equal(claude.calls.length, 1, 'not searched for again straight away');
@@ -313,14 +313,14 @@ test('an answer that fails the checks is not passed on, and the miss is remember
 
 test('lookups stop at the person`s daily number and at the day`s spending ceiling, and a failed search costs nothing', async () => {
   const capped = setup({ products: shop(), searches: SEARCHES_PER_PERSON_PER_DAY, reply: searchReply(good) });
-  assert.deepEqual(JSON.parse((await find(capped.handle)).body.text), { found: false });
+  assert.equal(JSON.parse((await find(capped.handle)).body.text).found, false);
   assert.equal(capped.claude.calls.length, 0);
   const spent = setup({ products: shop(), spent: DAILY_CEILING_USD, reply: searchReply(good) });
-  assert.deepEqual(JSON.parse((await find(spent.handle)).body.text), { found: false });
+  assert.equal(JSON.parse((await find(spent.handle)).body.text).found, false);
   assert.equal(spent.claude.calls.length, 0);
   const products = shop();
   const down = setup({ products, reply: { throw: Object.assign(new Error('boom'), { status: 500 }) } });
-  assert.deepEqual(JSON.parse((await find(down.handle)).body.text), { found: false });
+  assert.equal(JSON.parse((await find(down.handle)).body.text).found, false);
   assert.equal(down.recorded.length, 0);
   assert.equal(products.rows.size, 0, 'a failure is not remembered as a miss');
 });

@@ -181,8 +181,13 @@ export function createHandler({
 }) {
   /* Look a product up: from what an earlier search saved if there is one, otherwise with one paid web search. */
   async function lookup(user, req, vars, day) {
-    const reply = product => ({ status: 200, body: { text: JSON.stringify(product || { found: false }) } });
-    if (!products) return reply(null);
+    // `why` says why nothing came back (a limit, a failed search, an answer that did not pass the checks);
+    // the app ignores it, but it is what makes a failing lookup diagnosable from outside
+    const reply = (product, why) => ({
+      status: 200,
+      body: { text: JSON.stringify(product || { found: false, ...(why ? { why } : {}) }) },
+    });
+    if (!products) return reply(null, 'off');
     const key = productKey(vars.brand, vars.name);
     const saved = await products.get(key).catch(() => null);
     if (saved && (saved.found || now() - new Date(saved.checked_at) < RECHECK_MISS_DAYS * 864e5))
@@ -191,8 +196,8 @@ export function createHandler({
           ? Object.fromEntries(PRODUCT_FIELDS.map(k => [k, saved[k] ?? (k === 'found' ? true : null)]))
           : null,
       );
-    if ((await spentToday(day)) >= ceiling) return reply(null);
-    if ((await searchesToday(user.id, day)) >= SEARCHES_PER_PERSON_PER_DAY) return reply(null);
+    if ((await spentToday(day)) >= ceiling) return reply(null, 'daily_limit');
+    if ((await searchesToday(user.id, day)) >= SEARCHES_PER_PERSON_PER_DAY) return reply(null, 'lookup_limit');
     let message;
     try {
       message = await claude.messages
@@ -212,7 +217,11 @@ export function createHandler({
         })
         .finalMessage();
     } catch (e) {
-      return reply(null); // a lookup that fails just leaves the estimate in place
+      // a lookup that fails just leaves the estimate in place
+      return reply(
+        null,
+        'search_failed: ' + String((e && e.status) || '') + ' ' + String((e && e.message) || e).slice(0, 240),
+      );
     }
     const blocks = message.content || [];
     const used = costOf(message.model || MODELS.quick.id, message.usage || {});
@@ -230,7 +239,10 @@ export function createHandler({
     await products
       .put({ key, found: !!product, ...(product || { name: vars.name, brand: vars.brand }) })
       .catch(() => {});
-    return reply(product);
+    return reply(
+      product,
+      product ? undefined : message.stop_reason === 'end_turn' ? 'not_trusted' : 'stopped: ' + message.stop_reason,
+    );
   }
   return async function handle({ token, body, onText }) {
     const user = token ? await whoIs(token) : null;
