@@ -38,6 +38,7 @@ sleep 1
 
 export TZ=UTC PYTHONPATH="$here/test${PYTHONPATH:+:$PYTHONPATH}"
 cd "$here/test"; mkdir -p out golden
+for t in "${tests[@]}"; do rm -f "out/$t.prompts"; done
 run_one() {
   local t="$1"
   timeout 300 python3 "$t.py" > "out/$t.raw" 2>&1

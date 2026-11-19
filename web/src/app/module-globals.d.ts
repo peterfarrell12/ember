@@ -4,6 +4,7 @@ import * as m1 from './features.js';
 import * as m2 from './traindata.js';
 import * as m3 from './backend-supabase.js';
 import * as m4 from './auth.js';
+import * as m5 from './ai-tasks.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -49,4 +50,5 @@ declare global {
   const signedInUser: typeof m4.signedInUser;
   const sendSignInLink: typeof m4.sendSignInLink;
   const signOut: typeof m4.signOut;
+  const TASKS: typeof m5.TASKS;
 }

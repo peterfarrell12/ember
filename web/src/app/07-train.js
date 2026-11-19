@@ -172,14 +172,10 @@ A.progAIGo = async () => {
   foot.classList.add('hide');
   body.innerHTML = `<div class="busy"><div class="spinner"></div>Writing your program</div>`;
   try {
-    const r = await AI.sample.json(
-      `You are a strength and conditioning coach writing a training program for a tracking app. ${ask}
-Use ONLY exercises from this catalog, by id. Order each session from the most demanding lift to the least. Give a rep range for strength work, seconds like "30s" for holds, and distances like "500 m" for conditioning. Rest is in seconds. If the person gave something to work around, choose exercises that respect it and do not diagnose.
-Reply with only JSON: {"name": short program name, "about": one sentence on how it is organised, "weeks": number, "days": [{"name": short session name, "focus": a few words, "items": [{"ex": catalog id, "sets": number, "reps": "8-10", "rest": seconds, "note": optional short cue}]}]}
-Catalog:
-${CATALOG()}`,
-      { cache: false, modelTier: 'default' },
-    );
+    const r = await AI.sample.json(['build_program', { ask, catalog: CATALOG() }], {
+      cache: false,
+      modelTier: 'default',
+    });
     const days = (r && Array.isArray(r.days) ? r.days : [])
       .map((d, i) => ({
         n: String(d.name || 'Day ' + (i + 1)).slice(0, 40),
@@ -889,11 +885,14 @@ async function rehabFromAI(text, files) {
   body.innerHTML = `<div class="busy"><div class="spinner"></div>Laying out the plan</div>`;
   try {
     const r = await AI.sample.json(
-      `${files ? 'The photo shows' : 'Below is'} a rehab or exercise plan given to a patient by their physiotherapist. Lay it out for a tracking app exactly as written: do not add, remove, reorder or change any exercise, set, rep or hold, and do not give advice. If there are no phases or stages, use one phase.
-For each exercise use the catalog id when it is clearly the same movement, otherwise leave "ex" empty and give "name" as written.
-Reply with only JSON: {"name": short plan name, "phases": [{"name": phase name, "goal": its aim if stated else "", "items": [{"ex": catalog id or "", "name": exercise name as written, "sets": number, "reps": "10" or "30s", "note": side, tempo or other instruction if stated}]}]}
-Catalog:
-${CATALOG()}${files ? '' : '\n\nPlan:\n"""' + text.slice(0, 4000) + '"""'}`,
+      [
+        'read_rehab_plan',
+        {
+          intro: files ? 'The photo shows' : 'Below is',
+          catalog: CATALOG(),
+          plan: files ? '' : '\n\nPlan:\n"""' + text.slice(0, 4000) + '"""',
+        },
+      ],
       { cache: false, ...(files ? { images: await prepImages(files) } : {}) },
     );
     const phases = (r && Array.isArray(r.phases) ? r.phases : [])

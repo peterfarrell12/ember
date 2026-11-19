@@ -13,6 +13,7 @@
   const db = { doc: docRef, collection: colRef };
   const user = { id: async () => 'u_test123', isOwner: () => !window.__notOwner };
   const sample = async (input, o) => {
+    console.debug('EMBER_PROMPT ' + JSON.stringify(input)); // the harness records every prompt, to prove wording is unchanged by a refactor
     if (/Write the method/.test(input)) { const txt = '1. Heat a pan over a high heat for 2 minutes.\n2. Sear the chicken for 4 minutes a side.\n3. Rest, slice and serve over the rice.\nTip: swap the rice for couscous.'; if (o && o.onText) o.onText({ text: txt.slice(0, 40) }); return { text: txt, truncated: false }; }
     if (/exactly 3 options/.test(input)) window.__chef = input;
     if (/exactly 3 options/.test(input)) { if (/IDEAFAIL/.test(input)) { const e = new Error('x'); e.code = 'rate_limited'; throw e; } const full = JSON.stringify(await sample.json(input, o)); if (o && o.images) window.__menuImg = o.images.length;
@@ -20,6 +21,7 @@
       return /IDEACUT/.test(input) ? { text: '```json\n' + full.slice(0, Math.floor(full.length * .75)), truncated: true } : { text: full, truncated: false }; }
     return { text: '5099801003339', truncated: false }; };
   sample.json = async (input, o) => {
+    console.debug('EMBER_PROMPT ' + JSON.stringify(input));
     if (o && o.images) window.__img = o.images.map(f => ({ size: f.size, type: f.type, name: f.name }));
     if (/shelf ticket/.test(input) && /ITEMFAIL/.test(input)) { const e = new Error('rejected'); e.code = 'image_rejected'; throw e; }
     if (/matching products to its database/.test(input)) { window.__pickPrompt = input; const n = (input.match(/^Product \d+:/gm) || []).length; return Array.from({ length: n }, () => /Heineken/.test(input) ? 1 : /tikka/.test(input) ? -1 : 0); }

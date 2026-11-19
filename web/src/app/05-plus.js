@@ -884,13 +884,7 @@ A.adSync = async () => {
       .join('');
     out(`<div class="busy"><div class="spinner"></div>Sorting workouts, weight and steps</div>`);
     const r = await AI.sample.json(
-      `Below is JSON from a fitness data service for one person, for ${start} to ${end}. Convert it for a calorie tracker. Reply with only JSON:
-{"days":[{"date":"YYYY-MM-DD","weightKg":number or null,"steps":number or null,"activeKcal":number or null,"burnKcal":number or null,"recovery":number 0-100 or null,"sleepHours":number or null,"hrvMs":number or null,"restingHr":number or null,"strain":number or null}],
- "workouts":[{"date":"YYYY-MM-DD","name":"short activity name","minutes":number,"kcal":number or null,"km":number or null}]}
-Rules: use only values that are present; null when absent; never invent or estimate. Skip a weight whose source is whoop_profile, because it is typed in, not weighed. burnKcal is total daily energy burned, activeKcal the active part. recovery is the wearable's own recovery or readiness score, not one calculated by the service. strain is the wearable's own day strain or load score for that day, as the wearable reports it. The same session can appear in more than one workout list: return each real session once. Energy given in kJ becomes kcal by dividing by 4.184. Skip sessions shorter than 10 minutes. Dates are the person's local calendar day.
-
-### get_daily_metrics
-${JSON.stringify(daily).slice(0, 50000)}${lists}`,
+      ['wearable_convert', { start, end, daily: JSON.stringify(daily).slice(0, 50000), lists }],
       { cache: false },
     );
     const days = Array.isArray(r && r.days) ? r.days : [],
@@ -1016,8 +1010,6 @@ Today so far: ${eaten}.${trainContext()}
 Last 14 days:
 ${lines.join('\n')}`;
 }
-const COACH_RULES =
-  'You are the coach inside a calorie tracking app called Ember. Be specific and use the numbers given. Plain, direct language, no hype, no emoji, no markdown. You are not a doctor: no medical advice, and never suggest eating below the bottom of the calorie zone.';
 A.coach = () => {
   const r = P.coach && P.coach.r;
   openSheet(
@@ -1043,10 +1035,7 @@ A.coachReview = async () => {
   const o = $('#coachOut');
   o.innerHTML = `<div class="busy"><div class="spinner"></div>Reading your last two weeks</div>`;
   try {
-    const r = await AI.sample.json(
-      `${COACH_RULES}\nReview this person's last two weeks. Reply with only JSON: {"headline": one sentence summing up the fortnight, "wins": up to 3 short specific observations of what is going well, "watch": up to 3 short specific patterns to watch (for example weekends, low protein days, gaps in logging), "next": exactly 3 concrete actions for the coming week}. Each string under 25 words.\n\n${coachContext()}`,
-      { cache: false },
-    );
+    const r = await AI.sample.json(['coach_review', { context: coachContext() }], { cache: false });
     if (!r || typeof r !== 'object') throw { code: 'invalid_json' };
     P.coach = {
       d: today(),
@@ -1070,19 +1059,13 @@ A.coachAsk = async () => {
   const a = $('#coachA');
   a.textContent = 'Thinking…';
   try {
-    await AI.sample(
-      [
-        { role: 'user', content: COACH_RULES + ' Answer in under 130 words.\n\n' + coachContext() },
-        { role: 'user', content: q },
-      ],
-      {
-        cache: false,
-        onText: ({ text }) => {
-          const el = $('#coachA');
-          if (el) el.textContent = text;
-        },
+    await AI.sample(['coach_ask', { context: coachContext(), question: q }], {
+      cache: false,
+      onText: ({ text }) => {
+        const el = $('#coachA');
+        if (el) el.textContent = text;
       },
-    );
+    });
   } catch (e) {
     const el = $('#coachA');
     if (el) el.textContent = e && e.text ? e.text : aiError(e);
@@ -1175,7 +1158,6 @@ I.idAvoid = el => {
   clearTimeout(IDEAS.av);
   IDEAS.av = setTimeout(saveProfile, 800);
 };
-const IDEA_FORMAT = `Reply with only a JSON array of exactly 3 options, no other text: {"title": short name, "why": one short sentence with the kcal and protein and why it fits, "items": [ up to 4 foods ]} where each food is {"name": short database-style name, "grams": number, "amount": the amount in words, "kcal100": kcal per 100 g, "p100": protein g per 100 g, "c100": carbs g per 100 g, "f100": fat g per 100 g}. Keep each option at or under the calories left.`;
 /* Pull the finished options out of an answer, even one that is still arriving or was cut short. */
 function looseArr(text) {
   let t = String(text || '').replace(/```(?:json)?/g, '');
@@ -1306,11 +1288,33 @@ A.ideasGo = () => {
       .map(r => r.n)
       .slice(0, 8),
     meal = MEALS[IDEAS.meal].toLowerCase();
-  ideasRun(`You are a personal chef cooking for one person in Ireland who tracks calories. Suggest 3 ${meal === 'snacks' ? 'snacks' : meal + ' dishes'} they would look forward to eating: real dishes with proper names, the kind a good cook would be pleased to serve, not lists of plain ingredients. Make the three clearly different from each other in cuisine, main protein and cooking method. Season boldly: herbs, spices, acid, texture.
-${mood[2] ? mood[2] + '\n' : ''}${have ? 'They said: "' + have + '". Treat a craving as the brief and build around anything they want to use up.\n' : ''}Size: each dish must come to between ${Math.round((k * 0.8) / 10) * 10} and ${k} kcal in total, never more, with ${pa} g of protein or more where the dish allows. Add up your own ingredient figures and adjust the amounts until each dish fits before you answer.${k <= 250 ? ' That is snack size: suggest proper snacks, not shrunken meals.' : ''} For the whole day they have ${l.k} kcal, ${l.p} g protein, ${l.c} g carbs and ${l.f} g fat left, so lean away from whichever of carbs or fat is nearly used up. Count the oil, butter, sauces and cheese honestly.
-Already eaten today: ${eaten.join('; ') || 'nothing yet'}. Do not build a dish around any of these again; balance against them instead, for example with vegetables or fibre if there has been little.
-${usual.length ? 'Foods they often eat, as a hint to their taste only, not a list to reuse: ' + usual.join('; ') + '.\n' : ''}${mine.length ? 'Recipes they already have, so suggest something else: ' + mine.join('; ') + '.\n' : ''}${P.avoid ? 'They do not eat: ' + P.avoid + '. Leave these out entirely.\n' : ''}${IDEAS.seen.length ? 'Already suggested, so do not repeat or lightly vary: ' + IDEAS.seen.slice(-12).join('; ') + '.\n' : ''}Use ingredients an ordinary Irish supermarket stocks.
-Reply with only a JSON array of exactly 3 options, no other text: {"title": the dish name, "why": one appetising sentence that says what makes it good, "mins": minutes to make, "items": [ up to 6 ingredients, the ones that carry the calories ]} where each ingredient is {"name": short database-style name, "grams": number, "amount": the amount in words, "kcal100": kcal per 100 g, "p100": protein g per 100 g, "c100": carbs g per 100 g, "f100": fat g per 100 g}.`);
+  ideasRun([
+    'chef_ideas',
+    {
+      kind: meal === 'snacks' ? 'snacks' : meal + ' dishes',
+      mood: mood[2] ? mood[2] + '\n' : '',
+      brief: have
+        ? 'They said: "' + have + '". Treat a craving as the brief and build around anything they want to use up.\n'
+        : '',
+      kcalLow: Math.round((k * 0.8) / 10) * 10,
+      kcal: k,
+      protein: pa,
+      snackNote: k <= 250 ? ' That is snack size: suggest proper snacks, not shrunken meals.' : '',
+      leftKcal: l.k,
+      leftProtein: l.p,
+      leftCarbs: l.c,
+      leftFat: l.f,
+      eaten: eaten.join('; ') || 'nothing yet',
+      usual: usual.length
+        ? 'Foods they often eat, as a hint to their taste only, not a list to reuse: ' + usual.join('; ') + '.\n'
+        : '',
+      recipes: mine.length ? 'Recipes they already have, so suggest something else: ' + mine.join('; ') + '.\n' : '',
+      avoid: P.avoid ? 'They do not eat: ' + P.avoid + '. Leave these out entirely.\n' : '',
+      seen: IDEAS.seen.length
+        ? 'Already suggested, so do not repeat or lightly vary: ' + IDEAS.seen.slice(-12).join('; ') + '.\n'
+        : '',
+    },
+  ]);
 };
 /* the method, written on demand so the first three ideas arrive fast */
 A.ideaCook = async ({ i }) => {
@@ -1328,7 +1332,13 @@ A.ideaCook = async ({ i }) => {
   if (x.how || !AI.sample) return;
   try {
     const r = await AI.sample(
-      `You are a personal chef. Write the method for one serving of "${x.title}" using these ingredients: ${x.items.map(it => (it.amount || r0(num(it.grams)) + ' g') + ' ' + it.name).join('; ')}. Add seasoning, herbs and spices as a good cook would, but no other ingredient with meaningful calories. At most 6 numbered steps, one or two short sentences each, with heat levels and timings. Then one line starting "Tip:" with a swap or a serving idea. Plain text only: no markdown, no headings, no ingredient list.`,
+      [
+        'chef_method',
+        {
+          title: x.title,
+          ingredients: x.items.map(it => (it.amount || r0(num(it.grams)) + ' g') + ' ' + it.name).join('; '),
+        },
+      ],
       {
         cache: false,
         onText: ({ text }) => {
@@ -1371,10 +1381,7 @@ $('#fileMenu').addEventListener('change', e => {
   e.target.value = '';
   if (!f || !IDEAS) return;
   const l = leftNow();
-  ideasRun(
-    `${COACH_RULES}\nThis photo is a restaurant, cafe or takeaway menu. Pick the 3 best orders on it for someone with ${l.k} kcal, ${l.p} g of protein, ${l.c} g carbs and ${l.f} g fat left today, favouring protein. If nothing on the menu fits, pick the closest and say in the "why" sentence what to leave off or share. Use dish names as printed. Estimate typical restaurant portions honestly, including oils and sauces.\n${IDEA_FORMAT}`,
-    [f],
-  );
+  ideasRun(['menu_ideas', { leftKcal: l.k, leftProtein: l.p, leftCarbs: l.c, leftFat: l.f }], [f]);
 });
 A.ideaLog = ({ i }) => {
   const x = IDEAS.opts[+i];
@@ -1566,10 +1573,9 @@ A.revFix = async () => {
   const b = $('#revBody');
   b.innerHTML = `<div class="busy"><div class="spinner"></div>Fixing the list</div>`;
   try {
-    const raw = await AI.sample.json(
-      `A calorie tracker has this list of foods for one meal:\n${JSON.stringify(cur)}\n\nThe person says this correction: """${fix.slice(0, 500)}"""\nApply it and return the whole corrected list. Keep items the correction does not mention exactly as they are.\n${ITEM_FORMAT}`,
-      { cache: false },
-    );
+    const raw = await AI.sample.json(['fix_items', { items: JSON.stringify(cur), fix: fix.slice(0, 500) }], {
+      cache: false,
+    });
     const items = await matchAll(raw);
     if (items.length) REV.items = items;
     else toast('That left nothing to log, so the list is unchanged.');

@@ -7,7 +7,7 @@ normal speed, so timers and waits behave as usual.
 Tests import async_playwright from here instead of from playwright.async_api.
 """
 import datetime, os, sys
-from playwright.async_api import async_playwright, Browser  # noqa: F401  (re-exported)
+from playwright.async_api import async_playwright, Browser, BrowserContext  # noqa: F401  (re-exported)
 
 NOW = datetime.datetime(2026, 11, 19, 9, 42, 0)   # a Thursday morning, before the 11:00 cut-off t11 relies on, and off the hour and half hour when sample classes start
 TODAY = NOW.date()
@@ -44,5 +44,27 @@ async def new_page(self, *args, **kwargs):
     return await ctx.new_page()
 
 
+# Every prompt the app sends to the stand-in for Claude is written to out/<test>.prompts, one per line,
+# with clock-derived parts left in (the clock is fixed). Compare the files before and after a change that
+# is not meant to alter any prompt.
+_ctx_new_page = BrowserContext.new_page
+_test = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+
+
+async def ctx_new_page(self, *args, **kwargs):
+    pg = await _ctx_new_page(self, *args, **kwargs)
+    os.makedirs('out', exist_ok=True)
+    log = open(os.path.join('out', _test + '.prompts'), 'a', encoding='utf-8')
+
+    def on_console(m):
+        if m.text.startswith('EMBER_PROMPT '):
+            log.write(m.text[len('EMBER_PROMPT '):] + '\n')
+            log.flush()
+
+    pg.on('console', on_console)
+    return pg
+
+
+BrowserContext.new_page = ctx_new_page
 Browser.new_context = new_context
 Browser.new_page = new_page

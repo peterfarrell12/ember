@@ -670,58 +670,65 @@ function asPrompt() {
           : p.kind === 'msg'
             ? 'a card offering to send a message to the coach'
             : 'a card offering to change targets';
-  return `You are the assistant built into Ember, a food, training and recovery tracker. The person talks to you by voice, so "say" is read aloud: one to three short sentences of plain spoken English, no lists, no markdown, no emoji. Be direct and friendly. The person is in Ireland: use Irish and UK food words and metric units.
-
-Reply with only JSON: {"say": string, "actions": array, "chips": array of up to 3 short things the person might say next}
-
-You never save anything yourself. You ask the app to act by adding to "actions"; the app does it and reports back in a line starting [app]. Never say something is saved unless an [app] line says so. Actions:
-- {"do":"food","meal":"b"|"l"|"d"|"s","items":[{"name","brand","grams","amount","kcal100","p100","c100","f100"}]}: foods to log. The app matches each to its database and shows a card to confirm, so say briefly what you have and ask if it is right. "name" is a short database-style name with the cooking state ("pork sausage, fried", "egg, fried"). "grams" is the total grams of that item. One item per component.
-- {"do":"remove_food","match": part of the food's name, "meal": optional}
-- {"do":"water","ml": number, negative to take some off}
-- {"do":"caffeine","drink": one of filter, amer, flat, latte, capp, cort, mocha, chai (chai latte), dchai (dirty chai), matcha, esp, dbl, tea, green, cola, ed250, ed500, pre, tab, gel, "milk": whole|semi|skim|oat|soya|almond|coconut|none, "ml": millilitres of milk, "sugar": teaspoons, "sugar_free": boolean, "with_calories": boolean}: a coffee, tea, cola or energy drink on its own. Counts the caffeine and, unless with_calories is false, the calories.
-- {"do":"weight","kg": number}
-- {"do":"exercise","name","minutes","effort":"easy"|"moderate"|"hard","kcal": optional}
-- {"do":"checkin","sleep_hours","sleep_quality","soreness","energy","stress"}: the recovery check-in; the last four are 1 to 5.
-- {"do":"event","title","kind":"match"|"class"|"cardio"|"appt"|"rest"|"other","date":"YYYY-MM-DD","time":"HH:MM" or "","minutes","weekly": boolean}
-- {"do":"move_session","from":"YYYY-MM-DD","to":"YYYY-MM-DD"} | {"do":"skip_session","date"} | {"do":"start_session"}
-${FEATURES.gym ? `- {"do":"book_class","class": class name,"date":"YYYY-MM-DD","time":"HH:MM" optional} | {"do":"cancel_class","class","date"}: classes at their gym, from the timetable below.\n` : ''}${FEATURES.coach ? `- {"do":"message_coach","text"} | {"do":"set_target","kcal","protein"}: each shows a card to confirm first.` : `- {"do":"set_target","kcal","protein"}: shows a card to confirm first.`}
-- {"do":"open","screen":"today"|"train"|"progress"|"quests"|"calendar"|"photos"|"caffeine"${FEATURES.coach ? '|"messages"' : ''}}
-
-Food: if what they said is too vague to estimate within about a fifth (a fry, a sandwich, a takeaway, "dinner"), ask before logging. One short question at a time, three at most in the whole exchange: what was in it, how many or how much, how it was cooked. Put the likely answers in "chips". Once you can estimate, send the food action. If they do not know, estimate sensibly and say it is an estimate. If a card is waiting and they change something, send a corrected food action; do not send one if they only asked a question. A coffee or tea that is part of a meal goes in the food items.
-Questions: answer from the app state below with the actual numbers. No medical advice; for pain or an injury that sounds serious, tell them to see a physio or doctor. If they ask for something the app cannot do, say so plainly.
-
-Now: ${tk} ${WD[wdOf(tk)]}, ${pad(now.getHours())}:${pad(now.getMinutes())}. Meal slot right now: ${MEALS[mealNow()]}.
-Today: ${t.k} of ${z.b} kcal eaten (zone ${z.lo} to ${z.hi}), ${r0(z.b - t.k)} left. Protein ${r0(t.p)} of ${P.t.p} g, carbs ${r0(t.c)} of ${P.t.c} g, fat ${r0(t.f)} of ${P.t.f} g. Water ${d.w} of ${P.t.w} ml. Caffeine ${cafOf(d).reduce((s, c) => s + c.mg, 0)} mg. Day ${d.done ? 'closed' : 'open'}.
-Diary today:
-${diary}
-Plan for the next 8 days:
-${planL}
-${
-  FEATURES.gym && G
-    ? 'Gym timetable (' +
-      G.name +
-      '):\n' +
-      Array.from({ length: 4 }, (_, i) => addDays(tk, i))
-        .map(
-          k =>
-            k +
-            ' ' +
-            WD[wdOf(k)] +
-            ': ' +
-            (classesOn(k)
-              .map(c => c.tm + ' ' + c.n + ' (' + Math.max(0, c.cap - gSess(k, c).in.length) + ' places left)')
-              .join('; ') || 'no classes'),
-        )
-        .join('\n') +
-      '\n'
-    : ''
-}${myUnread() ? 'Unread messages from their coach: ' + myUnread() + '.\n' : ''}${FEATURES.coach ? coachContext() : ''}
-A card is waiting for: ${pend}.
-
-Conversation so far:
-${AS_LOG.slice(-16)
-  .map(m => (m.r === 'u' ? 'Person: ' : m.r === 'a' ? 'You: ' : '[app] ') + m.t)
-  .join('\n')}`;
+  return [
+    'assistant_turn',
+    {
+      p0: FEATURES.gym
+        ? `- {"do":"book_class","class": class name,"date":"YYYY-MM-DD","time":"HH:MM" optional} | {"do":"cancel_class","class","date"}: classes at their gym, from the timetable below.\n`
+        : '',
+      p1: FEATURES.coach
+        ? `- {"do":"message_coach","text"} | {"do":"set_target","kcal","protein"}: each shows a card to confirm first.`
+        : `- {"do":"set_target","kcal","protein"}: shows a card to confirm first.`,
+      p2: FEATURES.coach ? '|"messages"' : '',
+      tk,
+      p4: WD[wdOf(tk)],
+      p5: pad(now.getHours()),
+      p6: pad(now.getMinutes()),
+      p7: MEALS[mealNow()],
+      p8: t.k,
+      p9: z.b,
+      lo: z.lo,
+      hi: z.hi,
+      p12: r0(z.b - t.k),
+      p13: r0(t.p),
+      p14: P.t.p,
+      p15: r0(t.c),
+      p16: P.t.c,
+      p17: r0(t.f),
+      p18: P.t.f,
+      p19: d.w,
+      p20: P.t.w,
+      p21: cafOf(d).reduce((s, c) => s + c.mg, 0),
+      p22: d.done ? 'closed' : 'open',
+      diary,
+      planL,
+      p25:
+        FEATURES.gym && G
+          ? 'Gym timetable (' +
+            G.name +
+            '):\n' +
+            Array.from({ length: 4 }, (_, i) => addDays(tk, i))
+              .map(
+                k =>
+                  k +
+                  ' ' +
+                  WD[wdOf(k)] +
+                  ': ' +
+                  (classesOn(k)
+                    .map(c => c.tm + ' ' + c.n + ' (' + Math.max(0, c.cap - gSess(k, c).in.length) + ' places left)')
+                    .join('; ') || 'no classes'),
+              )
+              .join('\n') +
+            '\n'
+          : '',
+      p26: myUnread() ? 'Unread messages from their coach: ' + myUnread() + '.\n' : '',
+      p27: FEATURES.coach ? coachContext() : '',
+      pend,
+      p29: AS_LOG.slice(-16)
+        .map(m => (m.r === 'u' ? 'Person: ' : m.r === 'a' ? 'You: ' : '[app] ') + m.t)
+        .join('\n'),
+    },
+  ];
 }
 /* the talk button that sits above the tab bar */
 function asFab() {

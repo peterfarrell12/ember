@@ -193,15 +193,27 @@ A.chatDraft = async () => {
   box.value = 'Drafting…';
   try {
     const r = await AI.sample.json(
-      `You help a coach write to a client. Draft the coach's next message: two to four sentences, specific to the numbers, warm but direct, with one clear focus. If the client's last message asked something, answer it first. No medical advice, no emoji, no markdown. Address the client by first name.
-Reply with only JSON: {"text": the message}
-Client: ${c.name}. Goal: ${c.goal || 'not stated'}. Sessions in the last 7 days: ${st.sess7 ?? 'unknown'} of ${st.plan7 || 'none'} planned on "${st.progN || 'no program'}". Food logged ${st.logged7 ?? 'unknown'} of 7 days, averaging ${st.kcalAvg || 'unknown'} kcal against ${st.kcalT || 'no target'}. Weight trend ${st.kg ?? 'unknown'} kg. Recovery score ${st.ready ?? 'not checked in'}. Flags: ${alertsFor(st).join('; ') || 'none'}.
-Recent messages, oldest first:\n${
-        threadOf(c)
-          .slice(-6)
-          .map(m => (m.f === 'c' ? 'Coach: ' : 'Client: ') + m.t)
-          .join('\n') || 'none'
-      }`,
+      [
+        'chat_draft',
+        {
+          name: c.name,
+          p1: c.goal || 'not stated',
+          p2: st.sess7 ?? 'unknown',
+          p3: st.plan7 || 'none',
+          p4: st.progN || 'no program',
+          p5: st.logged7 ?? 'unknown',
+          p6: st.kcalAvg || 'unknown',
+          p7: st.kcalT || 'no target',
+          p8: st.kg ?? 'unknown',
+          p9: st.ready ?? 'not checked in',
+          p10: alertsFor(st).join('; ') || 'none',
+          p11:
+            threadOf(c)
+              .slice(-6)
+              .map(m => (m.f === 'c' ? 'Coach: ' : 'Client: ') + m.t)
+              .join('\n') || 'none',
+        },
+      ],
       { cache: false },
     );
     if (CH && $('#chT')) $('#chT').value = String((r && r.text) || '').slice(0, 800) || was;

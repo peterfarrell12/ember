@@ -712,14 +712,37 @@ A.coDraft = async () => {
   box.value = 'Drafting…';
   try {
     const r = await AI.sample.json(
-      `You help a coach write to their clients. Draft a short message from the coach to this client about their last week: two to four sentences, specific to the numbers, warm but direct, ending with one clear focus for the coming week. No medical advice, no emoji, no markdown. Write it as the coach, addressed to the client by first name.
-Reply with only JSON: {"text": the message}
-Client: ${c.kind === 'me' ? 'the coach themself, so write it as a note to self' : c.name}. Goal: ${c.goal || 'not stated'}.
-Sessions this week: ${st.sess7 ?? 'unknown'} of ${st.plan7 || 'none'} planned on "${st.progN || 'no program'}". Personal records in 14 days: ${st.prs14 || 0}.
-Food: logged ${st.logged7 ?? 'unknown'} of 7 days, averaging ${st.kcalAvg || 'unknown'} kcal against ${st.kcalT || 'no target'}, protein ${st.protAvg || 'unknown'} g against ${st.protT || 'no target'} g.
-Weight trend: ${st.kg ?? 'unknown'} kg, ${st.kg30 ?? 'unknown'} kg change in 30 days. Recovery score today: ${st.ready ?? 'not checked in'}.
-${st.rehabN ? 'Rehab: ' + st.rehabN + ', phase ' + st.rehabPh + ', last pain ' + (st.pain ?? 'unknown') + '/10, before that ' + (st.painPrev ?? 'unknown') + '/10.' : 'No rehab plan.'}
-Flags: ${alertsFor(st).join('; ') || 'none'}.`,
+      [
+        'coach_draft',
+        {
+          p0: c.kind === 'me' ? 'the coach themself, so write it as a note to self' : c.name,
+          p1: c.goal || 'not stated',
+          p2: st.sess7 ?? 'unknown',
+          p3: st.plan7 || 'none',
+          p4: st.progN || 'no program',
+          p5: st.prs14 || 0,
+          p6: st.logged7 ?? 'unknown',
+          p7: st.kcalAvg || 'unknown',
+          p8: st.kcalT || 'no target',
+          p9: st.protAvg || 'unknown',
+          p10: st.protT || 'no target',
+          p11: st.kg ?? 'unknown',
+          p12: st.kg30 ?? 'unknown',
+          p13: st.ready ?? 'not checked in',
+          p14: st.rehabN
+            ? 'Rehab: ' +
+              st.rehabN +
+              ', phase ' +
+              st.rehabPh +
+              ', last pain ' +
+              (st.pain ?? 'unknown') +
+              '/10, before that ' +
+              (st.painPrev ?? 'unknown') +
+              '/10.'
+            : 'No rehab plan.',
+          p15: alertsFor(st).join('; ') || 'none',
+        },
+      ],
       { cache: false },
     );
     if ($('#ccMsg')) $('#ccMsg').value = String((r && r.text) || '').slice(0, 600);

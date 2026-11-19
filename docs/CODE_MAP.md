@@ -77,6 +77,31 @@ The scripts that made these are in `prototype/data-pipeline/` for reference. The
 
 ## Claude calls
 
+**In `web/` (Phase 2):** every call names a task and passes its values, `AI.sample(['parse_text', { text }], options)`. The prompts live in one file, `supabase/functions/_shared/ai-tasks.js`, moved from the prototype unchanged; the server function builds the prompt from the task name, so the app cannot send a prompt of its own. The browser tests record every prompt sent (`prototype/test/out/<test>.prompts`), which is how the move was checked to be word-for-word.
+
+| Task | Model | Photos | Reply | Behind flag |
+|---|---|---|---|---|
+| `read_barcode` | small | 1 | text |  |
+| `coach_ask` | mid |  | text, streamed |  |
+| `parse_text` | mid |  | JSON |  |
+| `parse_photo` | mid | 4 | JSON |  |
+| `read_label` | mid | 1 | JSON |  |
+| `pick_product` | small |  | JSON |  |
+| `wearable_convert` | mid |  | JSON |  |
+| `coach_review` | mid |  | JSON |  |
+| `chef_ideas` | mid |  | text, streamed |  |
+| `menu_ideas` | mid | 4 | text, streamed |  |
+| `chef_method` | mid |  | text, streamed |  |
+| `fix_items` | mid |  | JSON |  |
+| `build_program` | mid |  | JSON |  |
+| `read_rehab_plan` | mid | 4 | JSON |  |
+| `coach_draft` | mid |  | JSON | coach |
+| `chat_draft` | mid |  | JSON | coach |
+| `assistant_turn` | mid |  | JSON |  |
+
+The rest of this section describes the prototype.
+
+
 All go through `AI.sample(prompt, opts)` (text back) or `AI.sample.json(prompt, opts)` (parsed JSON back). Options used: `images` (photos as blobs), `onText` (streaming), `modelTier` (`quick` or `default`), `cache`. References by file (calls and availability checks): `02-foods.js` 9, `04-flows.js` 5, `05-plus.js` 14, `07-train.js` 5, `08-coach.js` 2, `08e-chat.js` 2, `08g-assistant.js` 3. Prompts are built in the client today.
 
 Errors arrive as `{code, message}`; `AI_MSG` in `02-foods.js` maps codes to wording.

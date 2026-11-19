@@ -581,6 +581,18 @@ function lastUse(food) {
 
 /* ---------- Claude (sample) + dictation ---------- */
 const AI = { sample: null, images: false, dict: null, ready: false };
+/* Every Claude call names a task and gives its values: AI.sample(['parse_text', { text }], options).
+   The prompts themselves live in one shared file (supabase/functions/_shared/ai-tasks.js). Here, where the
+   page has its own Claude (the prototype's host, and the stand-in the browser tests use), the prompt is built
+   on the spot and passed on as before. */
+function withTasks(sample) {
+  const prompt = input =>
+    Array.isArray(input) && typeof input[0] === 'string' ? TASKS[input[0]].build(input[1] || {}) : input;
+  const run = (input, o) => sample(prompt(input), o);
+  run.json = (input, o) => sample.json(prompt(input), o);
+  run.limits = () => sample.limits();
+  return run;
+}
 async function initAI() {
   try {
     if (!(window.claude && window.claude.use)) return;
@@ -589,7 +601,7 @@ async function initAI() {
       window.claude.use('dictation'),
       window.claude.use('mcp'),
     ]);
-    AI.sample = s || null;
+    AI.sample = s ? withTasks(s) : null;
     AI.dict = d || null;
     AI.mcp = m || null;
     if (s) {
@@ -624,17 +636,6 @@ function aiError(e) {
   }
   return AI_MSG[code] || 'Something went wrong. Try again.';
 }
-const ITEM_FORMAT = `Reply with only a JSON array, no other text. One object per distinct food or drink:
-{"name": short plain food name usable as a database search phrase, including cooking state where it matters (e.g. "white rice, cooked", "chicken breast, grilled"),
- "brand": brand name exactly as printed on the pack, or "" for unbranded food,
- "packaged": true if this is a branded or packaged product, else false,
- "known": true only if kcal100, p100, c100 and f100 are the maker's published figures for this exact product and you are sure of them, false if they are your estimate,
- "grams": your best estimate of the total grams (or ml) eaten of this item, as a number,
- "amount": the amount as the person would say it (e.g. "2 eggs", "1 bowl"),
- "kcal100": kcal per 100 g, "p100": protein g per 100 g, "c100": carbohydrate g per 100 g, "f100": fat g per 100 g,
- "meal": "b", "l", "d" or "s" if the text says breakfast, lunch, dinner or snack, else ""}
-For a branded or packaged product, "name" is the product name with every variant word printed on it (flavour, zero, 0.0, light, protein, the cut or the range) and without the brand, the pack size or slogans, e.g. brand "Guinness", name "Draught 0.0 alcohol free stout"; "grams" is the amount eaten, using the printed net quantity (ml counts as grams) when a whole pack, can or bottle was had.
-Use typical Irish and UK portion sizes unless amounts are given. Split a dish into parts only when the parts are named. Count cooking fats and sauces that are mentioned.`;
 /* Phone photos are far bigger than Claude needs and the big ones get refused, so every image is resized first. */
 async function prepImages(files) {
   return Promise.all(
@@ -657,37 +658,38 @@ const asItems = raw =>
         ? [raw]
         : [];
 async function aiParseText(text) {
-  return AI.sample.json(
-    `You turn a spoken or typed food diary note into structured items for a calorie tracker.\n${ITEM_FORMAT}\n\nNote: """${text.slice(0, 2000)}"""`,
-    { modelTier: 'default', cache: false },
-  );
+  return AI.sample.json(['parse_text', { text: text.slice(0, 2000) }], { modelTier: 'default', cache: false });
 }
 async function aiParsePhoto(files, note) {
   const imgs = await prepImages(files);
   return asItems(
     await AI.sample.json(
-      `${files.length > 1 ? 'These photos show one meal or product from different angles' : 'This photo shows a meal or a food product'} someone is logging in a calorie tracker. Identify each distinct food and how much of it was eaten, judging scale from plates, cutlery, hands and packaging.
-Read every word on any packaging before anything else: the brand and the exact product and variant matter more than how the food looks, because the tracker looks the product up in a database of 115,000 labelled products.
-If a photo shows packaging, a shelf ticket, a menu board or a nutrition panel instead of, or as well as, the food itself, trust the print over your own estimate: use the product name and brand exactly as printed, set "label": true on that item, and give "kcal", "protein", "carbs", "fat" for the whole portion eaten as printed, per pack, per sandwich or per item (null for a figure that is not printed). Still give "grams": the printed weight if shown, otherwise your estimate. A ticket that shows only calories is enough.${note ? ' The person adds: "' + note.slice(0, 400) + '". Treat that as fact about amounts and ingredients.' : ''}
-${ITEM_FORMAT}`,
+      [
+        'parse_photo',
+        {
+          intro:
+            files.length > 1
+              ? 'These photos show one meal or product from different angles'
+              : 'This photo shows a meal or a food product',
+          note: note
+            ? ' The person adds: "' + note.slice(0, 400) + '". Treat that as fact about amounts and ingredients.'
+            : '',
+        },
+      ],
       { images: imgs, modelTier: 'default', cache: false },
     ),
   );
 }
 async function aiReadLabel(file) {
   const [img] = await prepImages([file]);
-  return AI.sample.json(
-    `This photo shows a nutrition label, a shelf ticket or packaging with nutrition figures, usually in EU format. Read it exactly; do not estimate values that are not printed. Reply with only JSON:
-{"name": product name if visible else "", "brand": brand if visible else "", "basis": "100" if the figures you give are per 100 g or 100 ml, "serving" if they are per serving, pack, sandwich or item, "kcal": number, "p": protein g, "c": carbohydrate g, "f": fat g, "sf": saturates g or null, "su": sugars g or null, "fi": fibre g or null, "salt": salt g or null, "serving_g": the serving or pack size in g or ml if printed else null, "readable": true or false}
-Prefer per 100 when the label prints both. If it prints figures only per serving, pack or item, which is common on sandwiches and menu tickets, give those with basis "serving". A figure that is not printed is null; a label that shows only calories is still readable. If energy is only in kJ, divide by 4.184.`,
-    { images: [img], modelTier: 'default', cache: false },
-  );
+  return AI.sample.json(['read_label', {}], { images: [img], modelTier: 'default', cache: false });
 }
 async function aiReadBarcode(file) {
-  const r = await AI.sample(
-    'Read the number printed under the barcode in this photo. Reply with only the digits, no spaces. If no barcode number is readable reply NONE.',
-    { images: await prepImages([file]), modelTier: 'quick', cache: false },
-  );
+  const r = await AI.sample(['read_barcode', {}], {
+    images: await prepImages([file]),
+    modelTier: 'quick',
+    cache: false,
+  });
   const m = (r.text || '').replace(/\s/g, '').match(/\d{8,14}/);
   return m ? m[0] : null;
 }
@@ -977,9 +979,19 @@ async function matchAll(raw) {
   if (open.length && AI.sample) {
     try {
       const ans = await AI.sample.json(
-        `A calorie tracker is matching products to its database of labelled products. For each product below, choose the database entry that is the same product: same brand and same variant (zero or regular, light, flavour, cut). Pack size does not matter. Answer -1 when no entry is the same product; a different flavour or variant is not the same product.
-${open.map((x, n) => `Product ${n + 1}: "${x.seen}"${x.fallback.k > 0 ? ', roughly ' + r0(x.fallback.k) + ' kcal per 100' : ''}\n${x.alts.map((f, k) => `  ${k}: ${f.n}${f.b ? ' (' + f.b + ')' : ''}, ${r0(f.k)} kcal per 100`).join('\n')}`).join('\n')}
-Reply with only a JSON array of ${open.length} number${open.length === 1 ? '' : 's'}, one per product, in order.`,
+        [
+          'pick_product',
+          {
+            products: open
+              .map(
+                (x, n) =>
+                  `Product ${n + 1}: "${x.seen}"${x.fallback.k > 0 ? ', roughly ' + r0(x.fallback.k) + ' kcal per 100' : ''}\n${x.alts.map((f, k) => `  ${k}: ${f.n}${f.b ? ' (' + f.b + ')' : ''}, ${r0(f.k)} kcal per 100`).join('\n')}`,
+              )
+              .join('\n'),
+            count: open.length,
+            plural: open.length === 1 ? '' : 's',
+          },
+        ],
         { modelTier: 'quick', cache: false },
       );
       const arr = Array.isArray(ans) ? ans : ans && Array.isArray(ans.picks) ? ans.picks : [];
