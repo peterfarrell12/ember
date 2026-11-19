@@ -17,7 +17,8 @@ export default function foodData({ dir }) {
       });
     },
     generateBundle() {
-      for (const name of NAMES) this.emitFile({ type: 'asset', fileName: name, source: fs.readFileSync(path.join(dir, name)) });
+      for (const name of NAMES)
+        this.emitFile({ type: 'asset', fileName: name, source: fs.readFileSync(path.join(dir, name)) });
     },
   };
 }

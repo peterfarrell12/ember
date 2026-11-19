@@ -152,93 +152,608 @@ neck|Neck side stretch|mobility|bw|Ear towards the shoulder, opposite arm long.
 foamquad|Foam roll quads|mobility|other|Slow passes, pause on tender spots.
 foamcalf|Foam roll calves|mobility|other|Cross one leg over for more pressure.
 foamback|Foam roll upper back|mobility|other|Hands behind the head, extend over the roller.`;
-const EXS = {}; EX_RAW.split('\n').forEach(l => { const [id, n, g, eq, cue] = l.split('|'); EXS[id] = { id, n, g, eq, cue }; });
-const GROUPS = { legs: 'Legs', glutes: 'Glutes', chest: 'Chest', back: 'Back', shoulders: 'Shoulders', arms: 'Arms', core: 'Core', power: 'Power', cond: 'Conditioning', rehab: 'Rehab', mobility: 'Mobility' };
-const EQUIP = { bb: 'Barbell', db: 'Dumbbells', kb: 'Kettlebell', machine: 'Machine', cable: 'Cable', bw: 'Bodyweight', band: 'Band', other: 'Other kit' };
+const EXS = {};
+EX_RAW.split('\n').forEach(l => {
+  const [id, n, g, eq, cue] = l.split('|');
+  EXS[id] = { id, n, g, eq, cue };
+});
+const GROUPS = {
+  legs: 'Legs',
+  glutes: 'Glutes',
+  chest: 'Chest',
+  back: 'Back',
+  shoulders: 'Shoulders',
+  arms: 'Arms',
+  core: 'Core',
+  power: 'Power',
+  cond: 'Conditioning',
+  rehab: 'Rehab',
+  mobility: 'Mobility',
+};
+const EQUIP = {
+  bb: 'Barbell',
+  db: 'Dumbbells',
+  kb: 'Kettlebell',
+  machine: 'Machine',
+  cable: 'Cable',
+  bw: 'Bodyweight',
+  band: 'Band',
+  other: 'Other kit',
+};
 const LIFT_GROUPS = ['legs', 'glutes', 'chest', 'back', 'shoulders', 'arms', 'core'];
 
 /* Program templates. Day: [name, focus, [[exercise, sets, reps, rest seconds, note]]] */
-const DAY = (n, focus, items) => ({ n, focus, items: items.map(([ex, sets, reps, rest, note]) => ({ ex, sets, reps: String(reps), rest: rest || 0, ...(note ? { note } : {}) })) });
+const DAY = (n, focus, items) => ({
+  n,
+  focus,
+  items: items.map(([ex, sets, reps, rest, note]) => ({
+    ex,
+    sets,
+    reps: String(reps),
+    rest: rest || 0,
+    ...(note ? { note } : {}),
+  })),
+});
 const TEMPLATES = [
-  { id: 't-full3', n: 'Full body, 3 days', about: 'Three sessions a week covering everything. The best starting point if you train in a gym.', weeks: 8, tag: 'Gym', days: [
-    DAY('Day A', 'Squat and push', [['squat', 4, '5-8', 150], ['bench', 4, '6-10', 120], ['dbrow', 3, '8-12', 90], ['rdl', 3, '8-10', 120], ['latraise', 3, '12-15', 60], ['plank', 3, '45s', 45]]),
-    DAY('Day B', 'Hinge and pull', [['deadlift', 3, '4-6', 180], ['ohp', 4, '6-10', 120], ['pullup', 4, '6-10', 120], ['split', 3, '8-10', 90], ['dbcurl', 3, '10-12', 60], ['deadbug', 3, '10', 45]]),
-    DAY('Day C', 'Single leg and upper', [['fsquat', 3, '6-8', 150], ['incline', 4, '8-12', 90], ['cablerow', 4, '8-12', 90], ['hipthrust', 3, '8-12', 120], ['tricep', 3, '10-15', 60], ['farmer', 3, '40 m', 60]])] },
-  { id: 't-ul4', n: 'Upper and lower, 4 days', about: 'Two upper and two lower sessions. More volume per muscle for building size and strength.', weeks: 8, tag: 'Gym', days: [
-    DAY('Upper A', 'Heavy press and row', [['bench', 4, '5-8', 150], ['row', 4, '6-10', 120], ['dbohp', 3, '8-12', 90], ['latpull', 3, '8-12', 90], ['latraise', 3, '12-15', 60], ['tricep', 3, '10-15', 60]]),
-    DAY('Lower A', 'Squat focus', [['squat', 4, '5-8', 150], ['rdl', 3, '8-10', 120], ['legpress', 3, '10-12', 90], ['legcurl', 3, '10-12', 60], ['calf', 4, '10-15', 60], ['hangraise', 3, '10-12', 60]]),
-    DAY('Upper B', 'Overhead and pull-up', [['ohp', 4, '5-8', 150], ['pullup', 4, '6-10', 120], ['incline', 3, '8-12', 90], ['chestrow', 3, '8-12', 90], ['facepull', 3, '12-15', 60], ['dbcurl', 3, '10-12', 60]]),
-    DAY('Lower B', 'Hinge focus', [['trapdl', 4, '4-6', 180], ['split', 3, '8-10', 90], ['hipthrust', 3, '8-12', 120], ['legext', 3, '12-15', 60], ['seatcalf', 3, '12-15', 60], ['pallof', 3, '10', 45]])] },
-  { id: 't-home3', n: 'Dumbbells at home, 3 days', about: 'A pair of dumbbells and a bench or chair. Three full-body sessions.', weeks: 8, tag: 'Home', days: [
-    DAY('Day A', 'Squat and press', [['goblet', 4, '8-12', 90], ['dbbench', 4, '8-12', 90], ['dbrow', 4, '8-12', 75], ['dbrdl', 3, '10-12', 90], ['latraise', 3, '12-15', 45], ['sideplank', 3, '30s', 30]]),
-    DAY('Day B', 'Single leg and pull', [['revlunge', 3, '8-10', 75], ['dbohp', 4, '8-12', 90], ['dbrow', 4, '8-12', 75], ['slbridge', 3, '10-12', 60], ['hammer', 3, '10-12', 45], ['deadbug', 3, '10', 30]]),
-    DAY('Day C', 'Power and carry', [['split', 3, '8-10', 90], ['pushup', 4, '8-15', 75], ['dbrdl', 3, '8-10', 90], ['reardelt', 3, '12-15', 45], ['ohtri', 3, '10-12', 45], ['suitcase', 3, '30 m', 45]])] },
-  { id: 't-bw3', n: 'Bodyweight starter, 3 days', about: 'No kit. Builds the habit and the basics.', weeks: 6, tag: 'Anywhere', days: [
-    DAY('Day A', 'Full body', [['bwsquat', 3, '12-20', 60], ['pushup', 3, '6-15', 60], ['glutebr', 3, '12-15', 45], ['superman', 3, '20s', 30], ['plank', 3, '30s', 30]]),
-    DAY('Day B', 'Legs and core', [['revlunge', 3, '8-12', 60], ['pike', 3, '6-10', 60], ['slbridge', 3, '8-12', 45], ['deadbug', 3, '10', 30], ['mclimb', 3, '20', 45]]),
-    DAY('Day C', 'Power', [['jumpsq', 3, '8', 60], ['pushup', 3, '6-15', 60], ['wallsit', 3, '40s', 45], ['sideplank', 3, '25s', 30], ['burpee', 3, '8', 60]])] },
-  { id: 't-hyrox', n: 'Hyrox build, 4 days', about: 'Strength under fatigue, erg work and compromised running, built around the eight stations.', weeks: 8, tag: 'Hyrox', days: [
-    DAY('Strength and sleds', 'Lower strength, then heavy sled work', [['trapdl', 4, '5', 150], ['split', 3, '8', 90], ['sledpush', 6, '20 m', 90, 'Heavier than race weight'], ['sledpull', 6, '20 m', 90], ['farmer', 4, '50 m', 60], ['copen', 3, '20s', 30]]),
-    DAY('Engine', 'Threshold running with erg finishers', [['run', 6, '1000 m', 90, 'Race pace, steady across all six'], ['skierg', 4, '500 m', 90], ['wallball', 3, '25', 60]]),
-    DAY('Upper and ergs', 'Pulling strength and erg intervals', [['pullup', 4, '6-8', 120], ['dbbench', 4, '8', 90], ['rowerg', 5, '500 m', 75], ['skierg', 5, '250 m', 60], ['bbj', 4, '10', 60]]),
-    DAY('Simulation', 'Run, station, run. Practise changing gears.', [['run', 4, '1000 m', 0, 'Straight into the next station'], ['sandlunge', 4, '25 m', 0], ['wallball', 4, '25', 0], ['farmer', 4, '100 m', 120, 'Rest only after each full round'], ['rowerg', 1, '1000 m', 0]])] },
-  { id: 't-field2', n: 'Field sport in-season, 2 days', about: 'Two short sessions that keep strength and power up between matches without leaving you flat.', weeks: 10, tag: 'GAA, soccer, rugby', days: [
-    DAY('Strength and power', 'Heavy but low volume', [['trapdl', 3, '3-5', 180], ['boxjump', 3, '4', 90], ['split', 3, '6-8', 90], ['chinup', 3, '6-8', 90], ['nordic', 3, '5', 90], ['copen', 3, '20s', 30], ['pallof', 3, '10', 30]]),
-    DAY('Speed and resilience', 'Fast and springy', [['fsquat', 3, '4-6', 150], ['latbound', 3, '5', 60, 'Each side'], ['dbbench', 3, '6-8', 90], ['dbrow', 3, '8', 75], ['slheel', 3, '12', 45], ['hipthrust', 3, '6-8', 90], ['sideplank', 3, '30s', 30]])] },
-  { id: 't-padel2', n: 'Padel strength and resilience, 2 days', about: 'Rotation, lateral movement and the shoulder and elbow work that keeps you on court.', weeks: 8, tag: 'Padel, tennis', days: [
-    DAY('Rotate and push', 'Power from the hips', [['medrot', 3, '6', 60, 'Each side'], ['goblet', 3, '8-10', 90], ['landmine', 3, '8', 75], ['cablerow', 3, '10', 75], ['extrot', 3, '15', 30], ['wristext', 3, '12', 30], ['pallof', 3, '10', 30]]),
-    DAY('Move and brace', 'Lateral strength', [['latbound', 3, '5', 60, 'Each side'], ['cossack', 3, '6', 60, 'Each side'], ['split', 3, '8', 90], ['pullup', 3, '6-8', 90], ['facepull', 3, '15', 45], ['calf', 3, '12', 45], ['suitcase', 3, '30 m', 45]])] },
-  { id: 't-fct2', n: 'French contrast lower, 2 days', about: 'Heavy lift, jump, loaded jump, assisted jump, back to back. Rest 20 seconds between the four, four minutes after each round.', weeks: 4, tag: 'Power', days: [
-    DAY('Squat contrast', 'Four rounds of the complex, then accessories', [['squat', 4, '3', 20, 'Around 80 to 85 percent, fast up'], ['boxjump', 4, '4', 20], ['trapjump', 4, '4', 20, 'About 30 percent of your squat'], ['bandjump', 4, '5', 240, 'Rest four minutes after this one'], ['rdl', 3, '6', 120], ['copen', 3, '20s', 30]]),
-    DAY('Hinge contrast', 'Four rounds of the complex, then accessories', [['trapdl', 4, '3', 20, 'Around 80 to 85 percent'], ['hurdle', 4, '4', 20], ['kbswing', 4, '6', 20, 'Heavy and fast'], ['pogo', 4, '10', 240, 'Rest four minutes after this one'], ['split', 3, '6', 90], ['nordic', 3, '5', 90]])] }
+  {
+    id: 't-full3',
+    n: 'Full body, 3 days',
+    about: 'Three sessions a week covering everything. The best starting point if you train in a gym.',
+    weeks: 8,
+    tag: 'Gym',
+    days: [
+      DAY('Day A', 'Squat and push', [
+        ['squat', 4, '5-8', 150],
+        ['bench', 4, '6-10', 120],
+        ['dbrow', 3, '8-12', 90],
+        ['rdl', 3, '8-10', 120],
+        ['latraise', 3, '12-15', 60],
+        ['plank', 3, '45s', 45],
+      ]),
+      DAY('Day B', 'Hinge and pull', [
+        ['deadlift', 3, '4-6', 180],
+        ['ohp', 4, '6-10', 120],
+        ['pullup', 4, '6-10', 120],
+        ['split', 3, '8-10', 90],
+        ['dbcurl', 3, '10-12', 60],
+        ['deadbug', 3, '10', 45],
+      ]),
+      DAY('Day C', 'Single leg and upper', [
+        ['fsquat', 3, '6-8', 150],
+        ['incline', 4, '8-12', 90],
+        ['cablerow', 4, '8-12', 90],
+        ['hipthrust', 3, '8-12', 120],
+        ['tricep', 3, '10-15', 60],
+        ['farmer', 3, '40 m', 60],
+      ]),
+    ],
+  },
+  {
+    id: 't-ul4',
+    n: 'Upper and lower, 4 days',
+    about: 'Two upper and two lower sessions. More volume per muscle for building size and strength.',
+    weeks: 8,
+    tag: 'Gym',
+    days: [
+      DAY('Upper A', 'Heavy press and row', [
+        ['bench', 4, '5-8', 150],
+        ['row', 4, '6-10', 120],
+        ['dbohp', 3, '8-12', 90],
+        ['latpull', 3, '8-12', 90],
+        ['latraise', 3, '12-15', 60],
+        ['tricep', 3, '10-15', 60],
+      ]),
+      DAY('Lower A', 'Squat focus', [
+        ['squat', 4, '5-8', 150],
+        ['rdl', 3, '8-10', 120],
+        ['legpress', 3, '10-12', 90],
+        ['legcurl', 3, '10-12', 60],
+        ['calf', 4, '10-15', 60],
+        ['hangraise', 3, '10-12', 60],
+      ]),
+      DAY('Upper B', 'Overhead and pull-up', [
+        ['ohp', 4, '5-8', 150],
+        ['pullup', 4, '6-10', 120],
+        ['incline', 3, '8-12', 90],
+        ['chestrow', 3, '8-12', 90],
+        ['facepull', 3, '12-15', 60],
+        ['dbcurl', 3, '10-12', 60],
+      ]),
+      DAY('Lower B', 'Hinge focus', [
+        ['trapdl', 4, '4-6', 180],
+        ['split', 3, '8-10', 90],
+        ['hipthrust', 3, '8-12', 120],
+        ['legext', 3, '12-15', 60],
+        ['seatcalf', 3, '12-15', 60],
+        ['pallof', 3, '10', 45],
+      ]),
+    ],
+  },
+  {
+    id: 't-home3',
+    n: 'Dumbbells at home, 3 days',
+    about: 'A pair of dumbbells and a bench or chair. Three full-body sessions.',
+    weeks: 8,
+    tag: 'Home',
+    days: [
+      DAY('Day A', 'Squat and press', [
+        ['goblet', 4, '8-12', 90],
+        ['dbbench', 4, '8-12', 90],
+        ['dbrow', 4, '8-12', 75],
+        ['dbrdl', 3, '10-12', 90],
+        ['latraise', 3, '12-15', 45],
+        ['sideplank', 3, '30s', 30],
+      ]),
+      DAY('Day B', 'Single leg and pull', [
+        ['revlunge', 3, '8-10', 75],
+        ['dbohp', 4, '8-12', 90],
+        ['dbrow', 4, '8-12', 75],
+        ['slbridge', 3, '10-12', 60],
+        ['hammer', 3, '10-12', 45],
+        ['deadbug', 3, '10', 30],
+      ]),
+      DAY('Day C', 'Power and carry', [
+        ['split', 3, '8-10', 90],
+        ['pushup', 4, '8-15', 75],
+        ['dbrdl', 3, '8-10', 90],
+        ['reardelt', 3, '12-15', 45],
+        ['ohtri', 3, '10-12', 45],
+        ['suitcase', 3, '30 m', 45],
+      ]),
+    ],
+  },
+  {
+    id: 't-bw3',
+    n: 'Bodyweight starter, 3 days',
+    about: 'No kit. Builds the habit and the basics.',
+    weeks: 6,
+    tag: 'Anywhere',
+    days: [
+      DAY('Day A', 'Full body', [
+        ['bwsquat', 3, '12-20', 60],
+        ['pushup', 3, '6-15', 60],
+        ['glutebr', 3, '12-15', 45],
+        ['superman', 3, '20s', 30],
+        ['plank', 3, '30s', 30],
+      ]),
+      DAY('Day B', 'Legs and core', [
+        ['revlunge', 3, '8-12', 60],
+        ['pike', 3, '6-10', 60],
+        ['slbridge', 3, '8-12', 45],
+        ['deadbug', 3, '10', 30],
+        ['mclimb', 3, '20', 45],
+      ]),
+      DAY('Day C', 'Power', [
+        ['jumpsq', 3, '8', 60],
+        ['pushup', 3, '6-15', 60],
+        ['wallsit', 3, '40s', 45],
+        ['sideplank', 3, '25s', 30],
+        ['burpee', 3, '8', 60],
+      ]),
+    ],
+  },
+  {
+    id: 't-hyrox',
+    n: 'Hyrox build, 4 days',
+    about: 'Strength under fatigue, erg work and compromised running, built around the eight stations.',
+    weeks: 8,
+    tag: 'Hyrox',
+    days: [
+      DAY('Strength and sleds', 'Lower strength, then heavy sled work', [
+        ['trapdl', 4, '5', 150],
+        ['split', 3, '8', 90],
+        ['sledpush', 6, '20 m', 90, 'Heavier than race weight'],
+        ['sledpull', 6, '20 m', 90],
+        ['farmer', 4, '50 m', 60],
+        ['copen', 3, '20s', 30],
+      ]),
+      DAY('Engine', 'Threshold running with erg finishers', [
+        ['run', 6, '1000 m', 90, 'Race pace, steady across all six'],
+        ['skierg', 4, '500 m', 90],
+        ['wallball', 3, '25', 60],
+      ]),
+      DAY('Upper and ergs', 'Pulling strength and erg intervals', [
+        ['pullup', 4, '6-8', 120],
+        ['dbbench', 4, '8', 90],
+        ['rowerg', 5, '500 m', 75],
+        ['skierg', 5, '250 m', 60],
+        ['bbj', 4, '10', 60],
+      ]),
+      DAY('Simulation', 'Run, station, run. Practise changing gears.', [
+        ['run', 4, '1000 m', 0, 'Straight into the next station'],
+        ['sandlunge', 4, '25 m', 0],
+        ['wallball', 4, '25', 0],
+        ['farmer', 4, '100 m', 120, 'Rest only after each full round'],
+        ['rowerg', 1, '1000 m', 0],
+      ]),
+    ],
+  },
+  {
+    id: 't-field2',
+    n: 'Field sport in-season, 2 days',
+    about: 'Two short sessions that keep strength and power up between matches without leaving you flat.',
+    weeks: 10,
+    tag: 'GAA, soccer, rugby',
+    days: [
+      DAY('Strength and power', 'Heavy but low volume', [
+        ['trapdl', 3, '3-5', 180],
+        ['boxjump', 3, '4', 90],
+        ['split', 3, '6-8', 90],
+        ['chinup', 3, '6-8', 90],
+        ['nordic', 3, '5', 90],
+        ['copen', 3, '20s', 30],
+        ['pallof', 3, '10', 30],
+      ]),
+      DAY('Speed and resilience', 'Fast and springy', [
+        ['fsquat', 3, '4-6', 150],
+        ['latbound', 3, '5', 60, 'Each side'],
+        ['dbbench', 3, '6-8', 90],
+        ['dbrow', 3, '8', 75],
+        ['slheel', 3, '12', 45],
+        ['hipthrust', 3, '6-8', 90],
+        ['sideplank', 3, '30s', 30],
+      ]),
+    ],
+  },
+  {
+    id: 't-padel2',
+    n: 'Padel strength and resilience, 2 days',
+    about: 'Rotation, lateral movement and the shoulder and elbow work that keeps you on court.',
+    weeks: 8,
+    tag: 'Padel, tennis',
+    days: [
+      DAY('Rotate and push', 'Power from the hips', [
+        ['medrot', 3, '6', 60, 'Each side'],
+        ['goblet', 3, '8-10', 90],
+        ['landmine', 3, '8', 75],
+        ['cablerow', 3, '10', 75],
+        ['extrot', 3, '15', 30],
+        ['wristext', 3, '12', 30],
+        ['pallof', 3, '10', 30],
+      ]),
+      DAY('Move and brace', 'Lateral strength', [
+        ['latbound', 3, '5', 60, 'Each side'],
+        ['cossack', 3, '6', 60, 'Each side'],
+        ['split', 3, '8', 90],
+        ['pullup', 3, '6-8', 90],
+        ['facepull', 3, '15', 45],
+        ['calf', 3, '12', 45],
+        ['suitcase', 3, '30 m', 45],
+      ]),
+    ],
+  },
+  {
+    id: 't-fct2',
+    n: 'French contrast lower, 2 days',
+    about:
+      'Heavy lift, jump, loaded jump, assisted jump, back to back. Rest 20 seconds between the four, four minutes after each round.',
+    weeks: 4,
+    tag: 'Power',
+    days: [
+      DAY('Squat contrast', 'Four rounds of the complex, then accessories', [
+        ['squat', 4, '3', 20, 'Around 80 to 85 percent, fast up'],
+        ['boxjump', 4, '4', 20],
+        ['trapjump', 4, '4', 20, 'About 30 percent of your squat'],
+        ['bandjump', 4, '5', 240, 'Rest four minutes after this one'],
+        ['rdl', 3, '6', 120],
+        ['copen', 3, '20s', 30],
+      ]),
+      DAY('Hinge contrast', 'Four rounds of the complex, then accessories', [
+        ['trapdl', 4, '3', 20, 'Around 80 to 85 percent'],
+        ['hurdle', 4, '4', 20],
+        ['kbswing', 4, '6', 20, 'Heavy and fast'],
+        ['pogo', 4, '10', 240, 'Rest four minutes after this one'],
+        ['split', 3, '6', 90],
+        ['nordic', 3, '5', 90],
+      ]),
+    ],
+  },
 ];
 
 /* Rehab protocols. Phase: [name, goal, [[exercise, sets, reps, note]]] */
-const GATE = 'Move on when pain stays at 3 out of 10 or less during the session and has settled by the next morning, for a week running.';
-const FLAGS = 'See a physio or doctor before starting if the joint gave way or locked, you cannot put weight through it, the swelling is getting worse, there is numbness or pins and needles, or pain wakes you at night.';
-const PHS = (n, goal, items) => ({ n, goal, items: items.map(([ex, sets, reps, note]) => ({ ex, sets, reps: String(reps), rest: 30, ...(note ? { note } : {}) })) });
+const GATE =
+  'Move on when pain stays at 3 out of 10 or less during the session and has settled by the next morning, for a week running.';
+const FLAGS =
+  'See a physio or doctor before starting if the joint gave way or locked, you cannot put weight through it, the swelling is getting worse, there is numbness or pins and needles, or pain wakes you at night.';
+const PHS = (n, goal, items) => ({
+  n,
+  goal,
+  items: items.map(([ex, sets, reps, note]) => ({ ex, sets, reps: String(reps), rest: 30, ...(note ? { note } : {}) })),
+});
 const REHAB = [
-  { id: 'r-hip', n: 'Hip and groin', intro: 'For groin, adductor and front-of-hip pain that came on with kicking, sprinting or changing direction.', phases: [
-    PHS('Settle it', 'Calm the area with holds that do not provoke it.', [['adsqueeze', 5, '10s', 'About half effort'], ['hipfiso', 5, '10s', 'Each side'], ['glutebr', 3, '12'], ['clam', 3, '15', 'Each side'], ['adductor', 2, '10', 'Each side']]),
-    PHS('Build strength', 'Load the adductors, hip flexors and glutes through range.', [['copen', 3, '15s', 'Knee on the bench to start'], ['psoas', 3, '10', 'Each side'], ['slbridge', 3, '10', 'Each side'], ['monster', 3, '12', 'Each way'], ['split', 3, '8', 'Pain-free depth'], ['hipair', 2, '6', 'Each side']]),
-    PHS('Return to sport', 'Speed, cutting and kicking loads.', [['copen', 3, '25s', 'Foot on the bench'], ['latbound', 3, '5', 'Each side'], ['cossack', 3, '6', 'Each side'], ['revlunge', 3, '8'], ['cod', 4, '20s', 'Build from 60 to 90 percent']])] },
-  { id: 'r-calf', n: 'Calf and Achilles', intro: 'For a calf strain or a sore, stiff Achilles.', phases: [
-    PHS('Settle it', 'Holds and easy raises to keep the tendon and muscle working.', [['calfiso', 5, '30s'], ['heelraise', 3, '15'], ['ankledf', 2, '10', 'Each side'], ['walk', 1, '10 min', 'Flat ground']]),
-    PHS('Build strength', 'Single-leg strength, slow on the way down.', [['slheel', 3, '12', 'Each side'], ['ecccalf', 3, '12', 'Each side'], ['seatcalf', 3, '12'], ['balance', 3, '30s', 'Each side']]),
-    PHS('Return to running', 'Spring and impact before full training.', [['pogo', 3, '15'], ['slheel', 3, '8', 'Hold a weight'], ['hop', 3, '5', 'Each side'], ['jumpsq', 3, '6'], ['run', 6, '1 min', 'Easy, with one minute walks']])] },
-  { id: 'r-ham', n: 'Hamstring', intro: 'For a pulled or tight hamstring.', phases: [
-    PHS('Settle it', 'Gentle holds, no stretching into pain.', [['hamiso', 5, '20s'], ['glutebr', 3, '12'], ['birddog', 3, '8', 'Each side'], ['walk', 1, '10 min']]),
-    PHS('Build strength', 'Lengthen under load.', [['hamslide', 3, '8'], ['dbrdl', 3, '10'], ['slbridge', 3, '10', 'Each side'], ['nordic', 2, '4', 'As slow as you can']]),
-    PHS('Return to sprinting', 'High-speed running, built up gradually.', [['nordic', 3, '5'], ['rdl', 3, '6'], ['kbswing', 3, '10'], ['run', 6, '40 m', 'Build-ups: 70, 80, then 90 percent']])] },
-  { id: 'r-knee', n: 'Knee', intro: 'For pain at the front of the knee with stairs, squatting or running.', phases: [
-    PHS('Settle it', 'Quad work that does not irritate the joint.', [['quadset', 3, '10'], ['slr', 3, '10', 'Each side'], ['spanish', 5, '30s'], ['clam', 3, '15', 'Each side']]),
-    PHS('Build strength', 'Controlled single-leg loading.', [['stepdown', 3, '8', 'Each side'], ['tke', 3, '15', 'Each side'], ['split', 3, '8', 'Pain-free depth'], ['slbridge', 3, '10', 'Each side'], ['legpress', 3, '12', 'Light']]),
-    PHS('Return to sport', 'Landing and direction change.', [['goblet', 3, '8'], ['lunge', 3, '8'], ['jumpsq', 3, '5', 'Soft landings'], ['latbound', 3, '5', 'Each side'], ['hop', 3, '5', 'Each side']])] },
-  { id: 'r-ankle', n: 'Ankle sprain', intro: 'For a rolled ankle once you can walk on it.', phases: [
-    PHS('Settle it', 'Get the range and basic strength back.', [['ankleabc', 2, '1'], ['heelraise', 3, '15'], ['bandankle', 3, '15', 'Each side'], ['ankledf', 2, '10', 'Each side'], ['balance', 3, '30s', 'Each side']]),
-    PHS('Build strength', 'Single-leg control.', [['slheel', 3, '12', 'Each side'], ['balance', 3, '30s', 'Eyes closed'], ['stepdown', 3, '8', 'Each side'], ['monster', 3, '12', 'Each way']]),
-    PHS('Return to sport', 'Hopping, landing and cutting.', [['pogo', 3, '15'], ['hop', 3, '5', 'Each side'], ['latbound', 3, '5', 'Each side'], ['cod', 4, '20s']])] },
-  { id: 'r-back', n: 'Lower back', intro: 'For an ordinary stiff or sore lower back.', flags: 'Go to an emergency department if you lose bladder or bowel control, have numbness around the saddle area, or a leg goes weak. See a doctor if pain follows a fall, wakes you at night, or runs below the knee.', phases: [
-    PHS('Settle it', 'Gentle movement. Rest makes backs worse.', [['pelvic', 2, '10'], ['catcow', 2, '10'], ['kneehug', 2, '20s', 'Each side'], ['mckenzie', 2, '8'], ['walk', 1, '10 min']]),
-    PHS('Build strength', 'Trunk control and hips.', [['birddog', 3, '8', 'Each side'], ['deadbug', 3, '8', 'Each side'], ['glutebr', 3, '12'], ['sideplank', 3, '20s', 'Each side'], ['hipflex', 2, '30s', 'Each side']]),
-    PHS('Return to lifting', 'Load the hinge and the carry again.', [['goblet', 3, '8'], ['dbrdl', 3, '8'], ['farmer', 3, '30 m'], ['pallof', 3, '10', 'Each side'], ['suitcase', 3, '20 m', 'Each side']])] },
-  { id: 'r-shoulder', n: 'Shoulder', intro: 'For pain reaching overhead or out to the side.', phases: [
-    PHS('Settle it', 'Easy movement and holds.', [['pendulum', 2, '30s'], ['isoext', 5, '10s'], ['scapush', 2, '10'], ['wallslide', 2, '10']]),
-    PHS('Build strength', 'Rotator cuff and shoulder blade control.', [['extrot', 3, '15'], ['introt', 3, '15'], ['ytw', 2, '8'], ['bandrow', 3, '12'], ['facepull', 3, '12']]),
-    PHS('Return to sport', 'Pressing and throwing loads.', [['landmine', 3, '8'], ['pushup', 3, '10'], ['dbohp', 3, '10', 'Light'], ['medrot', 3, '6', 'Each side']])] },
-  { id: 'r-elbow', n: 'Elbow', intro: 'For pain on the outside of the elbow from gripping or hitting: tennis or padel elbow.', phases: [
-    PHS('Settle it', 'Holds take the edge off tendon pain.', [['isowrist', 5, '30s'], ['grip', 3, '10'], ['wristflexs', 2, '30s']]),
-    PHS('Build strength', 'Slow lowering to rebuild the tendon.', [['wristext', 3, '12'], ['supin', 3, '12'], ['hammer', 3, '12', 'Light'], ['bandrow', 3, '12']]),
-    PHS('Return to hitting', 'Heavier loads, then build court time gradually.', [['wristext', 3, '8', 'Heavier'], ['farmer', 3, '30 m'], ['dbrow', 3, '10'], ['medrot', 3, '6', 'Each side']])] }
+  {
+    id: 'r-hip',
+    n: 'Hip and groin',
+    intro: 'For groin, adductor and front-of-hip pain that came on with kicking, sprinting or changing direction.',
+    phases: [
+      PHS('Settle it', 'Calm the area with holds that do not provoke it.', [
+        ['adsqueeze', 5, '10s', 'About half effort'],
+        ['hipfiso', 5, '10s', 'Each side'],
+        ['glutebr', 3, '12'],
+        ['clam', 3, '15', 'Each side'],
+        ['adductor', 2, '10', 'Each side'],
+      ]),
+      PHS('Build strength', 'Load the adductors, hip flexors and glutes through range.', [
+        ['copen', 3, '15s', 'Knee on the bench to start'],
+        ['psoas', 3, '10', 'Each side'],
+        ['slbridge', 3, '10', 'Each side'],
+        ['monster', 3, '12', 'Each way'],
+        ['split', 3, '8', 'Pain-free depth'],
+        ['hipair', 2, '6', 'Each side'],
+      ]),
+      PHS('Return to sport', 'Speed, cutting and kicking loads.', [
+        ['copen', 3, '25s', 'Foot on the bench'],
+        ['latbound', 3, '5', 'Each side'],
+        ['cossack', 3, '6', 'Each side'],
+        ['revlunge', 3, '8'],
+        ['cod', 4, '20s', 'Build from 60 to 90 percent'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-calf',
+    n: 'Calf and Achilles',
+    intro: 'For a calf strain or a sore, stiff Achilles.',
+    phases: [
+      PHS('Settle it', 'Holds and easy raises to keep the tendon and muscle working.', [
+        ['calfiso', 5, '30s'],
+        ['heelraise', 3, '15'],
+        ['ankledf', 2, '10', 'Each side'],
+        ['walk', 1, '10 min', 'Flat ground'],
+      ]),
+      PHS('Build strength', 'Single-leg strength, slow on the way down.', [
+        ['slheel', 3, '12', 'Each side'],
+        ['ecccalf', 3, '12', 'Each side'],
+        ['seatcalf', 3, '12'],
+        ['balance', 3, '30s', 'Each side'],
+      ]),
+      PHS('Return to running', 'Spring and impact before full training.', [
+        ['pogo', 3, '15'],
+        ['slheel', 3, '8', 'Hold a weight'],
+        ['hop', 3, '5', 'Each side'],
+        ['jumpsq', 3, '6'],
+        ['run', 6, '1 min', 'Easy, with one minute walks'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-ham',
+    n: 'Hamstring',
+    intro: 'For a pulled or tight hamstring.',
+    phases: [
+      PHS('Settle it', 'Gentle holds, no stretching into pain.', [
+        ['hamiso', 5, '20s'],
+        ['glutebr', 3, '12'],
+        ['birddog', 3, '8', 'Each side'],
+        ['walk', 1, '10 min'],
+      ]),
+      PHS('Build strength', 'Lengthen under load.', [
+        ['hamslide', 3, '8'],
+        ['dbrdl', 3, '10'],
+        ['slbridge', 3, '10', 'Each side'],
+        ['nordic', 2, '4', 'As slow as you can'],
+      ]),
+      PHS('Return to sprinting', 'High-speed running, built up gradually.', [
+        ['nordic', 3, '5'],
+        ['rdl', 3, '6'],
+        ['kbswing', 3, '10'],
+        ['run', 6, '40 m', 'Build-ups: 70, 80, then 90 percent'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-knee',
+    n: 'Knee',
+    intro: 'For pain at the front of the knee with stairs, squatting or running.',
+    phases: [
+      PHS('Settle it', 'Quad work that does not irritate the joint.', [
+        ['quadset', 3, '10'],
+        ['slr', 3, '10', 'Each side'],
+        ['spanish', 5, '30s'],
+        ['clam', 3, '15', 'Each side'],
+      ]),
+      PHS('Build strength', 'Controlled single-leg loading.', [
+        ['stepdown', 3, '8', 'Each side'],
+        ['tke', 3, '15', 'Each side'],
+        ['split', 3, '8', 'Pain-free depth'],
+        ['slbridge', 3, '10', 'Each side'],
+        ['legpress', 3, '12', 'Light'],
+      ]),
+      PHS('Return to sport', 'Landing and direction change.', [
+        ['goblet', 3, '8'],
+        ['lunge', 3, '8'],
+        ['jumpsq', 3, '5', 'Soft landings'],
+        ['latbound', 3, '5', 'Each side'],
+        ['hop', 3, '5', 'Each side'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-ankle',
+    n: 'Ankle sprain',
+    intro: 'For a rolled ankle once you can walk on it.',
+    phases: [
+      PHS('Settle it', 'Get the range and basic strength back.', [
+        ['ankleabc', 2, '1'],
+        ['heelraise', 3, '15'],
+        ['bandankle', 3, '15', 'Each side'],
+        ['ankledf', 2, '10', 'Each side'],
+        ['balance', 3, '30s', 'Each side'],
+      ]),
+      PHS('Build strength', 'Single-leg control.', [
+        ['slheel', 3, '12', 'Each side'],
+        ['balance', 3, '30s', 'Eyes closed'],
+        ['stepdown', 3, '8', 'Each side'],
+        ['monster', 3, '12', 'Each way'],
+      ]),
+      PHS('Return to sport', 'Hopping, landing and cutting.', [
+        ['pogo', 3, '15'],
+        ['hop', 3, '5', 'Each side'],
+        ['latbound', 3, '5', 'Each side'],
+        ['cod', 4, '20s'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-back',
+    n: 'Lower back',
+    intro: 'For an ordinary stiff or sore lower back.',
+    flags:
+      'Go to an emergency department if you lose bladder or bowel control, have numbness around the saddle area, or a leg goes weak. See a doctor if pain follows a fall, wakes you at night, or runs below the knee.',
+    phases: [
+      PHS('Settle it', 'Gentle movement. Rest makes backs worse.', [
+        ['pelvic', 2, '10'],
+        ['catcow', 2, '10'],
+        ['kneehug', 2, '20s', 'Each side'],
+        ['mckenzie', 2, '8'],
+        ['walk', 1, '10 min'],
+      ]),
+      PHS('Build strength', 'Trunk control and hips.', [
+        ['birddog', 3, '8', 'Each side'],
+        ['deadbug', 3, '8', 'Each side'],
+        ['glutebr', 3, '12'],
+        ['sideplank', 3, '20s', 'Each side'],
+        ['hipflex', 2, '30s', 'Each side'],
+      ]),
+      PHS('Return to lifting', 'Load the hinge and the carry again.', [
+        ['goblet', 3, '8'],
+        ['dbrdl', 3, '8'],
+        ['farmer', 3, '30 m'],
+        ['pallof', 3, '10', 'Each side'],
+        ['suitcase', 3, '20 m', 'Each side'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-shoulder',
+    n: 'Shoulder',
+    intro: 'For pain reaching overhead or out to the side.',
+    phases: [
+      PHS('Settle it', 'Easy movement and holds.', [
+        ['pendulum', 2, '30s'],
+        ['isoext', 5, '10s'],
+        ['scapush', 2, '10'],
+        ['wallslide', 2, '10'],
+      ]),
+      PHS('Build strength', 'Rotator cuff and shoulder blade control.', [
+        ['extrot', 3, '15'],
+        ['introt', 3, '15'],
+        ['ytw', 2, '8'],
+        ['bandrow', 3, '12'],
+        ['facepull', 3, '12'],
+      ]),
+      PHS('Return to sport', 'Pressing and throwing loads.', [
+        ['landmine', 3, '8'],
+        ['pushup', 3, '10'],
+        ['dbohp', 3, '10', 'Light'],
+        ['medrot', 3, '6', 'Each side'],
+      ]),
+    ],
+  },
+  {
+    id: 'r-elbow',
+    n: 'Elbow',
+    intro: 'For pain on the outside of the elbow from gripping or hitting: tennis or padel elbow.',
+    phases: [
+      PHS('Settle it', 'Holds take the edge off tendon pain.', [
+        ['isowrist', 5, '30s'],
+        ['grip', 3, '10'],
+        ['wristflexs', 2, '30s'],
+      ]),
+      PHS('Build strength', 'Slow lowering to rebuild the tendon.', [
+        ['wristext', 3, '12'],
+        ['supin', 3, '12'],
+        ['hammer', 3, '12', 'Light'],
+        ['bandrow', 3, '12'],
+      ]),
+      PHS('Return to hitting', 'Heavier loads, then build court time gradually.', [
+        ['wristext', 3, '8', 'Heavier'],
+        ['farmer', 3, '30 m'],
+        ['dbrow', 3, '10'],
+        ['medrot', 3, '6', 'Each side'],
+      ]),
+    ],
+  },
 ];
 
 /* Timed follow-along routines. Step: [name, seconds, cue] */
-const side = (n, s, cue) => [[n + ', left', s, cue], [n + ', right', s, cue]];
+const side = (n, s, cue) => [
+  [n + ', left', s, cue],
+  [n + ', right', s, cue],
+];
 const ROUTINES = [
-  { id: 'q-morning', n: 'Morning mobility', about: 'Wakes up hips, spine and shoulders.', steps: [['Cat-cow', 60, 'Slow, one segment at a time'], ...side("World's greatest stretch", 45, 'Elbow to instep, then rotate and reach'), ['90/90 hip switches', 60, 'Sit tall'], ...side('Open book rotation', 40, 'Follow your hand with your eyes'), ['Downward dog', 45, 'Pedal the heels'], ['Deep squat hold', 60, 'Elbows push the knees out'], ["Child's pose", 45, 'Long exhales']] },
-  { id: 'q-after', n: 'After a match or run', about: 'Brings you down and eases calves, hamstrings and hips.', steps: [...side('Calf stretch', 40, 'Back heel down'), ...side('Hamstring stretch', 45, 'Flat back, hinge at the hip'), ...side('Hip flexor stretch', 45, 'Tuck the pelvis'), ...side('Pigeon stretch', 60, 'Square the hips'), ['Adductor rock-back', 60, 'Swap sides halfway'], ['Legs up the wall', 90, 'Breathe in for four, out for six']] },
-  { id: 'q-hips', n: 'Hips and glutes', about: 'For tight hips and glutes.', steps: [['90/90 hip switches', 90, 'Slow and tall'], ...side('Figure-four glute stretch', 60, 'Pull the legs in'), ...side('Pigeon stretch', 75, 'Fold forward'), ...side('Couch stretch', 60, 'Stay tall'), ['Adductor rock-back', 60, 'Swap sides halfway'], ['Deep squat hold', 45, 'Shift side to side']] },
-  { id: 'q-desk', n: 'Desk reset', about: 'Five minutes to undo sitting.', steps: [...side('Neck side stretch', 30, 'Opposite arm long'), ['Doorway pec stretch', 45, 'Step through gently'], ...side('Thread the needle', 40, 'Reach under and through'), ['Cat-cow', 40, 'Slow'], ...side('Hip flexor stretch', 30, 'Tuck the pelvis')] },
-  { id: 'q-roll', n: 'Foam roll', about: 'Legs and upper back.', steps: [...side('Quads', 60, 'Slow passes, pause on tender spots'), ...side('Calves', 45, 'Cross one leg over for pressure'), ...side('Glutes', 45, 'Sit on the roller, ankle over knee'), ['Upper back', 90, 'Hands behind your head, extend over']] },
-  { id: 'q-breath', n: 'Box breathing', about: 'Four minutes to settle your system before bed or after training.', steps: Array.from({ length: 15 }, () => [['Breathe in', 4, 'Through the nose'], ['Hold', 4, 'Stay relaxed'], ['Breathe out', 4, 'Slow and complete'], ['Hold', 4, 'Stay relaxed']]).flat() }
+  {
+    id: 'q-morning',
+    n: 'Morning mobility',
+    about: 'Wakes up hips, spine and shoulders.',
+    steps: [
+      ['Cat-cow', 60, 'Slow, one segment at a time'],
+      ...side("World's greatest stretch", 45, 'Elbow to instep, then rotate and reach'),
+      ['90/90 hip switches', 60, 'Sit tall'],
+      ...side('Open book rotation', 40, 'Follow your hand with your eyes'),
+      ['Downward dog', 45, 'Pedal the heels'],
+      ['Deep squat hold', 60, 'Elbows push the knees out'],
+      ["Child's pose", 45, 'Long exhales'],
+    ],
+  },
+  {
+    id: 'q-after',
+    n: 'After a match or run',
+    about: 'Brings you down and eases calves, hamstrings and hips.',
+    steps: [
+      ...side('Calf stretch', 40, 'Back heel down'),
+      ...side('Hamstring stretch', 45, 'Flat back, hinge at the hip'),
+      ...side('Hip flexor stretch', 45, 'Tuck the pelvis'),
+      ...side('Pigeon stretch', 60, 'Square the hips'),
+      ['Adductor rock-back', 60, 'Swap sides halfway'],
+      ['Legs up the wall', 90, 'Breathe in for four, out for six'],
+    ],
+  },
+  {
+    id: 'q-hips',
+    n: 'Hips and glutes',
+    about: 'For tight hips and glutes.',
+    steps: [
+      ['90/90 hip switches', 90, 'Slow and tall'],
+      ...side('Figure-four glute stretch', 60, 'Pull the legs in'),
+      ...side('Pigeon stretch', 75, 'Fold forward'),
+      ...side('Couch stretch', 60, 'Stay tall'),
+      ['Adductor rock-back', 60, 'Swap sides halfway'],
+      ['Deep squat hold', 45, 'Shift side to side'],
+    ],
+  },
+  {
+    id: 'q-desk',
+    n: 'Desk reset',
+    about: 'Five minutes to undo sitting.',
+    steps: [
+      ...side('Neck side stretch', 30, 'Opposite arm long'),
+      ['Doorway pec stretch', 45, 'Step through gently'],
+      ...side('Thread the needle', 40, 'Reach under and through'),
+      ['Cat-cow', 40, 'Slow'],
+      ...side('Hip flexor stretch', 30, 'Tuck the pelvis'),
+    ],
+  },
+  {
+    id: 'q-roll',
+    n: 'Foam roll',
+    about: 'Legs and upper back.',
+    steps: [
+      ...side('Quads', 60, 'Slow passes, pause on tender spots'),
+      ...side('Calves', 45, 'Cross one leg over for pressure'),
+      ...side('Glutes', 45, 'Sit on the roller, ankle over knee'),
+      ['Upper back', 90, 'Hands behind your head, extend over'],
+    ],
+  },
+  {
+    id: 'q-breath',
+    n: 'Box breathing',
+    about: 'Four minutes to settle your system before bed or after training.',
+    steps: Array.from({ length: 15 }, () => [
+      ['Breathe in', 4, 'Through the nose'],
+      ['Hold', 4, 'Stay relaxed'],
+      ['Breathe out', 4, 'Slow and complete'],
+      ['Hold', 4, 'Stay relaxed'],
+    ]).flat(),
+  },
 ];

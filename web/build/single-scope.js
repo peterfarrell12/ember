@@ -11,10 +11,17 @@ const ID = 'virtual:ember-app';
 const RESOLVED = '\0' + ID;
 
 export default function singleScope({ dir }) {
-  const files = () => fs.readdirSync(dir).filter(f => /^0.*\.js$/.test(f)).sort().map(f => path.join(dir, f));
+  const files = () =>
+    fs
+      .readdirSync(dir)
+      .filter(f => /^0.*\.js$/.test(f))
+      .sort()
+      .map(f => path.join(dir, f));
   return {
     name: 'ember-single-scope',
-    resolveId(id) { if (id === ID) return RESOLVED; },
+    resolveId(id) {
+      if (id === ID) return RESOLVED;
+    },
     load(id) {
       if (id !== RESOLVED) return;
       const list = files();
