@@ -13,9 +13,15 @@
     "lint": "node build/join.js && eslint .",
     "typecheck": "tsc -p .",
     "test:unit": "node --test \"test/*.test.mjs\"",
-    "test:scanner": "vite build --logLevel error && node test/browser/scanner.e2e.mjs"
+    "test:scanner": "vite build --logLevel error && node test/browser/scanner.e2e.mjs",
+    "native:assets": "capacitor-assets generate --ios --android --iconBackgroundColor \"#0f3d2e\" --iconBackgroundColorDark \"#0f3d2e\" --splashBackgroundColor \"#0f3d2e\" --splashBackgroundColorDark \"#0f3d2e\"",
+    "native:sync": "vite build && cap sync"
   },
   "devDependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.2",
+    "@capacitor/ios": "8.6.2",
     "@eslint/js": "10.0.1",
     "@fontsource-variable/bricolage-grotesque": "5.3.0",
     "@fontsource-variable/figtree": "5.3.0",
@@ -28,6 +34,10 @@
     "vite": "^8.3.8"
   },
   "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/status-bar": "8.0.4",
     "@supabase/supabase-js": "2.119.2",
     "@zxing/library": "0.21.3",
     "fflate": "0.8.2"

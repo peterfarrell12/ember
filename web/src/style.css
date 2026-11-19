@@ -4325,3 +4325,15 @@ small.was {
   border-color: var(--primary);
   color: var(--on-primary);
 }
+
+/* Phone edges: stay clear of the notch and the home bar, when installed to a home screen or inside the phone app.
+   In an ordinary browser tab these insets are zero and nothing changes. */
+#app {
+  padding-top: env(safe-area-inset-top);
+}
+nav.tabs {
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+.sheet {
+  padding-bottom: env(safe-area-inset-bottom);
+}

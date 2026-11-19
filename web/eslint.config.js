@@ -13,7 +13,7 @@ const shared = {
 };
 
 export default [
-  { ignores: ['dist/**'] },
+  { ignores: ['dist/**', 'dist-local/**', 'android/**', 'ios/**'] },
   // a directive needed in the joined pass looks unused in the per-file pass
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   {

@@ -188,3 +188,18 @@ A.fdWrongGo = async () => {
     toast('Could not send that. Check your connection.');
   }
 };
+
+/* ---------- inside the phone app: the back button, and sign-in links that open the app ---------- */
+nativeStart({
+  onBack: () => {
+    if (celeOpen) return (A.celeNext(), true);
+    if (sheets.length) return (closeSheet(), true);
+    if (S.ready && S.tab !== 'today') return (A.tab({ tab: 'today' }), true);
+    return false;
+  },
+  onLink: async url => {
+    const ok = await signInFromLink(url);
+    if (ok) location.reload();
+    else if (ok === false) toast('That sign-in link has expired or was already used. Ask for a new one.');
+  },
+});

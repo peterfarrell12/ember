@@ -7,5 +7,7 @@ let testMode = false;
 try {
   testMode = !!localStorage.getItem('ember:device-only');
 } catch (e) {}
-if (import.meta.env.PROD && 'serviceWorker' in navigator && !testMode)
+// Nor inside the phone app, whose files are already on the device.
+const inPhoneApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !testMode && !inPhoneApp)
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));

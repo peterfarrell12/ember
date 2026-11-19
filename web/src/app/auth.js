@@ -1,6 +1,7 @@
 // Accounts: email sign-in with a link (no password), through Supabase Auth.
 // The Supabase library is only fetched when it is first needed, so it costs nothing until then.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { isNative, tokensFrom, NATIVE_SIGNIN_URL } from './native.js';
 
 let client = null;
 
@@ -33,7 +34,11 @@ export async function sendSignInLink(email) {
   const c = await supabaseClient();
   const { error } = await c.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true },
+    // in the phone app the link must come back to the app, not open a browser tab
+    options: {
+      emailRedirectTo: isNative() ? NATIVE_SIGNIN_URL : location.origin + location.pathname,
+      shouldCreateUser: true,
+    },
   });
   if (error) throw error;
 }
@@ -50,6 +55,19 @@ export const aiAccess = {
 
 /** How the app reaches the `product` server function (barcode lookup). */
 export const productAccess = { ...aiAccess, url: SUPABASE_URL + '/functions/v1/product' };
+
+/**
+ * Finish signing in from a link that opened the phone app. Returns true when the person is now signed in,
+ * false when the link was a sign-in link that failed, and null when the link was something else.
+ */
+export async function signInFromLink(url) {
+  const t = tokensFrom(url);
+  if (!t) return null;
+  if ('error' in t) return false;
+  const c = await supabaseClient();
+  const { error } = await c.auth.setSession(t);
+  return !error;
+}
 
 /** Sign out on this device only. */
 export async function signOut() {

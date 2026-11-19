@@ -49,6 +49,8 @@ npm run typecheck    # TypeScript over the files that opt in with // @ts-check
 npm run format       # Prettier
 ```
 
+The phone apps are the web build inside a Capacitor shell (`web/android`, `web/ios`, app id `ie.ember.app`). `npm run native:sync` in `web/` rebuilds and copies the web app in; `web/src/app/native.js` holds what differs inside the app. The "Android test build" workflow produces an installable debug app. iPhone builds need a Mac with Xcode.
+
 `prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
 
 Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.

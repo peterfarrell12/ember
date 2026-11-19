@@ -10,6 +10,7 @@ import * as m7 from './dictation.js';
 import * as m8 from './scanner.js';
 import * as m9 from './product-server.js';
 import * as m10 from './errors.js';
+import * as m11 from './native.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -57,6 +58,7 @@ declare global {
   const sendSignInLink: typeof m4.sendSignInLink;
   const aiAccess: typeof m4.aiAccess;
   const productAccess: typeof m4.productAccess;
+  const signInFromLink: typeof m4.signInFromLink;
   const signOut: typeof m4.signOut;
   const TASKS: typeof m5.TASKS;
   const looseJson: typeof m6.looseJson;
@@ -67,4 +69,8 @@ declare global {
   const lookupBarcode: typeof m9.lookupBarcode;
   const describeError: typeof m10.describeError;
   const reportErrors: typeof m10.reportErrors;
+  const isNative: typeof m11.isNative;
+  const NATIVE_SIGNIN_URL: typeof m11.NATIVE_SIGNIN_URL;
+  const tokensFrom: typeof m11.tokensFrom;
+  const nativeStart: typeof m11.nativeStart;
 }

@@ -111,6 +111,32 @@ await draw(
    </div>`,
 );
 
+// --- sources for the phone apps' icons and start-up screens (npm run native:assets turns these into every size) ---
+const nat = path.join(web, 'assets');
+fs.mkdirSync(nat, { recursive: true });
+await draw(path.join(nat, 'icon-only.png'), 1024, 1024, iconSvg(1024));
+// Android draws its icon from two layers and crops them to whatever shape the phone uses: keep the mark well inside
+await draw(
+  path.join(nat, 'icon-foreground.png'),
+  1024,
+  1024,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">${mark(430, '#fff', EMBER_BRIGHT, 297, 297)}</svg>`,
+  { transparent: true },
+);
+await draw(
+  path.join(nat, 'icon-background.png'),
+  1024,
+  1024,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><rect width="1024" height="1024" fill="${GREEN}"/></svg>`,
+);
+for (const name of ['splash.png', 'splash-dark.png'])
+  await draw(
+    path.join(nat, name),
+    2732,
+    2732,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732"><rect width="2732" height="2732" fill="${GREEN}"/>${mark(420, '#fff', EMBER_BRIGHT, 1156, 1156)}</svg>`,
+  );
+
 // --- for use elsewhere ---
 fs.mkdirSync(brand, { recursive: true });
 await draw(path.join(brand, 'app-icon-1024.png'), 1024, 1024, iconSvg(1024)); // square, no transparency: what the app stores ask for
