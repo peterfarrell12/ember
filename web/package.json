@@ -10,6 +10,12 @@
     "test": "vite build && APP_DIR=\"$PWD/dist\" ../prototype/run-tests.sh"
   },
   "devDependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/figtree": "5.3.0",
     "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "@zxing/library": "0.21.3",
+    "fflate": "0.8.2"
   }
 }

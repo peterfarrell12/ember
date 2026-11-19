@@ -295,7 +295,6 @@ function localParse(text) {
   }
   return out;
 }
-function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
 async function shrink(file, max = 1600) {
   const bmp = await createImageBitmap(file); const sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas'); cv.width = r0(bmp.width * sc); cv.height = r0(bmp.height * sc);
@@ -306,7 +305,7 @@ async function decodeBarcode(file) {
   if (cv && 'BarcodeDetector' in window) { try { const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }); const r = await det.detect(cv); if (r[0]) return r[0].rawValue; } catch (e) { } }
   if (cv) {
     try {
-      if (!window.ZXing) await loadScript('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js');
+      if (!window.ZXing) window.ZXing = await import('@zxing/library');
       const Z = window.ZXing; const hints = new Map(); hints.set(Z.DecodeHintType.TRY_HARDER, true);
       hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E]);
       const img = new Image(); img.src = cv.toDataURL('image/png'); await img.decode();

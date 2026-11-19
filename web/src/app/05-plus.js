@@ -266,7 +266,7 @@ async function parseHealth(file, onProg) {
   };
   const reader = file.stream().getReader(); let read = 0, i = 0;
   if (/\.zip$/i.test(file.name) || /zip/.test(file.type)) {
-    if (!window.fflate) await loadScript('https://unpkg.com/fflate@0.8.2/umd/index.js');
+    if (!window.fflate) window.fflate = await import('fflate');
     const unz = new window.fflate.Unzip(); unz.register(window.fflate.UnzipInflate); let found = false;
     unz.onfile = f => { if (/\.xml$/i.test(f.name) && !/cda/i.test(f.name)) { found = true; f.ondata = (err, chunk, final) => { if (err) throw err; eat(dec.decode(chunk, { stream: !final })); }; f.start(); } };
     for (;;) { const { done, value } = await reader.read(); if (done) { unz.push(new Uint8Array(0), true); break; } read += value.length; unz.push(value); if (++i % 6 === 0) { onProg(read / file.size); await sleep(0); } }

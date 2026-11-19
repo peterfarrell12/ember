@@ -24,6 +24,7 @@ while [ $# -gt 0 ]; do
 done
 [ ${#tests[@]} -eq 0 ] && tests=(t1 t2 t4 t5 t6 t8 t9 t10 t11 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 b1)
 
+web=0; [ -n "${APP_DIR:-}" ] && web=1
 if [ -z "${APP_DIR:-}" ]; then
   python3 "$here/scripts/build.py" || exit 1
   node -e "const h=require('fs').readFileSync('$here/app/index.html','utf8');new Function(h.match(/<script>([\s\S]*)<\/script>/)[1]);console.log('syntax ok')" || exit 1
@@ -46,16 +47,24 @@ run_one() {
 export -f run_one; export here
 printf '%s\n' "${tests[@]}" | xargs -P "$jobs" -I{} bash -c 'run_one {}'
 
+# Baselines: golden/<name>.txt is what the prototype prints. Where the web app is meant to print
+# something different, golden/web/<name>.txt holds that instead, so the difference between the two
+# files is the full list of intended changes from the prototype.
 fail=0
 for t in "${tests[@]}"; do
+  gold="golden/$t.txt"
+  [ $web -eq 1 ] && [ -f "golden/web/$t.txt" ] && gold="golden/web/$t.txt"
   if grep -q "Traceback\|TimeoutError" "out/$t.raw"; then
     echo "FAIL  $t  (error)"; tail -6 "out/$t.raw"; fail=1
+  elif [ $update -eq 1 ] && [ $web -eq 1 ]; then
+    if [ -f "golden/$t.txt" ] && diff -q "golden/$t.txt" "out/$t.txt" >/dev/null; then rm -f "golden/web/$t.txt"; echo "same as prototype $t"
+    else mkdir -p golden/web; cp "out/$t.txt" "golden/web/$t.txt"; echo "saved web/$t"; fi
   elif [ $update -eq 1 ]; then
     cp "out/$t.txt" "golden/$t.txt"; echo "saved $t"
-  elif [ ! -f "golden/$t.txt" ]; then
+  elif [ ! -f "$gold" ]; then
     echo "FAIL  $t  (no baseline: run with --update)"; fail=1
-  elif ! diff -q "golden/$t.txt" "out/$t.txt" >/dev/null; then
-    echo "FAIL  $t  (output differs from baseline)"; diff "golden/$t.txt" "out/$t.txt" | head -12; fail=1
+  elif ! diff -q "$gold" "out/$t.txt" >/dev/null; then
+    echo "FAIL  $t  (output differs from baseline $gold)"; diff "$gold" "out/$t.txt" | head -12; fail=1
   else
     echo "ok    $t"
   fi
