@@ -8,7 +8,8 @@ const DB = {
   codes: null,
   codesMore: null,
 };
-const FILES = { gen: 'foods-generic.json', br: 'foods-brands.json', more: 'foods-brands-more.json' };
+/* The three food lists. A build gives each a name that changes only when its contents do (build/food-data.js). */
+const FILES = __FOOD_FILES__;
 const norm = s =>
   ' ' +
   String(s)

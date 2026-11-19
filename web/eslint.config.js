@@ -7,7 +7,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 // 'AI' is the app's own wrapper around Claude calls; the browser list also names an experimental built-in AI.
-const shared = { ecmaVersion: 2023, globals: { ...globals.browser, AI: 'off' } };
+const shared = { ecmaVersion: 2023, globals: { ...globals.browser, AI: 'off', __FOOD_FILES__: 'readonly' } };
 
 export default [
   { ignores: ['dist/**'] },
