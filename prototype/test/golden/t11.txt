@@ -21,7 +21,7 @@ water: 250
 sheets after Done: 0
 dinner usual: Same as yesterday's dinner | Chicken breast, grilled, Basmati rice, cooked | 539 kcal | Add all | YOUR USUAL DINNER | Chicken breast, grilled | 248 kcal | USDA | 150 g · 7 times | Basmati rice, cooked
 detail btn: Log to dinner
-main h 2047
+main h N
 ingredient btn found: True
 pick mode: qadd 0 seg 0 tiles 0
 rec top: [('Chicken breast, grilled', 14, {'l': 6, 'd': 8}), ('Porridge', 10, {'b': 10}), ('Chicken breast, grilled without sauce, skin not eaten', 1, {'l': 1}), ('Wholemeal wrap', 7, {'l': 7})]
