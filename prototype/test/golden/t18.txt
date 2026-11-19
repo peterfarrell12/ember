@@ -5,8 +5,8 @@ REGISTER: 12 | Booked | 18 | Places | 0 | Waiting | 0 | Here
 after adding You: 13 | Booked | 18 | Places | 0 | Waiting | 0 | Here | toast: Booked in
 after drop: 12 | Booked | 18 | Places | 0 | Waiting | 0 | Here | toast: Booked in | Removed from the class
 classes now 16 {'id': 'cx4dcpk....', 'n': 'Kettlebells', 'wd': 4, 'tm': '18:00', 'min': 45, 'cap': 8, 'coach': 'k1', 'room': 0}
-MEMBERS: Members | Coaches | Memberships | All 79 | At risk 9 | Member | Y | You | You | 10-class pass, 9 left · your own bookings | AD | Aisling Dolan | Sample | 10-class pass, 2 left · N visits in 4 weeks, last D | AL | Aisling Lavin | Sample | Unlimited · N visits in 4 weeks, last D | AM | Aisling Mannion | Sample | 
-at risk rows: 9
+MEMBERS: Members | Coaches | Memberships | All 79 | At risk N | Member | Y | You | You | 10-class pass, 9 left · your own bookings | AD | Aisling Dolan | Sample | 10-class pass, 2 left · N visits in 4 weeks, last D | AL | Aisling Lavin | Sample | Unlimited · N visits in 4 weeks, last D | AM | Aisling Mannion | Sample | 
+at risk rows: N
 coach 4 verified now: True
 PLANS: Members | Coaches | Memberships | Unlimited | €59 a month |  | 53 members. Book as many classes as they like. |  | 10-class pass | €90 for 10 classes |  | 17 members. A class comes off the pass at boo
 STRIP: My gym | Next: HIIT class, Fri 20 Nov at 17:30

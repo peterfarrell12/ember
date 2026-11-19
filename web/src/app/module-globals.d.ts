@@ -8,6 +8,7 @@ import * as m5 from './ai-tasks.js';
 import * as m6 from './ai-server.js';
 import * as m7 from './dictation.js';
 import * as m8 from './scanner.js';
+import * as m9 from './product-server.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -46,6 +47,7 @@ declare global {
   const storeError: typeof m3.storeError;
   const supabaseBackend: typeof m3.supabaseBackend;
   const supabasePhotos: typeof m3.supabasePhotos;
+  const reportProduct: typeof m3.reportProduct;
   const deleteAccount: typeof m3.deleteAccount;
   const authConfigured: typeof m4.authConfigured;
   const signInLinkFailed: typeof m4.signInLinkFailed;
@@ -53,6 +55,7 @@ declare global {
   const signedInUser: typeof m4.signedInUser;
   const sendSignInLink: typeof m4.sendSignInLink;
   const aiAccess: typeof m4.aiAccess;
+  const productAccess: typeof m4.productAccess;
   const signOut: typeof m4.signOut;
   const TASKS: typeof m5.TASKS;
   const looseJson: typeof m6.looseJson;
@@ -60,4 +63,5 @@ declare global {
   const serverSample: typeof m6.serverSample;
   const browserDictation: typeof m7.browserDictation;
   const startScanner: typeof m8.startScanner;
+  const lookupBarcode: typeof m9.lookupBarcode;
 }

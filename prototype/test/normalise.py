@@ -11,4 +11,6 @@ for line in sys.stdin:
     line = re.sub(r'^(mid-stream cards: )\d+', r'\1N', line)   # t19: how many ideas had streamed in when the test looked
     line = re.sub(r'^(main h )\d+$', r'\1N', line)   # t11: a height in pixels, which depends on the machine's fonts
     line = re.sub(r'^(tick toast: )Session skipped\. Everything after it moves up\. \| ', r'\1', line)   # t14: on a slow machine the previous toast is still showing
+    line = re.sub(r'At risk \d+', 'At risk N', line)   # t18: same cause as the visit counts
+    line = re.sub(r'^(at risk rows: )\d+', r'\1N', line)
     sys.stdout.write(line)

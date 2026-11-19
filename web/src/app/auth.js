@@ -48,6 +48,9 @@ export const aiAccess = {
   },
 };
 
+/** How the app reaches the `product` server function (barcode lookup). */
+export const productAccess = { ...aiAccess, url: SUPABASE_URL + '/functions/v1/product' };
+
 /** Sign out on this device only. */
 export async function signOut() {
   const c = await supabaseClient();

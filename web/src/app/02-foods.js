@@ -519,6 +519,8 @@ async function findBarcode(code) {
   const key = stripCode(code);
   if (!key) return null;
   for (const c of Object.values(S.foods)) if (c.code && stripCode(c.code) === key) return customFood(c);
+  const seen = (LS.get('ember:barcodes') || {})[key]; // found online before, on this device: no need to ask again
+  if (seen) return seen;
   await loadDB('br');
   if (DB.br && !DB.codes) {
     DB.codes = new Map();
@@ -532,6 +534,41 @@ async function findBarcode(code) {
   }
   if (DB.codesMore && DB.codesMore.has(key)) return brFood('more', DB.codesMore.get(key));
   return null;
+}
+
+/* A barcode that is in none of the lists: ask the server, which checks the products it has saved and then
+   Open Food Facts. Returns a food, null when nobody knows the barcode, or 'unreachable'. What is found is
+   kept on this device, so the next scan of the same product is instant. */
+async function findBarcodeOnline(code) {
+  if (!Store.durable) return null;
+  const key = stripCode(code);
+  const r = await lookupBarcode(productAccess, key);
+  if (!r || r === 'unreachable') return r;
+  const ports = [];
+  if (r.serving_g > 0) ports.push(['1 serving', r.serving_g]);
+  if (r.pack_g > 0 && r.pack_g !== r.serving_g && r.pack_g <= 1000) ports.push(['1 pack', r.pack_g]);
+  const food = {
+    id: 'o' + key,
+    n: r.name,
+    b: r.brand || '',
+    k: r1(r.kcal),
+    p: r1(r.p),
+    c: r1(r.c),
+    f: r1(r.f),
+    fi: r.fi == null ? 0 : r1(r.fi),
+    su: r.su == null ? null : r1(r.su),
+    sf: r.sf == null ? null : r1(r.sf),
+    na: r.salt == null ? null : r0(r.salt * 400),
+    ports,
+    src: 'B',
+    code: key,
+  };
+  const seen = LS.get('ember:barcodes') || {};
+  const keys = Object.keys(seen);
+  if (keys.length >= 300) delete seen[keys[0]]; // keep the list from growing without limit
+  seen[key] = food;
+  LS.set('ember:barcodes', seen);
+  return food;
 }
 
 /* ---------- amounts ---------- */

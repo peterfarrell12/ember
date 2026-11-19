@@ -139,3 +139,35 @@ async function offerMove() {
     toast('Could not move your diary. It is still on this device. Try again later.');
   }
 }
+
+/* ---------- "These figures are wrong": flag a product from the lists for checking ---------- */
+A.fdWrong = () => {
+  if (!FD) return;
+  openSheet(
+    `${sh('These figures are wrong')}<div class="sheet-b"><p class="small">Tell us what does not match the pack and we will check it. To use the right figures straight away, add the product yourself under My foods.</p>
+    <label class="f">What is wrong? Optional<textarea class="inp" id="fwNote" rows="3" maxlength="500"></textarea></label></div>
+    <div class="sheet-f"><button class="btn" data-act="fdWrongGo" id="fwGo">Send</button></div>`,
+  );
+};
+A.fdWrongGo = async () => {
+  const f = FD && FD.food;
+  if (!f) return closeSheet();
+  const go = $('#fwGo');
+  go.disabled = true;
+  try {
+    await reportProduct(await supabaseClient(), {
+      product: String(f.code || f.id || '').slice(0, 100),
+      name: String(f.n || '').slice(0, 200),
+      brand: String(f.b || '').slice(0, 100),
+      shown: { k: f.k, p: f.p, c: f.c, f: f.f, fi: f.fi, su: f.su, sf: f.sf, na: f.na, src: f.src },
+      note: String(($('#fwNote') || {}).value || '')
+        .trim()
+        .slice(0, 500),
+    });
+    closeSheet();
+    toast('Thanks. It has been flagged for checking.');
+  } catch (e) {
+    go.disabled = false;
+    toast('Could not send that. Check your connection.');
+  }
+};

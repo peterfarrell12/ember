@@ -115,6 +115,12 @@ export function supabasePhotos(client, userId) {
   };
 }
 
+/** Record that a person says a product's figures are wrong, for the owner to review. */
+export async function reportProduct(client, report) {
+  const { error } = await client.from('product_reports').insert(report);
+  if (error) throw storeError(error);
+}
+
 /** Delete the signed-in person's account and every row they own. Their photo files must already be gone. */
 export async function deleteAccount(client) {
   const { error } = await client.rpc('delete_my_account');

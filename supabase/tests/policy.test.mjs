@@ -148,6 +148,33 @@ try {
     assert.equal((await admin.from('products').select('key').eq('key', 'policy|test')).data.length, 1);
     await admin.from('products').delete().eq('key', 'policy|test');
   });
+  await check('a report that a product is wrong is filed as yourself and seen only by you', async () => {
+    const report = {
+      product: '5000159461122',
+      name: 'Snickers',
+      brand: 'Snickers',
+      shown: { k: 481 },
+      note: 'Pack says 488',
+    };
+    assert.equal((await a.client.from('product_reports').insert(report)).error, null);
+    assert.equal((await a.client.from('product_reports').select('note')).data.length, 1);
+    assert.deepEqual((await b.client.from('product_reports').select('*')).data, []);
+    assert.ok(
+      (await b.client.from('product_reports').insert({ ...report, user_id: a.id })).error,
+      'not in someone else`s name',
+    );
+    assert.ok(
+      (await a.client.from('product_reports').insert({ ...report, note: 'x'.repeat(501) })).error,
+      'notes are capped',
+    );
+    assert.ok((await visitor.from('product_reports').insert(report)).error);
+    await a.client.from('product_reports').update({ note: 'changed' }).eq('product', '5000159461122');
+    await b.client.from('product_reports').delete().eq('product', '5000159461122');
+    assert.equal(
+      (await admin.from('product_reports').select('note').eq('user_id', a.id)).data[0].note,
+      'Pack says 488',
+    );
+  });
   // progress photos: private storage, one folder per person
   const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
   const path = a.id + '/policy.jpg';

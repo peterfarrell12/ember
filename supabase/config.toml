@@ -432,3 +432,6 @@ enabled = true
 # app's own error codes; the gateway's separate check is not needed.
 [functions.ai]
 verify_jwt = false
+
+[functions.product]
+verify_jwt = false

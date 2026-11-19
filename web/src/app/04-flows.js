@@ -627,7 +627,7 @@ function openFood(food, opts = {}) {
       <div class="tot"><span>Total</span><b class="tn" id="fdEq"></b></div></div>
     <div class="chips" id="fdChips"></div>
     ${FD.pick ? '' : segHtml('fdMeal', Object.entries(MEALS), FD.meal)}
-    <div class="card" id="fdNut"></div>
+    <div class="card" id="fdNut"></div>${Store.durable && /^[bmog]/.test(food.id || '') ? `<button class="link small" data-act="fdWrong" style="align-self:center">These figures are wrong</button>` : ''}
     ${food.src === 'AI' ? `<div class="banner">${ic('spark')}<span>This is an estimate, not a database entry. Search for the food to use measured values.</span></div>` : ''}
   </div><div class="sheet-f">${FD.edit ? `<button class="btn ghost" style="width:auto" data-act="delEntry" aria-label="Delete">${ic('trash')}</button>` : ''}<button class="btn ${FD.edit ? '' : 'ember'}" id="fdGo" data-act="fdGo"></button></div>`);
   SEG.fdMeal = v => {
@@ -1061,8 +1061,18 @@ A.bcFind = async () => {
   const out = $('#bcOut');
   if (code.length < 6) return toast('Enter the full barcode number.');
   out.innerHTML = `<div class="busy"><div class="spinner"></div>Checking 115,000 products</div>`;
-  const food = await findBarcode(code);
+  let food = await findBarcode(code);
   if (!$('#bcOut')) return;
+  if (!food && Store.durable) {
+    // not in the lists shipped with the app: look it up online
+    out.innerHTML = `<div class="busy"><div class="spinner"></div>Looking it up online</div>`;
+    food = await findBarcodeOnline(code);
+    if (!$('#bcOut')) return;
+    if (food === 'unreachable') {
+      out.innerHTML = `<div class="card stack"><b>Could not look that barcode up just now</b><span class="small muted">Check your connection and try again, or add it from its label.</span><button class="btn sm" data-act="bcFind">Try again</button><button class="btn sm ghost" data-act="newFood" data-code="${code}">${ic('plus')} Add this product</button></div>`;
+      return;
+    }
+  }
   if (food) {
     closeSheet();
     P.st.scan++;
