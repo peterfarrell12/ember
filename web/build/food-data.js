@@ -10,7 +10,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LISTS = { gen: 'foods-generic.json', br: 'foods-brands.json', more: 'foods-brands-more.json' };
-const HEADERS = `/assets/*
+const HEADERS = `/sw.js
+  Cache-Control: no-cache
+/assets/*
   Cache-Control: public, max-age=31536000, immutable
 /foods-*.json
   Cache-Control: public, max-age=31536000, immutable

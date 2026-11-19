@@ -67,6 +67,9 @@ const ready = async pg => {
     () => !document.querySelector('#main .boot') && document.querySelector('#main').children.length > 0,
   );
 };
+// how many foods the Today screen shows, added up over the meal cards ("2 foods", "1 food"), whichever meals they fell in
+const foodsShown = async pg =>
+  [...(await pg.innerText('#main')).matchAll(/(\d+) foods?\b/g)].reduce((n, m) => n + Number(m[1]), 0);
 const closeSheets = async pg => {
   for (let i = 0; i < 6; i++) {
     // a celebration (streak, level) or an open sheet sits over the screen: dismiss whichever is there
@@ -162,12 +165,37 @@ try {
     await a.reload();
     await ready(a);
     await closeSheets(a);
-    // all four foods were logged in the same meal slot; the meal card counts them
-    assert.match(await a.innerText('#main'), /4 foods/, 'the unsent entry still shows after reopening');
+    assert.equal(await foodsShown(a), 4, 'the unsent entry still shows after reopening');
     await a.unroute('**/rest/v1/user_docs**', block);
     await a.evaluate(() => window.dispatchEvent(new Event('online')));
     await until('four entries on the server', async () => (await entries()) === 4, 40000);
   });
+  await step(
+    'with no connection at all the app still opens, shows the diary, takes a new entry and sends it on reconnect',
+    async () => {
+      await a.evaluate(() => navigator.serviceWorker.ready);
+      await a.reload(); // once more online, so the page and the food list it uses are in the device's keep
+      await ready(a);
+      await closeSheets(a);
+      await until(
+        'the three food lists to be kept on the device',
+        () => a.evaluate(async () => (await (await caches.open('ember-lists')).keys()).length === 3),
+        60000,
+      );
+      await a.context().setOffline(true);
+      await a.reload();
+      await ready(a);
+      await closeSheets(a);
+      assert.equal(await foodsShown(a), 4, 'the diary shows from the copy kept on the device');
+      assert.match(await a.getAttribute('#sync', 'title'), /^Offline\./);
+      await logFood(a, 'banana');
+      assert.equal(await foodsShown(a), 5);
+      assert.equal(await entries(), 4, 'nothing reached the server');
+      await a.context().setOffline(false);
+      await a.evaluate(() => window.dispatchEvent(new Event('online')));
+      await until('five entries on the server', async () => (await entries()) === 5, 40000);
+    },
+  );
   let b;
   await step('a second browser signed in as the same person sees the same diary, with no setup', async () => {
     b = await (await browser.newContext(phone)).newPage();
@@ -177,12 +205,12 @@ try {
     await b.waitForTimeout(800);
     assert.equal(await b.locator('#tgBody').count(), 0, 'no setup');
     assert.equal(await b.locator('[data-act="moveYes"]').count(), 0, 'nothing to move');
-    assert.match((await b.innerText('#main')).toLowerCase(), /4 foods/, 'all four entries show');
+    assert.equal(await foodsShown(b), 5, 'all five entries show');
   });
   await step('what one device logs shows on the other within a few seconds, without reloading', async () => {
     await closeSheets(b);
     await logFood(a, 'pear');
-    await until('five foods on the second browser', async () => /5 foods/.test(await b.innerText('#main')), 15000);
+    await until('six foods on the second browser', async () => (await foodsShown(b)) === 6, 15000);
   });
   await step(
     'a progress photo goes to private storage and is shown through a signed link, on both devices',
@@ -245,7 +273,7 @@ try {
       'sessions',
       'train',
     ]);
-    assert.equal(Object.values(out.days)[0].e.length, 5);
+    assert.equal(Object.values(out.days)[0].e.length, 6);
     assert.equal(Object.keys(out.photos).length, 1);
     await closeSheets(a);
   });

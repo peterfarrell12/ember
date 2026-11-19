@@ -44,6 +44,8 @@ A.signInGo = async () => {
 };
 A.signOut = async () => {
   for (let i = 0; i < 40 && Store.busy; i++) await sleep(100); // let queued saves finish first
+  // the copy of the diary kept for opening offline does not stay on a device after its owner signs out
+  LS.keys('ember:kept:' + Store.uid + ':').forEach(k => LS.del(k));
   try {
     await signOut();
   } catch (e) {}

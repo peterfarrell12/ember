@@ -186,7 +186,60 @@ const Store = {
   async get(kind, id) {
     const w = this.durable && (LS.get(this.outboxKey()) || {})[kind + '/' + (id || '')];
     if (w) return w.del ? null : clone(w.data); // a write still on its way is newer than what the server has
-    return this.backend.get(kind, id);
+    if (!this.durable) return this.backend.get(kind, id);
+    try {
+      const data = await this.reach(() => this.backend.get(kind, id), this.keptKey(kind, id));
+      this.keep(kind, id, data);
+      this.reached();
+      return data;
+    } catch (e) {
+      return this.kept(e, this.keptKey(kind, id));
+    }
+  },
+  /* ----- a copy on this device of what was last read from the account (signed-in mode only) -----
+     So the app opens and shows the diary with no connection. It is only ever read when the server cannot be
+     reached; the account stays the truth. Cleared on sign-out. */
+  keptKey(kind, id) {
+    return 'ember:kept:' + this.uid + ':' + kind + (id ? ':' + id : '');
+  },
+  keep(kind, id, data) {
+    LS.set(this.keptKey(kind, id), { d: data });
+    if (kind !== 'days' || !id) return;
+    // days pile up as the person looks back through the diary: keep the most recent 45 looked at
+    const ix = (LS.get(this.keptKey('days-index')) || []).filter(x => x !== id);
+    ix.push(id);
+    while (ix.length > 45) LS.del(this.keptKey('days', ix.shift()));
+    LS.set(this.keptKey('days-index'), ix);
+  },
+  keepInList(kind, id, data) {
+    const k = this.keptKey('list:' + kind),
+      m = LS.get(k);
+    if (!m) return;
+    const rest = m.d.filter(x => x.id !== id);
+    LS.set(k, { d: data === undefined ? rest : rest.concat([{ ...data, id }]) });
+  },
+  /* Ask the server, but do not keep someone waiting when there is a kept copy to show: no attempt at all when the
+     device says it is offline, and a short wait otherwise. With nothing kept, wait the full time. */
+  reach(ask, key) {
+    const have = !!LS.get(key);
+    if (have && navigator.onLine === false) return Promise.reject({ code: 'unavailable' });
+    return withTimeout(ask(), have ? 5000 : 12000);
+  },
+  /** The copy kept on this device, when the failure was "cannot reach the server" and there is one. Otherwise rethrows. */
+  kept(e, key) {
+    const m = e && (e.code === 'unavailable' || e.code === 'timeout') ? LS.get(key) : null;
+    if (!m) throw e;
+    if (!this.offline) {
+      this.offline = true;
+      setSync();
+    }
+    return clone(m.d);
+  },
+  reached() {
+    if (this.offline && !this.busy) {
+      this.offline = false;
+      setSync();
+    }
   },
   /**
    * Read every document of a kind (at most 500).
@@ -194,8 +247,15 @@ const Store = {
    * @returns {Promise<any[]>}
    */
   async list(kind) {
-    const docs = await this.backend.list(kind);
-    if (!this.durable) return docs;
+    if (!this.durable) return this.backend.list(kind);
+    let docs;
+    try {
+      docs = await this.reach(() => this.backend.list(kind), this.keptKey('list:' + kind));
+      LS.set(this.keptKey('list:' + kind), { d: docs });
+      this.reached();
+    } catch (e) {
+      docs = this.kept(e, this.keptKey('list:' + kind));
+    }
     // writes still on their way are newer than what the server has
     const waiting = Object.values(LS.get(this.outboxKey()) || {}).filter(w => w.kind === kind);
     if (!waiting.length) return docs;
@@ -238,6 +298,8 @@ const Store = {
     if (this.durable) {
       job.n = this.seq = (this.seq || 0) + 1;
       this.note(k, kind, id, job);
+      this.keep(kind, id, job.del ? null : job.data);
+      this.keepInList(kind, id, job.del ? undefined : job.data);
     }
     q.next = job;
     if (!q.run) this.pump(q, kind, id);
