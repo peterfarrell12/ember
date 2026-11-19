@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -108,6 +109,7 @@ const Store = {
   q: {},
   busy: 0,
   failed: false,
+  /** Works out where data lives: the signed-in account ('cloud') or this device only ('local'). */
   async init() {
     let db = null,
       id = null;
@@ -136,12 +138,27 @@ const Store = {
     }
     setSync();
   },
+  /**
+   * @param {StoreKind} kind
+   * @param {string} [id]
+   */
   ref(kind, id) {
     return kind === 'profile' ? this.base : this.base.collection(kind).doc(id);
   },
+  /**
+   * The localStorage key for a document in local mode.
+   * @param {StoreKind} kind
+   * @param {string} [id]
+   */
   key(kind, id) {
     return 'ember:' + kind + (id ? ':' + id : '');
   },
+  /**
+   * Read one document, or null when there is none.
+   * @param {StoreKind} kind
+   * @param {string} [id]
+   * @returns {Promise<any>}
+   */
   async get(kind, id) {
     if (this.mode === 'cloud') {
       const s = await withTimeout(this.ref(kind, id).get());
@@ -149,6 +166,11 @@ const Store = {
     }
     return LS.get(this.key(kind, id));
   },
+  /**
+   * Read every document of a kind (at most 500).
+   * @param {StoreKind} kind
+   * @returns {Promise<any[]>}
+   */
   async list(kind) {
     if (this.mode === 'cloud') {
       const qs = await withTimeout(this.base.collection(kind).limit(500).get());
@@ -158,14 +180,31 @@ const Store = {
       .map(k => LS.get(k))
       .filter(Boolean);
   },
+  /**
+   * Save a document. Returns at once; the write is queued, and for one document the last write wins.
+   * Does nothing while the sample preview is showing.
+   * @param {StoreKind} kind
+   * @param {string | undefined} id
+   * @param {object} data
+   */
   put(kind, id, data) {
     if (DEMO) return;
     this.enqueue(kind, id, { data: clone(data) });
   },
+  /**
+   * Delete a document. Queued like put().
+   * @param {StoreKind} kind
+   * @param {string} [id]
+   */
   del(kind, id) {
     if (DEMO) return;
     this.enqueue(kind, id, { del: true });
   },
+  /**
+   * @param {StoreKind} kind
+   * @param {string | undefined} id
+   * @param {{ data?: object, del?: boolean, retried?: boolean }} job
+   */
   enqueue(kind, id, job) {
     if (this.mode !== 'cloud') {
       job.del ? LS.del(this.key(kind, id)) : LS.set(this.key(kind, id), job.data);
@@ -286,6 +325,11 @@ const defaultProfile = () => ({
   coachName: '',
   bed: '23:00',
 });
+/**
+ * An empty day.
+ * @param {string} date YYYY-MM-DD
+ * @returns {Day}
+ */
 const newDay = date => ({ date, e: [], w: 0, x: [], q: {}, chest: 0, done: 0, zone: 0, xp: 0, lx: 0, wx: 0, cf: [] });
 const xmin = d => d.x.reduce((s, x) => s + (x.min || 0), 0);
 function fixProfile(p) {
@@ -393,6 +437,7 @@ function applyFreezes() {
 function rollLeague() {
   const ws = weekStart(today());
   if (P.lg.wk === ws) return null;
+  // @ts-expect-error one Date minus another is the milliseconds between them
   const weeks = Math.max(1, Math.round((pdate(ws) - pdate(P.lg.wk)) / (7 * 864e5)));
   let tier = P.lg.tier;
   const from = tier,

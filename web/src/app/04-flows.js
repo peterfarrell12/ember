@@ -1,8 +1,9 @@
+// @ts-check
 /* ---------- actions ---------- */
 const A = {},
   I = {};
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-act]');
+  const el = /** @type {HTMLButtonElement} */ (/** @type {HTMLElement} */ (e.target).closest('[data-act]'));
   if (!el || el.disabled) return;
   const fn = A[el.dataset.act];
   if (fn) {
@@ -22,7 +23,7 @@ document.addEventListener('keydown', e => {
     if (celeOpen) A.celeNext();
     else if (sheets.length && !(P && !P.onboarded)) closeSheet();
   }
-  if (e.key === 'Enter' && e.target.id === 'bcNum') A.bcFind();
+  if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).id === 'bcNum') A.bcFind();
 });
 const segHtml = (name, opts, val) =>
   `<div class="seg" data-seg="${name}">${opts.map(([v, l]) => `<button type="button" data-act="seg" data-name="${name}" data-val="${v}" aria-pressed="${String(v) === String(val)}">${l}</button>`).join('')}</div>`;
@@ -274,6 +275,12 @@ A.editEntry = async ({ id }) => {
     <div class="sheet-f"><button class="btn ghost" style="width:auto" data-act="delEntry" aria-label="Delete">${ic('trash')}</button><button class="btn" data-act="saveEntry">Save</button></div>`);
   SEG.eeMeal = v => (EE.m = v);
 };
+/**
+ * An entry rescaled to a new weight, nutrition in proportion.
+ * @param {Entry} e
+ * @param {number} g grams or ml
+ * @returns {Entry}
+ */
 function scaled(e, g) {
   const m = g / e.g;
   return {
@@ -353,6 +360,7 @@ function isLiquid(food) {
     return true;
   return LIQ.test(n) && !NOT_LIQ.test(n);
 }
+/** Drink sizes offered for a liquid, by what its name matches. @type {[RegExp, Portion[]][]} */
 const DRINK_SIZES = [
   [
     /\b(beer|lager|stout|ale|cider|guinness|heineken)\b/,
@@ -398,6 +406,7 @@ const DRINK_SIZES = [
   ],
 ];
 /* level spoonfuls in grams for foods that are measured by the spoon */
+/** Grams in a teaspoon and a tablespoon, by what the food's name matches. @type {[RegExp, number, number][]} */
 const SPOONS = [
   [/\boil\b/, 4.5, 13.5],
   [/\b(butter|spread|margarine)\b/, 5, 14],
@@ -410,6 +419,7 @@ const SPOONS = [
   [/\b(flour|cocoa)\b/, 3, 8],
 ];
 /* weight change in cooking, so a food weighed before cooking can be logged against its cooked entry */
+/** Cooked weight per gram weighed before cooking, and the word for that state. @type {[RegExp, number, string][]} */
 const RAW_YIELD = [
   [/\brice\b/, 3, 'dry'],
   [/\b(pasta|spaghetti|macaroni|penne|fusilli|tagliatelle)\b/, 2.2, 'dry'],
@@ -422,10 +432,17 @@ const RAW_YIELD = [
   [/\b(salmon|cod|fish|tuna steak)\b/, 0.8, 'raw'],
 ];
 const JUNK_PORT = /guideline amount|school container|quantity not specified|\bfl oz\b|^1 oz\b/i;
+/**
+ * The list of units a food can be measured in: g or ml, its own portions, drink sizes, spoonfuls,
+ * weighed-raw conversions and convert-from units.
+ * @param {Food} food
+ * @returns {Unit[]}
+ */
 function unitsFor(food) {
   const liq = !food.nog && isLiquid(food),
     bw = liq ? 'ml' : 'g',
     n = norm(food.n) + ' ';
+  /** @type {Unit[]} */
   const u = food.nog ? [] : [{ l: bw, short: 'g', g: 1, base: true, bw }];
   const seen = new Set();
   for (const [l0, g] of food.ports || []) {
@@ -459,25 +476,32 @@ function unitsFor(food) {
           y: y[1],
         });
     }
+    // @ts-expect-error true minus false is 1: packs sort after the other measures
     u.sort((x, y) => (x.base ? -1 : y.base ? 1 : 0) || (x.short === '1 pack') - (y.short === '1 pack'));
-    for (const [l, short, g] of liq
-      ? [
-          ['litres', 'l', 1000],
-          ['pints', 'pint', 568],
-          ['US cups', 'cup', 240],
-          ['fl oz', 'fl oz', 28.4],
-        ]
-      : [
-          ['kg', 'kg', 1000],
-          ['oz', 'oz', 28.35],
-          ['lb', 'lb', 453.6],
-        ])
+    for (const [l, short, g] of /** @type {[string, string, number][]} */ (
+      liq
+        ? [
+            ['litres', 'l', 1000],
+            ['pints', 'pint', 568],
+            ['US cups', 'cup', 240],
+            ['fl oz', 'fl oz', 28.4],
+          ]
+        : [
+            ['kg', 'kg', 1000],
+            ['oz', 'oz', 28.35],
+            ['lb', 'lb', 453.6],
+          ]
+    ))
       if (!(short === 'pint' && has(/^1 pint$/))) u.push({ l, short, g, alt: 'conv' });
   }
   if (!u.length) u.push({ l: '1 serving', short: '1 serving', g: 100 });
   return u;
 }
 /* The unit a food opens at: its first household measure; otherwise 100 g or 100 ml. */
+/**
+ * @param {Unit[]} units
+ * @returns {{ ui: number, qty: number }} index into units, and how many of it
+ */
 function defUnit(units) {
   const liq = units[0] && units[0].bw === 'ml',
     ok = u => !u.base && !u.alt && !(u.short === '1 pack' && u.g > (liq ? 600 : 250));
@@ -505,11 +529,25 @@ const nice = (x, fine) => {
       : Math.round(x * (fine ? 1000 : 100)) / (fine ? 1000 : 100);
 };
 /* How an amount reads in the diary: servings, then the serving size, then the total. */
+/**
+ * @param {Unit} u
+ * @param {number} qty serving size, in units of u
+ * @param {number} sv number of servings
+ * @param {number} g total grams or ml
+ * @param {string} bw 'g' or 'ml'
+ * @param {boolean} [nog] true when the weight is unknown
+ * @returns {string}
+ */
 function amtLabel(u, qty, sv, g, bw, nog) {
   const size = u.base ? r1(qty) + ' ' + bw : u.alt ? qty + ' ' + u.short : (qty === 1 ? '' : qty + ' × ') + u.short;
   return (sv !== 1 ? sv + ' × ' : '') + size + (nog || (u.base && sv === 1) ? '' : ' · ' + g + ' ' + bw);
 }
 /* The serving size and number of servings a food starts at: what was used last time, else its default measure. */
+/**
+ * @param {Food} food
+ * @param {Unit[]} units
+ * @returns {{ ui: number, qty: number, sv: number, known: boolean }}
+ */
 function startAmount(food, units) {
   const last = food.lu !== undefined ? food : lastUse(food);
   let { ui, qty } = defUnit(units),
@@ -1527,7 +1565,7 @@ I.tgT = el => {
   }, 900);
 };
 document.addEventListener('focusout', e => {
-  if (TG && e.target.closest && e.target.closest('#tgCard'))
+  if (TG && /** @type {HTMLElement} */ (e.target).closest && /** @type {HTMLElement} */ (e.target).closest('#tgCard'))
     setTimeout(() => {
       if (TG && $('#tgCard') && !(document.activeElement && document.activeElement.closest('#tgCard')))
         $('#tgCard').innerHTML = tgCard();

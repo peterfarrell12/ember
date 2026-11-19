@@ -10,7 +10,8 @@
     "test": "vite build && APP_DIR=\"$PWD/dist\" ../prototype/run-tests.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "node build/join.js && eslint ."
+    "lint": "node build/join.js && eslint .",
+    "typecheck": "tsc -p ."
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -19,6 +20,7 @@
     "eslint": "10.15.0",
     "globals": "17.14.0",
     "prettier": "3.10.1",
+    "typescript": "7.0.2",
     "vite": "^8.3.8"
   },
   "dependencies": {
