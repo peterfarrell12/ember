@@ -768,17 +768,15 @@ async function publishStatus() {
   if (DEMO || Store.mode !== 'cloud' || Store.owner !== false || Date.now() - lastPub < 60000) return;
   lastPub = Date.now();
   try {
-    await Store.db
-      .doc('clients/' + Store.uid)
-      .set({
-        name: P.coachName || '',
-        goal: P.goalKg ? 'Reach ' + P.goalKg + ' kg' : '',
-        st: myStatus(),
-        ev: myEvents().slice(0, 10),
-        msgs: (P.thread || []).filter(m => m.f === 'u').slice(-30),
-        ph: sharedPhotos(),
-        v: Date.now(),
-      });
+    await Store.db.doc('clients/' + Store.uid).set({
+      name: P.coachName || '',
+      goal: P.goalKg ? 'Reach ' + P.goalKg + ' kg' : '',
+      st: myStatus(),
+      ev: myEvents().slice(0, 10),
+      msgs: (P.thread || []).filter(m => m.f === 'u').slice(-30),
+      ph: sharedPhotos(),
+      v: Date.now(),
+    });
   } catch (e) {}
 }
 async function loadLive() {

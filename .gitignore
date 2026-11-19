@@ -11,3 +11,6 @@ prototype/test/*.png
 
 # raw and filtered output of the last test run
 prototype/test/out/
+
+# joined source written for the lint pass
+web/.cache/

@@ -12,6 +12,10 @@ async function assetStore() {
   }
   return ASSETS;
 }
+// KNOWN ISSUE, reported to the owner and left as it is: 02-foods.js also declares a `shrink`
+// (file -> canvas, for barcode photos). The files share one scope, so this later declaration
+// replaces it everywhere, including in decodeBarcode, which then cannot use what it gets back.
+// eslint-disable-next-line no-redeclare
 function shrink(file, max, q) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file),

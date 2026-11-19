@@ -70,18 +70,16 @@ async function publishSquad(force) {
     if (k.startsWith('u:') && P.kudos[k] === wk) kd[k.slice(2)] = wk;
   });
   try {
-    await Store.db
-      .doc('squad/' + Store.uid)
-      .set({
-        name: P.coachName || '',
-        xp: P.lg.xp,
-        wk,
-        streak: streak().count,
-        sess7: TR.sess.filter(s => s.kind === 'train' && s.d >= addDays(today(), -6)).length,
-        win: myWin(),
-        kudos: kd,
-        v: Date.now(),
-      });
+    await Store.db.doc('squad/' + Store.uid).set({
+      name: P.coachName || '',
+      xp: P.lg.xp,
+      wk,
+      streak: streak().count,
+      sess7: TR.sess.filter(s => s.kind === 'train' && s.d >= addDays(today(), -6)).length,
+      win: myWin(),
+      kudos: kd,
+      v: Date.now(),
+    });
   } catch (e) {}
 }
 async function loadCommunity() {
@@ -218,14 +216,12 @@ function profileCard(pf) {
 async function publishCoach() {
   if (Store.mode !== 'cloud' || Store.owner === false) return;
   try {
-    await Store.db
-      .doc('coach/profile')
-      .set({
-        ...clone(coachProfile()),
-        plans: (coachProfile().plans || []).filter(p => !p.ex),
-        ch: challenge(),
-        v: Date.now(),
-      });
+    await Store.db.doc('coach/profile').set({
+      ...clone(coachProfile()),
+      plans: (coachProfile().plans || []).filter(p => !p.ex),
+      ch: challenge(),
+      v: Date.now(),
+    });
   } catch (e) {}
 }
 A.coProfile = () => {
