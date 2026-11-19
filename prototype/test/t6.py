@@ -1,10 +1,14 @@
 import asyncio, json
-from playwright.async_api import async_playwright
+from harness import async_playwright, TODAY
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
     while await pg.query_selector('.cele'):
         print('  cele:', (await pg.inner_text('.cele h3')), '|', (await pg.inner_text('.cele ul')).replace('\n',' ') if await pg.query_selector('.cele ul') else ''); await pg.click('[data-act="celeNext"]'); await pg.wait_for_timeout(200)
+async def next_day(pg):
+    # Once today's session is done the Train hero shows "Done for today", which has no links to the
+    # program. The steps that need them run on the following day, so move the clock on and reload.
+    await pg.clock.fast_forward('24:00:00'); await pg.reload(); await pg.wait_for_selector('[data-act="ready"]'); await cont(pg); await pg.wait_for_timeout(300)
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel='chrome', args=['--no-sandbox'])
@@ -32,12 +36,12 @@ async def main():
         await pg.click('[data-act="wkFinish"]'); await cont(pg)
         await pg.screenshot(path='66-train-after.png')
         # progression tip on repeating day A
-        await pg.click('[data-act="progView"]'); await pg.click('[data-act="trainDay"][data-i="0"]'); await pg.wait_for_selector('#wkBody .setrow'); print('tip:', await pg.inner_text('#wkBody section >> nth=0 >> .pill.good'), '| prefill:', await pg.input_value('#wkBody [data-i="0"][data-j="0"][data-f="w"]'))
+        await next_day(pg); await pg.click('[data-act="progView"]'); await pg.click('[data-act="trainDay"][data-i="0"]'); await pg.wait_for_selector('#wkBody .setrow'); print('tip:', await pg.inner_text('#wkBody section >> nth=0 >> .pill.good'), '| prefill:', await pg.input_value('#wkBody [data-i="0"][data-j="0"][data-f="w"]'))
         for j in range(4):
             await pg.fill(f'#wkBody [data-i="0"][data-j="{j}"][data-f="r"]','6'); await pg.click(f'#wkBody [data-act="wkTick"][data-i="0"][data-j="{j}"]'); await pg.wait_for_timeout(100)
         await pg.click('[data-act="wkFinish"]'); await cont(pg)
         # AI program
-        await pg.click('[data-act="progs"]'); await pg.click('[data-act="progAI"]'); await pg.click('[data-act="progAIGo"]'); await pg.wait_for_selector('[data-act="progUse"]', timeout=15000); print('AI program:', (await pg.inner_text('.sheet-b >> nth=-1')).replace('\n',' | ')[:260]); await pg.click('[data-act="close"] >> nth=-1')
+        await next_day(pg); await pg.click('[data-act="progs"]'); await pg.click('[data-act="progAI"]'); await pg.click('[data-act="progAIGo"]'); await pg.wait_for_selector('[data-act="progUse"]', timeout=15000); print('AI program:', (await pg.inner_text('.sheet-b >> nth=-1')).replace('\n',' | ')[:260]); await pg.click('[data-act="close"] >> nth=-1')
         # custom program editor
         await pg.click('[data-act="progs"]'); await pg.click('[data-act="progNew"]'); await pg.fill('#peBody [data-on="peName"]','My push day'); await pg.click('[data-act="peAdd"]'); await pg.fill('#pkQ','bench'); await pg.wait_for_timeout(150); await pg.click('#pkList .res >> nth=0'); await pg.wait_for_timeout(150)
         await pg.click('[data-act="peItem"]'); await pg.fill('#piS','5'); await pg.fill('#piR','5'); await pg.click('[data-act="piOk"]'); await pg.wait_for_timeout(150); await pg.screenshot(path='67-editor.png'); await pg.click('[data-act="peSave"]'); await pg.wait_for_timeout(300)
@@ -57,7 +61,7 @@ async def main():
         await pg.evaluate("document.querySelector('#main').scrollTop=0"); await pg.wait_for_timeout(2800); await pg.screenshot(path='72-train-full.png'); await pg.evaluate("document.querySelector('#main').scrollTop=640"); await pg.screenshot(path='73-train-full2.png')
         print('TRAIN:', (await pg.inner_text('#main')).replace('\n',' | ')[:1500])
         await pg.click('[data-act="exLib"]'); await pg.fill('#pkQ','squat'); await pg.wait_for_timeout(150); await pg.click('#pkList [data-id="squat"]'); await pg.wait_for_timeout(200); await pg.screenshot(path='74-exinfo.png'); print('exinfo:', (await pg.inner_text('.sheet-b >> nth=-1')).replace('\n',' | ')[:300])
-        st = await pg.evaluate("JSON.parse(localStorage.getItem('mockdb'))"); print('db keys:', [k.split('u_test123/')[1] for k in st.keys()]); tr = st['data/users/u_test123/profile/meta/train']; print('lifts squat', tr['lifts'].get('squat'), 'sess', [(s['n'],s['dur'],s['vol'],s['sets'],s['prs'],s['kind']) for s in tr['sess']], 'rlog', tr['rlog'], 'rehab', tr['rehab'])
+        st = await pg.evaluate("JSON.parse(localStorage.getItem('mockdb'))"); print('db keys:', [k.split('u_test123/')[-1] for k in st.keys()]); tr = st['data/users/u_test123/profile/meta/train']; print('lifts squat', tr['lifts'].get('squat'), 'sess', [(s['n'],s['dur'],s['vol'],s['sets'],s['prs'],s['kind']) for s in tr['sess']], 'rlog', tr['rlog'], 'rehab', tr['rehab'])
         prof = st['data/users/u_test123/profile']; print('prog', prof['prog'], 'st', {k:prof['st'][k] for k in ['sess','prs','rehab','mob','ready','work']}, 'tasks', prof['tasks'])
         print('ERRS', errs); await b.close()
 asyncio.run(main())
