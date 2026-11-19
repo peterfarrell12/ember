@@ -1029,7 +1029,9 @@ function localParse(text) {
   }
   return out;
 }
-async function shrink(file, max = 1600) {
+/* A photo drawn onto a canvas, no larger than `max` on its long side. For reading barcodes on the device.
+   (The photo code has its own `shrink`, which returns a JPEG; the two used to share a name, and this one lost.) */
+async function shrinkToCanvas(file, max = 1600) {
   const bmp = await createImageBitmap(file);
   const sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas');
@@ -1041,7 +1043,7 @@ async function shrink(file, max = 1600) {
 async function decodeBarcode(file) {
   let cv = null;
   try {
-    cv = await shrink(file);
+    cv = await shrinkToCanvas(file);
   } catch (e) {}
   if (cv && 'BarcodeDetector' in window) {
     try {
