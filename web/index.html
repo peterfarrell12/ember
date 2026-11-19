@@ -3,12 +3,53 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ember Calorie Tracker</title>
+    <title>Ember</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="theme-color" content="#ecefea" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a1310" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Calories, training and recovery in one place." />
+    <meta property="og:title" content="Ember" />
+    <meta property="og:description" content="Calories, training and recovery in one place." />
+    <meta property="og:image" content="https://ember.peterfarrell2712.workers.dev/share.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-750x1334.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-828x1792.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-1125x2436.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-1170x2532.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-1179x2556.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-1284x2778.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./splash-1290x2796.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Ember" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -162,7 +203,16 @@
     <div id="app">
       <header class="top">
         <div class="brand">
-          <svg class="ic fill"><use href="#i-flame" /></svg><span class="bn">Ember</span>
+          <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 4.2a7.8 7.8 0 1 0 7.8 7.8"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3.4"
+              stroke-linecap="round"
+            />
+            <circle class="dot" cx="18.1" cy="5.9" r="2.5" /></svg
+          ><span class="bn">Ember</span>
         </div>
         <span class="pill gold hide" id="brandTag">Coach</span>
         <span class="sync local" id="sync" title="Storage status"></span>

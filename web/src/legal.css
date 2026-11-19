@@ -1,0 +1,110 @@
+/* The privacy policy and terms pages: plain reading pages in the app's colours and typefaces. */
+:root {
+  --bg: #ecefea;
+  --ink: #12211b;
+  --muted: #5b6b63;
+  --line: #d8ddd6;
+  --surface: #ffffff;
+  --ember: #e4511b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a1310;
+    --ink: #e9efeb;
+    --muted: #9fb0a7;
+    --line: #22302a;
+    --surface: #121d19;
+    --ember: #ff6b36;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    16px/1.55 'Figtree',
+    'Avenir Next',
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font:
+    800 20px/1 'Bricolage Grotesque',
+    system-ui,
+    sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.brand svg {
+  width: 20px;
+  height: 20px;
+}
+.brand svg .dot {
+  fill: var(--ember);
+}
+h1,
+h2 {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+h1 {
+  font-size: 32px;
+  line-height: 1.1;
+  margin: 28px 0 6px;
+}
+h2 {
+  font-size: 20px;
+  margin: 34px 0 8px;
+}
+p,
+li {
+  margin: 0 0 10px;
+}
+ul {
+  padding-left: 20px;
+}
+.when {
+  color: var(--muted);
+  font-size: 14px;
+}
+.short {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px 8px;
+  margin: 20px 0 8px;
+}
+a {
+  color: var(--ember);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  margin: 8px 0 14px;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px 8px 0;
+  border-top: 1px solid var(--line);
+}
+th {
+  font-weight: 700;
+}

@@ -45,7 +45,7 @@ const link = async () => {
 };
 const rows = async () => (await admin.from('user_docs').select('kind, id, data').eq('user_id', uid)).data;
 const until = async (what, test, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     if (await test()) return;
     await new Promise(r => setTimeout(r, 200));
   }
@@ -84,6 +84,7 @@ const extra = [];
 const browser = await chromium.launch({ channel: 'chrome', args: ['--no-sandbox'] });
 const results = [];
 const step = async (name, run) => {
+  if (process.env.TRACE) console.error('…', name);
   try {
     await run();
     results.push(['ok  ', name]);
@@ -123,6 +124,25 @@ try {
       assert.equal(await a.isVisible(sel), false, sel + ' is hidden');
     await a.click('[data-act="signInGo"]');
     assert.equal(await a.locator('#siEmail').count(), 1, 'an empty email is not accepted');
+    // the consent tick: required before a link is sent, with the policy pages one tap away
+    assert.match(
+      await a.innerText('.agree'),
+      /I am 18 or over and agree to the Terms and Privacy policy\. I consent to Ember storing the health information I enter/,
+    );
+    await a.fill('#siEmail', 'someone@example.test');
+    await a.click('[data-act="signInGo"]');
+    await a.waitForTimeout(300);
+    assert.equal(await a.locator('#siEmail').count(), 1, 'no link is sent without the tick');
+    for (const page of ['privacy.html', 'terms.html']) {
+      const res = await a.request.get(APP.replace('index.html', page));
+      assert.equal(res.status(), 200, page);
+      assert.match(
+        await res.text(),
+        page === 'privacy.html'
+          ? /Privacy policy[\s\S]*Anthropic[\s\S]*Data Protection Commission/
+          : /Terms of use[\s\S]*Not medical advice/,
+      );
+    }
   });
   await step(
     'opening the emailed link signs in; a new account goes through setup and saves to the account',
@@ -173,7 +193,11 @@ try {
   await step(
     'with no connection at all the app still opens, shows the diary, takes a new entry and sends it on reconnect',
     async () => {
-      await a.evaluate(() => navigator.serviceWorker.ready);
+      await until(
+        'the service worker to be installed',
+        () => a.evaluate(() => navigator.serviceWorker.getRegistration().then(r => !!(r && r.active))),
+        30000,
+      );
       await a.reload(); // once more online, so the page and the food list it uses are in the device's keep
       await ready(a);
       await closeSheets(a);

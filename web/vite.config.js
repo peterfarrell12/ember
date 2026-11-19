@@ -22,6 +22,12 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
   base: './', // relative paths, so the build works from any folder and later inside the phone shell
   plugins: [singleScope({ dir: here('./src/app') }), foodData({ dir: here('../prototype/app') }), serviceWorker()],
+  // the app, and the two plain reading pages beside it
+  build: {
+    rollupOptions: {
+      input: { app: here('./index.html'), privacy: here('./privacy.html'), terms: here('./terms.html') },
+    },
+  },
   server: { port: 8765, strictPort: true },
   preview: { port: 8765, strictPort: true },
 });

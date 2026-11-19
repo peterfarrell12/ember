@@ -185,8 +185,14 @@ svg.ic.fill {
   align-items: center;
   gap: 6px;
 }
-.brand svg {
-  color: var(--ember);
+/* the Ember mark: an open ring with an ember at its end */
+.brand .mark {
+  width: 20px;
+  height: 20px;
+  color: var(--ink);
+}
+.brand .mark .dot {
+  fill: var(--ember);
 }
 .top .sp {
   flex: 1;
@@ -3337,6 +3343,22 @@ button.tw {
 .pht.sm.on {
   outline: 3px solid var(--ember);
   outline-offset: -3px;
+}
+/* the consent tick on the sign-in form */
+.agree {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.agree input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--ember);
 }
 /* live barcode scanner */
 .scan {

@@ -1,9 +1,22 @@
 /* ---------- account: sign in with an emailed link, sign out, move a device's diary into the account ---------- */
+/* Consent, asked for on the sign-in form. Ember holds health information, which needs explicit consent, and its
+   AI features send what is submitted to Anthropic in the United States. The date is the version of the privacy
+   policy and terms agreed to (privacy.html, terms.html); change it when they change in a way that matters. */
+const CONSENT_VERSION = '2026-11-19';
+const consentHtml = () =>
+  `<label class="agree"><input type="checkbox" id="siAgree"><span>I am 18 or over and agree to the <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a> and <a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a>. I consent to Ember storing the health information I enter, and to what I send to its AI features being processed by Anthropic in the United States.</span></label>`;
+/* Once signed in, note on the account which version was agreed to and when. */
+function recordConsent() {
+  const c = LS.get('ember:consent');
+  if (!Store.durable || !c || LS.get('ember:consent-noted:' + Store.uid) === c.v) return;
+  Store.put('meta', 'consent', c);
+  LS.set('ember:consent-noted:' + Store.uid, c.v);
+}
 const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 A.signIn = () => {
   openSheet(
     `${sh('Sign in to Ember')}<div class="sheet-b" id="siBody"><p class="small">Enter your email and we will send you a link. No password needed.</p>
-    <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label></div>
+    <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label>${consentHtml()}</div>
     <div class="sheet-f" id="siFoot"><button class="btn ember" data-act="signInGo" id="siGo">Email me a link</button></div>`,
   );
 };
@@ -16,7 +29,7 @@ function signInGate() {
   $('#main').innerHTML =
     `<div class="boot"><div class="card stack" style="width:min(340px,100%);text-align:left;color:var(--ink);font-weight:400"><h2>Sign in to Ember</h2>
     <div class="stack" id="siBody"><p class="small">Enter your email and we will send you a link. No password needed.</p>
-    <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label></div>
+    <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label>${consentHtml()}</div>
     <div id="siFoot"><button class="btn ember" data-act="signInGo" id="siGo">Email me a link</button></div></div></div>`;
   if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
 }
@@ -24,6 +37,8 @@ A.signInAgain = () => signInGate();
 A.signInGo = async () => {
   const email = String(($('#siEmail') || {}).value || '').trim();
   if (!validEmail(email)) return toast('Enter your email address.');
+  if (!($('#siAgree') || {}).checked) return toast('Tick the box to agree before you continue.');
+  LS.set('ember:consent', { v: CONSENT_VERSION, at: new Date().toISOString() });
   const go = $('#siGo');
   go.disabled = true;
   try {
