@@ -60,6 +60,13 @@ const logFood = async (pg, q) => {
   await pg.waitForTimeout(600);
   await closeSheets(pg);
 };
+// the tab bar is in the page from the start; the diary is ready when the start-up screen has gone
+const ready = async pg => {
+  await pg.waitForSelector('nav.tabs .tab');
+  await pg.waitForFunction(
+    () => !document.querySelector('#main .boot') && document.querySelector('#main').children.length > 0,
+  );
+};
 const closeSheets = async pg => {
   for (let i = 0; i < 6; i++) {
     // a celebration (streak, level) or an open sheet sits over the screen: dismiss whichever is there
@@ -115,7 +122,7 @@ try {
   });
   await step('moving puts the profile and the day in the account', async () => {
     await a.click('[data-act="moveYes"]');
-    await a.waitForSelector('nav.tabs .tab');
+    await ready(a);
     await until('profile and day rows', async () => {
       const r = await rows();
       return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
@@ -128,15 +135,45 @@ try {
       (await rows()).some(x => x.kind === 'days' && x.data.e.length === 2),
     );
   });
+  const entries = async () => ((await rows()).find(x => x.kind === 'days') || { data: { e: [] } }).data.e.length;
+  await step('logging with no connection is kept, shown as offline, and sent on reconnect', async () => {
+    await a.context().setOffline(true);
+    await logFood(a, 'apple');
+    await a.waitForTimeout(1500);
+    assert.match(await a.getAttribute('#sync', 'title'), /^Offline\. Your changes are kept on this device/);
+    assert.equal(await entries(), 2, 'nothing reached the server while offline');
+    await a.context().setOffline(false);
+    await until('three entries on the server', async () => (await entries()) === 3, 40000);
+    await until(
+      'the offline mark clears',
+      async () => (await a.getAttribute('#sync', 'title')) === 'Saved to your account',
+    );
+  });
+  await step('a write that never got through survives closing and reopening the app', async () => {
+    // let reads through, drop every write
+    const block = r => (r.request().method() === 'GET' ? r.continue() : r.abort());
+    await a.route('**/rest/v1/user_docs**', block);
+    await logFood(a, 'orange');
+    await a.waitForTimeout(1200);
+    assert.equal(await entries(), 3, 'the write did not reach the server');
+    await a.reload();
+    await ready(a);
+    await closeSheets(a);
+    // all four foods were logged in the same meal slot; the meal card counts them
+    assert.match(await a.innerText('#main'), /4 foods/, 'the unsent entry still shows after reopening');
+    await a.unroute('**/rest/v1/user_docs**', block);
+    await a.evaluate(() => window.dispatchEvent(new Event('online')));
+    await until('four entries on the server', async () => (await entries()) === 4, 40000);
+  });
   await step('a second browser signed in as the same person sees the same diary, with no setup', async () => {
     const b = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
     await b.goto(await link());
-    await b.waitForSelector('nav.tabs .tab');
+    await ready(b);
     await b.waitForTimeout(800);
     assert.equal(await b.locator('#tgBody').count(), 0, 'no onboarding');
     assert.equal(await b.locator('[data-act="moveYes"]').count(), 0, 'nothing to move');
     const text = (await b.innerText('#main')).toLowerCase();
-    assert.ok(text.includes('banana'), 'the first entry shows');
+    assert.match(text, /4 foods/, 'all four entries show, including the two logged without a connection');
     await b.click('#chipYou');
     assert.match(await b.innerText('#main'), /Saved to your account/);
     await b.click('[data-act="openData"]');
@@ -146,7 +183,7 @@ try {
   });
   await step('the first device is unaffected by the second one signing out', async () => {
     await a.reload();
-    await a.waitForSelector('nav.tabs .tab');
+    await ready(a);
     assert.equal(await a.locator('#tgBody').count(), 0);
   });
   await step('no page errors', async () => assert.deepEqual(errs, []));

@@ -229,6 +229,9 @@ svg.ic.fill {
 .sync.err {
   background: var(--bad);
 }
+.sync.offline {
+  background: var(--gold);
+}
 .sync.local {
   background: var(--muted);
 }

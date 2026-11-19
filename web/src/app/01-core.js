@@ -115,12 +115,59 @@ const Store = {
           this.uid = user.id;
           this.account = user.email || '';
           this.backend = supabaseBackend(await supabaseClient(), user.id);
+          this.durable = true;
+          window.addEventListener('online', () => this.wake());
+          await this.sendOutbox();
         }
       } catch (e) {
         console.warn('sign-in check failed', e);
       }
     }
     setSync();
+  },
+  /* ----- writes that have not reached the account yet (signed-in mode only) -----
+     Every queued write is also noted on this device, so closing the app or losing the connection does not
+     lose it. A write leaves the note when the server has it. One note per document: the newest write wins. */
+  outboxKey() {
+    return 'ember:outbox:' + this.uid;
+  },
+  note(k, kind, id, job) {
+    const box = LS.get(this.outboxKey()) || {};
+    if (job) box[k] = { kind, id, n: job.n, ...(job.del ? { del: true } : { data: job.data }) };
+    else delete box[k];
+    LS.set(this.outboxKey(), box);
+  },
+  /** At start-up: send what an earlier visit left behind, before anything is read, so reads see it. */
+  async sendOutbox() {
+    const box = LS.get(this.outboxKey()) || {};
+    for (const [k, w] of Object.entries(box)) {
+      try {
+        await (w.del ? this.backend.remove(w.kind, w.id) : this.backend.set(w.kind, w.id, w.data));
+        this.note(k);
+      } catch (e) {
+        if (e && e.code === 'unavailable') this.enqueue(w.kind, w.id, w.del ? { del: true } : { data: w.data });
+        else this.note(k); // refused for good: keeping it would block every later start
+      }
+    }
+  },
+  /** Wait before trying a failed write again: longer each time, up to half a minute, or until the connection returns. */
+  pause(tries) {
+    return new Promise(
+      /** @param {(v?: any) => void} res */ res => {
+        const t = setTimeout(done, Math.min(30000, 1000 * 2 ** Math.min(tries, 5)));
+        const self = this;
+        function done() {
+          clearTimeout(t);
+          self.waiting = self.waiting.filter(f => f !== done);
+          res();
+        }
+        this.waiting.push(done);
+      },
+    );
+  },
+  waiting: [],
+  wake() {
+    this.waiting.slice().forEach(f => f());
   },
   /**
    * The localStorage key for a document in local mode.
@@ -137,6 +184,8 @@ const Store = {
    * @returns {Promise<any>}
    */
   async get(kind, id) {
+    const w = this.durable && (LS.get(this.outboxKey()) || {})[kind + '/' + (id || '')];
+    if (w) return w.del ? null : clone(w.data); // a write still on its way is newer than what the server has
     return this.backend.get(kind, id);
   },
   /**
@@ -145,7 +194,14 @@ const Store = {
    * @returns {Promise<any[]>}
    */
   async list(kind) {
-    return this.backend.list(kind);
+    const docs = await this.backend.list(kind);
+    if (!this.durable) return docs;
+    // writes still on their way are newer than what the server has
+    const waiting = Object.values(LS.get(this.outboxKey()) || {}).filter(w => w.kind === kind);
+    if (!waiting.length) return docs;
+    const byId = new Map(docs.map(d => [d.id, d]));
+    for (const w of waiting) w.del ? byId.delete(w.id) : byId.set(w.id, { ...clone(w.data), id: w.id });
+    return [...byId.values()];
   },
   /**
    * Save a document. Returns at once; the write is queued, and for one document the last write wins.
@@ -170,7 +226,7 @@ const Store = {
   /**
    * @param {StoreKind} kind
    * @param {string | undefined} id
-   * @param {{ data?: object, del?: boolean, retried?: boolean }} job
+   * @param {{ data?: object, del?: boolean, retried?: boolean, n?: number, tries?: number }} job
    */
   enqueue(kind, id, job) {
     if (this.mode !== 'cloud') {
@@ -179,6 +235,10 @@ const Store = {
     }
     const k = kind + '/' + (id || '');
     const q = this.q[k] || (this.q[k] = { run: false, next: null });
+    if (this.durable) {
+      job.n = this.seq = (this.seq || 0) + 1;
+      this.note(k, kind, id, job);
+    }
     q.next = job;
     if (!q.run) this.pump(q, kind, id);
   },
@@ -192,13 +252,31 @@ const Store = {
       try {
         await (job.del ? this.backend.remove(kind, id) : this.backend.set(kind, id, job.data));
         this.failed = false;
+        if (this.durable) {
+          const k = kind + '/' + (id || ''),
+            noted = (LS.get(this.outboxKey()) || {})[k];
+          if (noted && noted.n === job.n) this.note(k); // unless a newer write is already waiting
+          if (this.offline) {
+            this.offline = false;
+            setSync();
+          }
+        }
       } catch (e) {
-        if (e && e.code === 'unavailable' && !job.retried) {
+        if (e && e.code === 'unavailable' && this.durable) {
+          // no connection, or the server is busy: keep the write and keep trying. A newer write for the same document replaces it.
+          if (!this.offline) {
+            this.offline = true;
+            setSync();
+          }
+          await this.pause((job.tries = (job.tries || 0) + 1));
+          if (!q.next) q.next = job;
+        } else if (e && e.code === 'unavailable' && !job.retried) {
           job.retried = true;
           await sleep(700 + Math.random() * 900);
           if (!q.next) q.next = job;
         } else {
           this.failed = true;
+          if (this.durable) this.note(kind + '/' + (id || ''));
           console.warn('save failed', kind, id, e);
           toast(
             e && e.code === 'quota_exceeded'
@@ -216,15 +294,19 @@ const Store = {
 function setSync() {
   const el = $('#sync');
   if (!el) return;
-  el.className = 'sync ' + (Store.mode !== 'cloud' ? 'local' : Store.failed ? 'err' : Store.busy ? 'saving' : '');
+  el.className =
+    'sync ' +
+    (Store.mode !== 'cloud' ? 'local' : Store.failed ? 'err' : Store.offline ? 'offline' : Store.busy ? 'saving' : '');
   el.title =
     Store.mode !== 'cloud'
       ? 'Saved on this device only'
-      : Store.failed
-        ? 'Last save failed'
-        : Store.busy
-          ? 'Saving'
-          : 'Saved to your account';
+      : Store.offline
+        ? 'Offline. Your changes are kept on this device and sent when you are back online.'
+        : Store.failed
+          ? 'Last save failed'
+          : Store.busy
+            ? 'Saving'
+            : 'Saved to your account';
 }
 
 /* ---------- state ---------- */
