@@ -1,0 +1,14 @@
+{
+  "name": "ember-supabase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "supabase start -x studio,imgproxy,logflare,vector,supavisor,edge-runtime,realtime,mailpit,postgres-meta",
+    "stop": "supabase stop",
+    "test": "node tests/policy.test.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.119.2",
+    "supabase": "3.2.0"
+  }
+}

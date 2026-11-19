@@ -14,3 +14,7 @@ prototype/test/out/
 
 # joined source written for the lint pass
 web/.cache/
+
+# local Supabase state
+supabase/.branches
+supabase/.temp

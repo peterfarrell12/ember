@@ -28,6 +28,7 @@ jobs:
           npm run lint
           git diff --exit-code src/app/module-globals.d.ts
           npm run typecheck
+          npm run test:unit
           npm test -- --jobs 2
       - name: Keep the test output when a test fails
         if: failure()
@@ -35,3 +36,21 @@ jobs:
         with:
           name: test-output
           path: prototype/test/out/
+
+  database-policies:
+    name: Database policies (second account gets nothing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start a local Supabase with the migrations applied
+        working-directory: supabase
+        run: |
+          npm ci
+          npm run start
+      - name: Policy test
+        working-directory: supabase
+        run: npm test
