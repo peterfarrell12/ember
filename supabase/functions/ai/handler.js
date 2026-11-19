@@ -211,7 +211,9 @@ export function createHandler({
               type: 'web_search_20250305',
               name: 'web_search',
               max_uses: 2,
-              user_location: { type: 'approximate', country: 'IE', timezone: 'Europe/Dublin' },
+              // no country here: the API rejects 'IE' ("Country code IE is not supported"), and the
+              // prompt already asks for products sold in Ireland or the UK
+              user_location: { type: 'approximate', timezone: 'Europe/Dublin' },
             },
           ],
         })
