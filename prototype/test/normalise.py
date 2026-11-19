@@ -10,4 +10,5 @@ for line in sys.stdin:
     line = re.sub(r'Full, \d+ waiting', 'Full, N waiting', line)   # t18: same cause again
     line = re.sub(r'^(mid-stream cards: )\d+', r'\1N', line)   # t19: how many ideas had streamed in when the test looked
     line = re.sub(r'^(main h )\d+$', r'\1N', line)   # t11: a height in pixels, which depends on the machine's fonts
+    line = re.sub(r'^(tick toast: )Session skipped\. Everything after it moves up\. \| ', r'\1', line)   # t14: on a slow machine the previous toast is still showing
     sys.stdout.write(line)
