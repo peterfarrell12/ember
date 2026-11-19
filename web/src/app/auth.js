@@ -38,6 +38,16 @@ export async function sendSignInLink(email) {
   if (error) throw error;
 }
 
+/** How the app reaches the `ai` server function: its address, the public key, and the signed-in person's session token. */
+export const aiAccess = {
+  url: SUPABASE_URL + '/functions/v1/ai',
+  key: SUPABASE_KEY,
+  token: async () => {
+    const { data } = await (await supabaseClient()).auth.getSession();
+    return data && data.session ? data.session.access_token : undefined;
+  },
+};
+
 /** Sign out on this device only. */
 export async function signOut() {
   const c = await supabaseClient();

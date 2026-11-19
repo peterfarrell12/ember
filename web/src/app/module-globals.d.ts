@@ -5,6 +5,7 @@ import * as m2 from './traindata.js';
 import * as m3 from './backend-supabase.js';
 import * as m4 from './auth.js';
 import * as m5 from './ai-tasks.js';
+import * as m6 from './ai-server.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -49,6 +50,10 @@ declare global {
   const supabaseClient: typeof m4.supabaseClient;
   const signedInUser: typeof m4.signedInUser;
   const sendSignInLink: typeof m4.sendSignInLink;
+  const aiAccess: typeof m4.aiAccess;
   const signOut: typeof m4.signOut;
   const TASKS: typeof m5.TASKS;
+  const looseJson: typeof m6.looseJson;
+  const eventReader: typeof m6.eventReader;
+  const serverSample: typeof m6.serverSample;
 }

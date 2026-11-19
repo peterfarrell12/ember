@@ -54,6 +54,9 @@ jobs:
       - name: Policy test
         working-directory: supabase
         run: npm test
+      - name: Server function tests (stand-in for Anthropic, no cost)
+        working-directory: supabase
+        run: npm run test:unit
       - name: Accounts and sync in a real browser (sign in, move a diary, second browser, sign out)
         run: |
           (cd web && npm ci)

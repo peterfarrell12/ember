@@ -595,7 +595,14 @@ function withTasks(sample) {
 }
 async function initAI() {
   try {
-    if (!(window.claude && window.claude.use)) return;
+    if (!(window.claude && window.claude.use)) {
+      // signed in: Claude is reached through the server function, by task name
+      if (Store.durable) {
+        AI.sample = serverSample(aiAccess);
+        AI.images = true;
+      }
+      return;
+    }
     const [s, d, m] = await Promise.all([
       window.claude.use('sample'),
       window.claude.use('dictation'),
@@ -616,7 +623,7 @@ async function initAI() {
 }
 const AI_MSG = {
   rate_limited: 'Claude is busy or you have hit a usage limit. Try again in a bit.',
-  session_expired: 'Sign in to Claude again, then retry.',
+  session_expired: 'Sign in again, then retry.',
   refused: 'Claude could not work with that. Try rewording it.',
   image_rejected: 'That image could not be read. Try another photo.',
   invalid_json: 'The answer came back garbled. Try again.',

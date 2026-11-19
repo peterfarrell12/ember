@@ -1,0 +1,57 @@
+name: Deploy backend
+# Applies database changes and deploys the server function to the hosted Supabase project.
+# (The web app itself is deployed by Cloudflare, straight from the repository.)
+#
+# Needs two repository secrets (Settings, Secrets and variables, Actions):
+#   SUPABASE_ACCESS_TOKEN  a personal access token from https://supabase.com/dashboard/account/tokens
+#   SUPABASE_DB_PASSWORD   the project's database password
+# The Anthropic key is not here: it is a secret of the Supabase project itself (Edge Functions, Secrets).
+on:
+  push:
+    branches: [claude/sharp-babbage-2x2bk6, main]
+    paths: ['supabase/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+concurrency: deploy-backend
+env:
+  PROJECT_REF: unltsodmqvtztqjyfvuq
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Check the secrets are set
+        id: ready
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::warning::SUPABASE_ACCESS_TOKEN or SUPABASE_DB_PASSWORD is not set, so nothing was deployed."
+            echo "go=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go == 'yes'
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go == 'yes'
+        with:
+          node-version: 22
+      - name: Connect to the project
+        if: steps.ready.outputs.go == 'yes'
+        working-directory: supabase
+        run: |
+          npm ci
+          npx supabase link --project-ref "$PROJECT_REF"
+      - name: Apply database changes
+        if: steps.ready.outputs.go == 'yes'
+        working-directory: supabase
+        run: |
+          # The first two migrations were pasted into the SQL editor by hand before this workflow existed.
+          # Tell the project they are already applied, so they are not run a second time. Harmless to repeat.
+          npx supabase migration repair --status applied 20261119120000 20261119150000 --remote --password "$SUPABASE_DB_PASSWORD"
+          npx supabase db push --remote --password "$SUPABASE_DB_PASSWORD"
+      - name: Deploy the ai function
+        if: steps.ready.outputs.go == 'yes'
+        working-directory: supabase
+        run: npx supabase functions deploy ai --use-api

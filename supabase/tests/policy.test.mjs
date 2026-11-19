@@ -105,6 +105,37 @@ try {
     const { data } = await a.client.from('user_docs').select('updated_at').eq('kind', 'meta').eq('id', 't').single();
     assert.ok(new Date(data.updated_at).getFullYear() > 2001);
   });
+  // Claude usage: written only by the server, readable only by its owner
+  const day = new Date().toISOString().slice(0, 10);
+  await check('only the server can record Claude usage; a person can read their own and nobody else`s', async () => {
+    const rec = { p_user: a.id, p_day: day, p_input: 1000, p_output: 200, p_searches: 0, p_cost: 0.004 };
+    assert.equal((await admin.rpc('record_ai_usage', rec)).error, null);
+    assert.equal((await admin.rpc('record_ai_usage', rec)).error, null);
+    const mine = await a.client.from('ai_usage').select('calls, input_tokens, cost_usd');
+    assert.deepEqual(mine.data, [{ calls: 2, input_tokens: 2000, cost_usd: 0.008 }]);
+    assert.deepEqual((await b.client.from('ai_usage').select('*')).data, []);
+    assert.equal(Number((await admin.rpc('ai_spend_on', { p_day: day })).data), 0.008);
+  });
+  await check('nobody can lower or invent their own usage, or see the total spent', async () => {
+    assert.ok(
+      (
+        await a.client.rpc('record_ai_usage', {
+          p_user: a.id,
+          p_day: day,
+          p_input: 0,
+          p_output: 0,
+          p_searches: 0,
+          p_cost: -1,
+        })
+      ).error,
+    );
+    assert.ok((await a.client.from('ai_usage').update({ cost_usd: 0 }).eq('user_id', a.id)).error);
+    assert.ok((await a.client.from('ai_usage').delete().eq('user_id', a.id)).error);
+    assert.ok((await a.client.from('ai_usage').insert({ user_id: a.id, day: '2020-01-01' })).error);
+    assert.ok((await a.client.rpc('ai_spend_on', { p_day: day })).error);
+    assert.ok((await visitor.rpc('ai_spend_on', { p_day: day })).error);
+    assert.equal((await a.client.from('ai_usage').select('calls')).data[0].calls, 2);
+  });
   // progress photos: private storage, one folder per person
   const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
   const path = a.id + '/policy.jpg';
