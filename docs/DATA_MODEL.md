@@ -47,6 +47,16 @@ Also in Phase 1:
 - a private Storage bucket for progress photos, path `user_id/photo_id.jpg`, read through signed URLs
 - `ai_usage (user_id, day, calls, tokens)` so free limits can be enforced on the server
 
+## Phase 1 as built
+
+- `user_docs` and its policy are in `supabase/migrations/20261119120000_user_docs.sql`.
+- Progress photos are files in the private `photos` bucket at `<user id>/<random>.jpg` (JPEG only, 5 MB limit). The photo's record in `user_docs` keeps the path in `aid`. The app shows them through signed links that last six hours. If an upload fails, the app falls back to a smaller copy inside the record itself, as the prototype did.
+- `delete_my_account()` deletes the caller's sign-in record and, through it, their rows. It refuses while the person still has photo files, so the app removes those first.
+- Both are in `supabase/migrations/20261119150000_photos_and_account_deletion.sql`.
+- Writes that have not reached the server are kept on the device under `ember:outbox:<user id>` and sent on reconnect or at the next start.
+- A second device picks up changes to the profile and the day on screen by asking again every few seconds while the app is open. Other documents (programs, recipes, photos) are read when the app starts.
+- `ai_usage` is not created yet; it belongs with the server function in Phase 2.
+
 ## What to split out later, and why
 
 Move a field out of JSON only when something needs to query it:

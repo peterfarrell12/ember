@@ -41,6 +41,8 @@ declare global {
   const ROUTINES: typeof m2.ROUTINES;
   const storeError: typeof m3.storeError;
   const supabaseBackend: typeof m3.supabaseBackend;
+  const supabasePhotos: typeof m3.supabasePhotos;
+  const deleteAccount: typeof m3.deleteAccount;
   const authConfigured: typeof m4.authConfigured;
   const signInLinkFailed: typeof m4.signInLinkFailed;
   const supabaseClient: typeof m4.supabaseClient;

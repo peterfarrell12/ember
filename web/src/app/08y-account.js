@@ -50,6 +50,52 @@ A.signOut = async () => {
   location.reload();
 };
 
+/* Everything the person has stored, for a backup or to take elsewhere. Photos are listed by record; the image files are not included. */
+async function exportAll() {
+  const byId = async kind => Object.fromEntries((await Store.list(kind)).map(d => [d.id || d.date, d]));
+  const [days, recipes, foods, programs, sessions, photos, train] = await Promise.all([
+    byId('days'),
+    byId('recipes'),
+    byId('foods'),
+    byId('programs'),
+    byId('sessions'),
+    byId('photos'),
+    Store.get('meta', 'train'),
+  ]);
+  return { exported: new Date().toISOString(), profile: P, days, recipes, foods, programs, sessions, photos, train };
+}
+A.deleteAccount = () => {
+  openSheet(
+    `${sh('Delete my account')}<div class="sheet-b"><p>This deletes your diary, photos and account for good. It cannot be undone. Type DELETE to confirm.</p>
+    <label class="f">Confirm<input class="inp" id="daText" autocomplete="off" autocapitalize="characters" spellcheck="false" data-on="daText"></label></div>
+    <div class="sheet-f"><button class="btn" id="daGo" data-act="deleteAccountGo" disabled style="background:var(--bad);color:#fff">Delete my account</button></div>`,
+  );
+};
+I.daText = el => ($('#daGo').disabled = el.value.trim() !== 'DELETE');
+A.deleteAccountGo = async () => {
+  if (String(($('#daText') || {}).value || '').trim() !== 'DELETE' || !Store.durable) return;
+  const go = $('#daGo');
+  go.disabled = true;
+  go.textContent = 'Deleting…';
+  try {
+    const client = await supabaseClient();
+    await supabasePhotos(client, Store.uid).removeAll();
+    await deleteAccount(client);
+  } catch (e) {
+    go.disabled = false;
+    go.textContent = 'Delete my account';
+    return toast(
+      'Could not delete your account. Nothing was removed from your diary. Check your connection and try again.',
+    );
+  }
+  // nothing of theirs stays on this device either
+  LS.keys('ember:').forEach(k => LS.del(k));
+  try {
+    await signOut();
+  } catch (e) {}
+  location.reload();
+};
+
 /* The documents kept on this device, as [kind, id, data]. */
 const LOCAL_KINDS = ['days', 'meta', 'foods', 'recipes', 'programs', 'sessions', 'photos', 'clphotos', 'cl'];
 function localDocs() {

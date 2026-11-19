@@ -1,11 +1,13 @@
 /* ---------- progress photos: private by default, shared with a coach one photo at a time ---------- */
 const POSES = { front: 'Front', side: 'Side', back: 'Back' };
-const PHO = { list: null, cl: null, busy: false, pend: null, urls: {} };
+const PHO = { list: null, cl: null, busy: false, pend: null, urls: {}, signed: {} };
 let ASSETS;
 async function assetStore() {
   if (ASSETS === undefined) {
     try {
-      ASSETS = (window.claude && (await window.claude.use('assets'))) || null;
+      ASSETS = Store.durable
+        ? supabasePhotos(await supabaseClient(), Store.uid)
+        : (window.claude && (await window.claude.use('assets'))) || null;
     } catch (e) {
       ASSETS = null;
     }
@@ -43,6 +45,7 @@ async function photoStore(file) {
     try {
       const { blob, w, h } = await shrink(file, 1400, 0.82),
         up = await a.upload(blob);
+      if (a.urls) Object.assign(PHO.signed, await a.urls([up.id]));
       return { aid: up.id, w, h };
     } catch (e) {
       if (e && e.message === 'decode') throw e;
@@ -57,7 +60,8 @@ async function photoStore(file) {
   return { src, w, h };
 }
 function photoUrl(p) {
-  if (p.aid) return '/_blob/' + p.aid;
+  // a file in the account's private storage is shown through a signed link, fetched when the photos load
+  if (p.aid) return Store.durable ? PHO.signed[p.aid] || '' : '/_blob/' + p.aid;
   if (PHO.urls[p.id]) return PHO.urls[p.id];
   try {
     const bin = atob(p.src || ''),
@@ -78,6 +82,19 @@ async function loadPhotos() {
     ]);
     PHO.list = mine.sort((a, b) => (a.d < b.d ? 1 : -1));
     PHO.cl = cl.sort((a, b) => (a.d < b.d ? 1 : -1));
+    const a = Store.durable && (await assetStore());
+    if (a && a.urls)
+      try {
+        Object.assign(
+          PHO.signed,
+          await a.urls(
+            PHO.list
+              .concat(PHO.cl)
+              .filter(p => p.aid)
+              .map(p => p.aid),
+          ),
+        );
+      } catch (e) {}
   } catch (e) {
     PHO.list = PHO.list || [];
     PHO.cl = PHO.cl || [];

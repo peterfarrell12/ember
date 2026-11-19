@@ -45,7 +45,7 @@ const link = async () => {
 };
 const rows = async () => (await admin.from('user_docs').select('kind, id, data').eq('user_id', uid)).data;
 const until = async (what, test, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end;) {
+  for (const end = Date.now() + ms; Date.now() < end; ) {
     if (await test()) return;
     await new Promise(r => setTimeout(r, 200));
   }
@@ -168,27 +168,114 @@ try {
     await a.evaluate(() => window.dispatchEvent(new Event('online')));
     await until('four entries on the server', async () => (await entries()) === 4, 40000);
   });
+  let b;
   await step('a second browser signed in as the same person sees the same diary, with no setup', async () => {
-    const b = await (await browser.newContext(phone)).newPage();
+    b = await (await browser.newContext(phone)).newPage();
+    b.on('pageerror', e => errs.push('second browser: ' + e));
     await b.goto(await link());
     await ready(b);
     await b.waitForTimeout(800);
     assert.equal(await b.locator('#tgBody').count(), 0, 'no setup');
     assert.equal(await b.locator('[data-act="moveYes"]').count(), 0, 'nothing to move');
     assert.match((await b.innerText('#main')).toLowerCase(), /4 foods/, 'all four entries show');
-    await b.click('#chipYou');
-    assert.match(await b.innerText('#main'), /Saved to your account/);
-    await b.click('[data-act="openData"]');
-    assert.match(await b.innerText('.sheet >> nth=-1'), new RegExp('Signed in as ' + email.replace(/[.+]/g, '\\$&')));
-    await b.click('[data-act="signOut"]');
-    await b.waitForSelector('#siEmail');
-    assert.equal(await b.isVisible('nav.tabs'), false, 'signed out: back to the sign-in screen only');
   });
-  await step('the first device is unaffected by the second one signing out', async () => {
-    await a.reload();
-    await ready(a);
-    assert.equal(await a.locator('#siEmail').count(), 0);
+  await step('what one device logs shows on the other within a few seconds, without reloading', async () => {
+    await closeSheets(b);
+    await logFood(a, 'pear');
+    await until('five foods on the second browser', async () => /5 foods/.test(await b.innerText('#main')), 15000);
   });
+  await step(
+    'a progress photo goes to private storage and is shown through a signed link, on both devices',
+    async () => {
+      await a.click('#chipYou');
+      await a.click('[data-act="photos"]');
+      const [chooser] = await Promise.all([a.waitForEvent('filechooser'), a.click('#phBody [data-act="phAdd"]')]);
+      await chooser.setFiles(fileURLToPath(new URL('../../prototype/test/p1.jpg', import.meta.url)));
+      await a.click('#phGoBtn');
+      await a.waitForSelector('#phBody .pht img');
+      const shown = async pg =>
+        pg.evaluate(async () => {
+          const im = document.querySelector('#phBody .pht img');
+          await im.decode().catch(() => {});
+          return { src: im.src, ok: im.naturalWidth > 0 };
+        });
+      const mine = await shown(a);
+      assert.match(mine.src, /\/storage\/v1\/object\/sign\/photos\/.+token=/, 'a signed link, not a public one');
+      assert.ok(mine.ok, 'the picture loads');
+      const files = (await admin.storage.from('photos').list(uid)).data;
+      assert.equal(files.length, 1);
+      const rec = (await rows()).find(x => x.kind === 'photos');
+      assert.ok(
+        rec && rec.data.aid.startsWith(uid + '/') && !rec.data.src,
+        'the record points at the file and holds no image data',
+      );
+      const open = await fetch(`${env.API_URL}/storage/v1/object/public/photos/${rec.data.aid}`);
+      assert.notEqual(open.status, 200, 'the file is not reachable without a signed link');
+      await closeSheets(a);
+      await closeSheets(b);
+      await b.reload();
+      await ready(b);
+      await b.click('#chipYou');
+      await b.click('[data-act="photos"]');
+      await b.waitForSelector('#phBody .pht img');
+      await until('the photo to load on the second browser', async () => (await shown(b)).ok);
+      await closeSheets(b);
+    },
+  );
+  await step('the export holds everything', async () => {
+    const out = await a.evaluate(async () => {
+      let text = '';
+      navigator.clipboard.writeText = async t => void (text = t);
+      document.querySelector('#chipYou').click();
+      await new Promise(r => setTimeout(r, 300));
+      document.querySelector('[data-act="openData"]').click();
+      await new Promise(r => setTimeout(r, 300));
+      document.querySelector('[data-act="copyData"]').click();
+      await new Promise(r => setTimeout(r, 1500));
+      return JSON.parse(text);
+    });
+    assert.deepEqual(Object.keys(out).sort(), [
+      'days',
+      'exported',
+      'foods',
+      'photos',
+      'profile',
+      'programs',
+      'recipes',
+      'sessions',
+      'train',
+    ]);
+    assert.equal(Object.values(out.days)[0].e.length, 5);
+    assert.equal(Object.keys(out.photos).length, 1);
+    await closeSheets(a);
+  });
+  await step(
+    'deleting the account removes every row, every photo and the sign-in, and returns to the sign-in screen',
+    async () => {
+      await b.click('#chipYou');
+      await b.click('[data-act="openData"]');
+      assert.match(await b.innerText('.sheet >> nth=-1'), new RegExp('Signed in as ' + email.replace(/[.+]/g, '\\$&')));
+      await b.click('[data-act="deleteAccount"]');
+      assert.match(
+        await b.innerText('.sheet >> nth=-1'),
+        /This deletes your diary, photos and account for good\. It cannot be undone\. Type DELETE to confirm\./,
+      );
+      assert.equal(await b.isDisabled('#daGo'), true, 'nothing happens until DELETE is typed');
+      await b.fill('#daText', 'delete');
+      assert.equal(await b.isDisabled('#daGo'), true, 'lower case is not enough');
+      await b.fill('#daText', 'DELETE');
+      await b.click('#daGo');
+      await b.waitForSelector('#siEmail');
+      assert.deepEqual(await rows(), []);
+      assert.deepEqual((await admin.storage.from('photos').list(uid)).data, []);
+      assert.ok((await admin.auth.admin.getUserById(uid)).error, 'the sign-in record is gone');
+      assert.deepEqual(
+        await b.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('ember:'))),
+        [],
+        'nothing of theirs is left on the device',
+      );
+    },
+  );
   await step('a device that already holds a diary is offered the move on first sign-in', async () => {
     // a diary made on the device before accounts existed (the device-only mode the tests and the prototype use)
     const c = await (await browser.newContext(phone)).newPage();
@@ -213,6 +300,17 @@ try {
       return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
     });
     assert.equal(await c.isVisible('nav.tabs'), true);
+  });
+  await step('signing out returns to the sign-in screen and leaves the account intact', async () => {
+    const c = browser.contexts().at(-1).pages()[0];
+    await closeSheets(c);
+    await c.click('#chipYou');
+    await c.click('[data-act="openData"]');
+    await c.click('[data-act="signOut"]');
+    await c.waitForSelector('#siEmail');
+    assert.equal(await c.isVisible('nav.tabs'), false);
+    const r = (await admin.from('user_docs').select('kind').eq('user_id', extra[0])).data;
+    assert.ok(r.length >= 2, 'the rows are still there');
   });
   await step('no page errors', async () => assert.deepEqual(errs, []));
 } finally {

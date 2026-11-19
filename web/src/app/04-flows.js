@@ -1644,7 +1644,7 @@ A.openData = () => {
   const cnt = k => (DB[k] ? fmt(DB[k].length) : DB.st[k] === 'loading' ? 'loading' : 'not loaded yet');
   openSheet(
     `${sh('Data and sources')}<div class="sheet-b">
-    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button>${Store.account ? `<button class="btn ghost" data-act="signOut">Sign out</button>` : ''}</div>
+    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button>${Store.account ? `<button class="btn ghost" data-act="signOut">Sign out</button><button class="link" data-act="deleteAccount" style="color:var(--bad);align-self:center">Delete my account</button>` : ''}</div>
     <div class="card stack"><h2>Food database</h2><div class="kv small"><span>Everyday foods, USDA FoodData Central</span><b>${cnt('gen')}</b><span>Branded products, Ireland and UK first</span><b>${cnt('br')}</b><span>More branded products</span><b>${cnt('more')}</b></div>
       <p class="small muted">Everyday foods: U.S. Department of Agriculture, FoodData Central (Foundation Foods, FNDDS and SR Legacy), public domain. Branded products: <a href="https://world.openfoodfacts.org" class="link">Open Food Facts</a> contributors, Open Database Licence. Entries whose stated calories disagree with their macros by more than a fifth were left out.</p></div>
     <div class="card stack"><h2>Targets</h2><p class="small muted">Suggested calories use the Mifflin-St Jeor equation and your activity level. They are a starting point, not medical advice.</p></div></div>`,
@@ -1653,13 +1653,7 @@ A.openData = () => {
 };
 A.copyData = async () => {
   try {
-    await navigator.clipboard.writeText(
-      JSON.stringify(
-        { exported: new Date().toISOString(), profile: P, days: S.days, recipes: S.recipes, foods: S.foods },
-        null,
-        1,
-      ),
-    );
+    await navigator.clipboard.writeText(JSON.stringify(await exportAll(), null, 1));
     toast('Copied. Paste it anywhere to keep a backup.');
   } catch (e) {
     toast('Copying is blocked in this view.');
@@ -1757,6 +1751,7 @@ async function boot() {
   if (!P.onboarded) openTargets(true);
   else flushCele();
   if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
+  if (Store.durable) setInterval(refresh, 8000); // another device's changes show within a few seconds
   initAI();
   loadDB('gen');
   pullAssign();
@@ -1786,12 +1781,21 @@ async function refresh() {
     if (!sheets.length) render();
     flushCele();
   }
-  if (Store.mode === 'cloud' && !Store.busy && !sheets.length && Date.now() - lastSync > 45000) {
+  if (
+    Store.mode === 'cloud' &&
+    !Store.busy &&
+    !sheets.length &&
+    Date.now() - lastSync > (Store.durable ? 6000 : 45000)
+  ) {
     lastSync = Date.now();
     try {
       const [p, d] = await Promise.all([Store.get('profile'), Store.get('days', S.date)]);
       if (Store.busy || sheets.length) return;
-      if (p) P = fixProfile(p);
+      // signed in, this runs every few seconds to pick up another device's changes: leave the screen alone when nothing changed
+      const np = p ? fixProfile(p) : null,
+        nd = { ...newDay(S.date), ...(d || {}) };
+      if (Store.durable && (!np || sameDoc(np, P)) && sameDoc(nd, S.days[S.date] || newDay(S.date))) return;
+      if (np) P = np;
       S.days = {};
       S.days[S.date] = { ...newDay(S.date), ...(d || {}) };
       if (S.date !== today()) await loadDay(today());
@@ -1800,6 +1804,7 @@ async function refresh() {
   }
 }
 document.addEventListener('visibilitychange', refresh);
+const sameDoc = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 setInterval(refresh, 60000);
 window.addEventListener('hashchange', () => {
   const h = location.hash.slice(1);

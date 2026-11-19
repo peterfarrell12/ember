@@ -75,3 +75,48 @@ export function supabaseBackend(client, userId) {
     },
   };
 }
+
+/**
+ * Progress photo files for a signed-in person: a private bucket, one folder per person, shown through
+ * short-lived signed links. Policies in supabase/migrations keep each person to their own folder.
+ * @param {{ storage: { from: (bucket: string) => any } }} client
+ * @param {string} userId
+ */
+export function supabasePhotos(client, userId) {
+  const bucket = () => client.storage.from('photos');
+  const done = ({ data, error }) => {
+    if (error) throw storeError(error);
+    return data;
+  };
+  return {
+    /** Store a JPEG. Returns { id }, where id is the file's path, kept on the photo's record. */
+    async upload(blob) {
+      const id = userId + '/' + crypto.randomUUID() + '.jpg';
+      done(await bucket().upload(id, blob, { contentType: 'image/jpeg', upsert: false }));
+      return { id };
+    },
+    async delete(id) {
+      done(await bucket().remove([id]));
+    },
+    /** Signed links for a list of files, as { path: link }. Links last six hours. */
+    async urls(ids) {
+      if (!ids.length) return {};
+      const rows = done(await bucket().createSignedUrls(ids, 6 * 3600)) || [];
+      return Object.fromEntries(rows.filter(r => r.signedUrl).map(r => [r.path, r.signedUrl]));
+    },
+    /** Remove every file the person has. Used when they delete their account. */
+    async removeAll() {
+      for (;;) {
+        const files = done(await bucket().list(userId, { limit: 100 })) || [];
+        if (!files.length) return;
+        done(await bucket().remove(files.map(f => userId + '/' + f.name)));
+      }
+    },
+  };
+}
+
+/** Delete the signed-in person's account and every row they own. Their photo files must already be gone. */
+export async function deleteAccount(client) {
+  const { error } = await client.rpc('delete_my_account');
+  if (error) throw storeError(error);
+}
