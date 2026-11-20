@@ -2026,6 +2026,18 @@ main > *,
   padding-top: 14px;
   border-top: 1px solid var(--hero-line);
 }
+button.h-mac {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+.icon-btn.fav[aria-pressed='true'] {
+  color: var(--gold);
+}
+.nut b small {
+  font-weight: 600;
+  font-size: 12px;
+}
 .hm-l {
   font-size: 12px;
   font-weight: 700;
@@ -3020,7 +3032,8 @@ label.dim {
   display: block;
   flex: none;
 }
-.cm i.train.done {
+.cm i.train.done,
+.cm i.act {
   background: var(--primary);
 }
 .cm i.rehab {

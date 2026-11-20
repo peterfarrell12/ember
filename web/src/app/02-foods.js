@@ -712,8 +712,57 @@ function remember(food, qty, unit, meal, sv) {
     ...(food.code ? { code: food.code } : {}),
     ...(food.id && /^[cr]/.test(food.id) ? { id: food.id } : {}),
     ...(food.nog ? { nog: true } : {}),
+    ...(old && old.fav ? { fav: 1 } : {}),
   };
-  P.rec = [snap].concat(P.rec.filter(r => (r.n + '|' + (r.b || '')).toLowerCase() !== key)).slice(0, 60);
+  // the sixty most recent foods are kept; a favourite is never one of those dropped
+  let room = 60;
+  P.rec = [snap]
+    .concat(P.rec.filter(r => (r.n + '|' + (r.b || '')).toLowerCase() !== key))
+    .filter(r => r.fav || room-- > 0);
+}
+/* ---------- a search that forgives a slip: "bananna", "chiken", "yoghrt" ----------
+   Only used when the words as typed find nothing. Each word that is not in the food lists is swapped for the
+   commonest listed word one letter away from it (a letter added, dropped, changed or two swapped). */
+let VOCAB = null;
+function vocab() {
+  if (VOCAB || !DB.L.gen) return VOCAB;
+  VOCAB = new Map();
+  for (const hay of DB.L.gen) for (const w of hay.split(' ')) if (w.length >= 4) VOCAB.set(w, (VOCAB.get(w) || 0) + 1);
+  return VOCAB;
+}
+function oneAway(a, b) {
+  const la = a.length,
+    lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i++;
+  if (la === lb)
+    return (
+      a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    );
+  return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+function respell(q) {
+  const v = vocab();
+  if (!v) return '';
+  let changed = false;
+  const out = norm(q)
+    .trim()
+    .split(' ')
+    .map(w => {
+      if (w.length < 4 || v.has(w) || v.has(w + 's') || (w.endsWith('s') && v.has(w.slice(0, -1)))) return w;
+      let best = '',
+        n = 0;
+      for (const [c, k] of v)
+        if (k > n && c[0] === w[0] && oneAway(w, c)) {
+          best = c;
+          n = k;
+        }
+      if (!best) return w;
+      changed = true;
+      return best;
+    });
+  return changed ? out.join(' ') : '';
 }
 function lastUse(food) {
   const key = (food.n + '|' + (food.b || '')).toLowerCase();

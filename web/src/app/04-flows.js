@@ -663,7 +663,8 @@ function openFood(food, opts = {}) {
       const o = units.map((u, i) => (u.alt === kind ? opt(u, i) : '')).join('');
       return o ? `<optgroup label="${label}">${o}</optgroup>` : '';
     };
-  openSheet(`${sh(food.n)}<div class="sheet-b">
+  const isFav = !!(lastUse(food) || {}).fav;
+  openSheet(`${sh(food.n, `<button class="icon-btn fav" id="fdFav" data-act="fdFav" aria-pressed="${isFav}" aria-label="Favourite">${ic('star', isFav ? 'fill' : '')}</button>`)}<div class="sheet-b">
     <div class="row small muted">${srcBadge(food.src)}<span>${esc([food.b, (SRC[food.src] || SRC.Q)[2]].filter(Boolean).join(' · '))}${webSource(food)}</span></div>
     <div class="amt"><label class="f">Serving size<input class="inp" id="fdQty" inputmode="decimal" value="${qty}" data-on="fd"></label>
       <label class="f">Unit<select class="inp" id="fdUnit" data-on="fdUnit">${units.map((u, i) => (u.alt ? '' : opt(u, i))).join('')}${grp('Weighed before cooking', 'raw')}${grp('Convert from', 'conv')}</select></label></div>
@@ -671,7 +672,7 @@ function openFood(food, opts = {}) {
       <div class="tot"><span>Total</span><b class="tn" id="fdEq"></b></div></div>
     <div class="chips" id="fdChips"></div>
     ${FD.pick ? '' : segHtml('fdMeal', Object.entries(MEALS), FD.meal)}
-    <div class="card" id="fdNut"></div>${Store.durable && /^[bmog]/.test(food.id || '') ? `<button class="link small" data-act="fdWrong" style="align-self:center">These figures are wrong</button>` : ''}
+    <div class="card" id="fdNut"></div>${food.nog ? '' : `<p class="tiny muted" style="text-align:center">Per 100 ${FD.bw}: ${fmt(food.k)} kcal, protein ${r1(food.p)} g, carbs ${r1(food.c)} g, fat ${r1(food.f)} g</p>`}${Store.durable && /^[bmog]/.test(food.id || '') ? `<button class="link small" data-act="fdWrong" style="align-self:center">These figures are wrong</button>` : ''}
     ${food.src === 'AI' ? `<div class="banner">${ic('spark')}<span>This is an estimate, not a database entry. Search for the food to use measured values.</span></div>` : ''}
   </div><div class="sheet-f">${FD.edit ? `<button class="btn ghost" style="width:auto" data-act="delEntry" aria-label="Delete">${ic('trash')}</button>` : ''}<button class="btn ${FD.edit ? '' : 'ember'}" id="fdGo" data-act="fdGo"></button></div>`);
   SEG.fdMeal = v => {
@@ -681,6 +682,67 @@ function openFood(food, opts = {}) {
   fdUpdate();
 }
 const fdGrams = () => r1(FD.qty * FD.units[FD.ui].g * FD.sv);
+/* The star on a food: favourites head the Add sheet and are never dropped from the remembered foods. */
+A.fdFav = () => {
+  let r = lastUse(FD.food);
+  if (!r) {
+    remember(FD.food, FD.qty, FD.units[FD.ui].short, null, FD.sv);
+    r = lastUse(FD.food);
+  }
+  if (r.fav) delete r.fav;
+  else r.fav = 1;
+  saveProfile();
+  const b = $('#fdFav');
+  if (b) {
+    b.setAttribute('aria-pressed', String(!!r.fav));
+    b.innerHTML = ic('star', r.fav ? 'fill' : '');
+  }
+  toast(r.fav ? 'Added to favourites' : 'Removed from favourites');
+  if (ADD && $('#addList')) renderAddList();
+};
+/* ---------- the day's full nutrition: what the three bars on Today leave out ---------- */
+A.dayNut = () => {
+  const d = day(),
+    t = totals(d),
+    miss = k => d.e.filter(e => e[k] == null).length,
+    gaps = Math.max(miss('su'), miss('sf'), miss('na')),
+    salt = (t.na * 2.5) / 1000,
+    // reference intakes for an average adult, as printed on UK and Irish labels; fibre is the 30 g a day advised for adults
+    row = (l, v, u, ref, sub, limit) =>
+      `<span class="${sub ? 'sub' : ''}">${l}</span><b>${v} ${u}${ref ? `<small class="muted"> ${limit ? 'of at most' : 'of'} ${ref} ${u}</small>` : ''}</b>`;
+  openSheet(
+    `${sh(S.date === today() ? "Today's nutrition" : 'Nutrition, ' + niceDate(S.date))}<div class="sheet-b">
+    <div class="card"><div class="row" style="align-items:baseline;gap:8px;margin-bottom:12px"><span class="num bigk">${fmt(t.k)}</span><span class="muted">kcal from ${t.n} ${t.n === 1 ? 'food' : 'foods'}</span></div>
+    <div class="nut">${row('Protein', r0(t.p), 'g', P.t.p)}${row('Carbohydrate', r0(t.c), 'g', P.t.c)}${row('of which sugars', r0(t.su), 'g', 90, 1, 1)}${row('Fat', r0(t.f), 'g', P.t.f)}${row('of which saturates', r0(t.sf), 'g', 20, 1, 1)}${row('Fibre', r0(t.fi), 'g', 30)}${row('Salt', r1(salt), 'g', 6, 0, 1)}</div></div>
+    <p class="tiny muted">Protein, carbohydrate and fat are set against your own targets. Sugars, saturates and salt are set against the reference intakes for an average adult printed on food labels; fibre against the 30 g a day advised for adults. General guidance, not medical advice.${gaps ? ` ${gaps} of the ${t.n} foods ${gaps === 1 ? 'does' : 'do'} not list sugars, saturates or salt, so those totals may be higher.` : ''}</p></div>`,
+  );
+};
+/* ---------- water: any amount, not only 250 ml ---------- */
+A.waterSheet = () => {
+  const d = day(),
+    sizes = [
+      ['Glass', 200],
+      ['Mug', 260],
+      ['Can', 330],
+      ['Bottle', 500],
+      ['Large bottle', 750],
+      ['Litre', 1000],
+    ];
+  openSheet(
+    `${sh('Water')}<div class="sheet-b"><p class="small muted">${fmt(d.w)} of ${fmt(P.t.w)} ml ${S.date === today() ? 'today' : 'that day'}.</p>
+    <div class="opts">${sizes.map(([l, ml]) => `<button data-act="waterAdd" data-n="${ml}">${l}, ${fmt(ml)} ml</button>`).join('')}</div>
+    <label class="f">Another amount, ml<input class="inp" id="wtMl" inputmode="numeric" placeholder="400" autocomplete="off"></label>
+    <p class="tiny muted">To correct a mistake, take some off with the minus button on Today.</p></div>
+    <div class="sheet-f"><button class="btn" data-act="waterAdd">Add</button></div>`,
+  );
+};
+A.waterAdd = async ({ n }) => {
+  const ml = n ? +n : r0(num($('#wtMl').value));
+  if (!(ml > 0) || ml > 5000) return toast('Enter an amount between 1 and 5,000 ml.');
+  closeSheet();
+  await A.water({ n: ml });
+  toast(fmt(ml) + ' ml of water added');
+};
 const svText = q => (q === 0.5 ? '½' : q === 1.5 ? '1½' : String(q));
 function fdUpdate() {
   const g = fdGrams(),

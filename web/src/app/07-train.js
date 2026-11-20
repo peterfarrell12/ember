@@ -359,12 +359,73 @@ function openPicker(cb, title = 'Add an exercise', g = '') {
   );
   renderPicker();
 }
+const EX_ALIAS = {
+  bicep: ['arms:curl', 'chin-up'],
+  biceps: ['arms:curl', 'chin-up'],
+  tricep: ['tricep', 'pushdown', 'skull', 'dip'],
+  triceps: ['tricep', 'pushdown', 'skull', 'dip'],
+  abs: ['core'],
+  ab: ['core'],
+  pecs: ['chest'],
+  lats: ['back'],
+  delts: ['shoulders'],
+  quads: ['squat', 'leg extension', 'leg press', 'lunge'],
+  hams: ['hamstring', 'romanian', 'leg curl'],
+  calves: ['calf'],
+  cardio: ['cond'],
+};
+/* Two-word names people type for one exercise: the search also looks for the listed name. */
+const EX_SAID = [
+  [/\bpress[- ]?ups?\b/, 'push-up'],
+  [/\bsit ?ups?\b/, 'sit-up'],
+  [/\bpull ?ups?\b/, 'pull-up'],
+  [/\bchin ?ups?\b/, 'chin-up'],
+  [/\bstep ?ups?\b/, 'step-up'],
+];
 function renderPicker() {
-  const q = PK.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const typed = PK.q.trim().toLowerCase(),
+    said = EX_SAID.reduce((t, [re, to]) => t.replace(re, to), typed),
+    qs = [typed].concat(said !== typed ? [said] : []).map(t => t.split(/\s+/).filter(Boolean));
   const all = Object.values(EXS).concat(
     Object.entries(TR.cx).map(([id, c]) => ({ id, n: c.n, g: c.g, eq: 'other', mine: true })),
   );
-  const hits = all.filter(e => (!PK.g || e.g === PK.g) && q.every(t => e.n.toLowerCase().includes(t))).slice(0, 80);
+  // a word finds an exercise by its name, by the name run together ("pullup" finds Pull-up), by its short name
+  // ("rdl", "ohp"), by its muscle group, or by what people call the muscle ("bicep" finds the curls)
+  const squash = t => t.replace(/[^a-z0-9]/g, ''),
+    rank = (e, t) => {
+      const n = e.n.toLowerCase(),
+        ts = squash(t),
+        id = String(e.id).toLowerCase();
+      if (ts.length >= 3 && (id === ts || id === ts.replace(/s$/, ''))) return 0;
+      if (n.startsWith(t)) return 1;
+      if (n.includes(' ' + t)) return 2;
+      if (ts.length >= 3 && (squash(n).includes(ts) || id.includes(ts))) return 3;
+      if (e.g === t || (GROUPS[e.g] || '').toLowerCase() === t) return 4;
+      if (
+        (EX_ALIAS[t] || []).some(a =>
+          a.includes(':') ? e.g === a.split(':')[0] && n.includes(a.split(':')[1]) : n.includes(a) || e.g === a,
+        )
+      )
+        return 4;
+      return n.includes(t) ? 5 : -1;
+    };
+  const score = e => {
+    let best = -1;
+    for (const q of qs) {
+      const r = q.map(t => rank(e, t));
+      if (r.every(x => x >= 0)) {
+        const worst = Math.max(0, ...r);
+        best = best < 0 ? worst : Math.min(best, worst);
+      }
+    }
+    return best;
+  };
+  const hits = all
+    .map(e => ({ e, r: score(e) }))
+    .filter(x => (!PK.g || x.e.g === PK.g) && x.r >= 0)
+    .sort((a, b) => a.r - b.r)
+    .map(x => x.e)
+    .slice(0, 80);
   $('#pkList').innerHTML =
     (hits.length
       ? `<div class="list">${hits.map(e => `<button class="res" data-act="pkPick" data-id="${e.id}"><span class="n">${esc(e.n)}</span><span class="k muted small">${lifts()[e.id] && lifts()[e.id].pr ? 'Best ' + r0(lifts()[e.id].pr) + ' kg' : ''}</span><span class="s">${GROUPS[e.g] || ''}${e.mine ? ' · yours' : ' · ' + EQUIP[e.eq]}</span></button>`).join('')}</div>`
@@ -896,13 +957,19 @@ A.sessAgain = () => {
     a.forEach(v => (c[v] = (c[v] || 0) + 1));
     return Object.keys(c).sort((x, y) => c[y] - c[x])[0];
   };
+  // where the session is a day of the program in use, each exercise keeps what the program prescribes
+  // (4 sets of 5 to 8, 150 s rest, a 45 s hold); otherwise it is rebuilt from what was logged
+  const p = activeProg(),
+    dy = p && p.days.find(d => d.n === s.n),
+    rx = {};
+  if (dy) dy.items.forEach(it => (rx[it.ex] = rx[it.ex] || it));
   startSession(
     s.n,
     s.items.map(it => ({
       ex: it.ex,
-      sets: it.sets.length,
-      reps: String(mode(it.sets.map(x => x[1])) || 10),
-      rest: isLift(it.ex) ? 90 : 30,
+      sets: rx[it.ex] ? rx[it.ex].sets : it.sets.length,
+      reps: rx[it.ex] ? rx[it.ex].reps : String(mode(it.sets.map(x => x[1])) || 10),
+      rest: rx[it.ex] ? rx[it.ex].rest : isLift(it.ex) ? 90 : 30,
     })),
     { kind: s.kind === 'rehab' ? 'rehab' : 'train', client: SV.client || '' },
   );

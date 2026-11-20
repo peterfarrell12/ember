@@ -46,6 +46,33 @@ function readyRow(tk) {
   }
   return `<button class="th-rd" data-act="ready"><span class="th-rdi">${ic('pulse')}</span><span class="grow"><b>Recovery check-in</b><small>${dev ? 'Devices: ' + dev + '. ' : ''}Thirty seconds on sleep and soreness tells you whether to push or back off.</small></span>${ic('chev-r')}</button>`;
 }
+/* Recent sessions: gym sessions, and with them the runs, matches and cycles logged as activities, newest first.
+   A session opens (and can be repeated); an activity goes to its day. Six at first, the rest on request. */
+let sessAll = false;
+function recentTraining() {
+  const acts = P.xlog
+      .filter(x => !TR.sess.some(s => s.d === x.d && s.n === x.n))
+      .map(x => ({ act: 1, d: x.d, n: x.n, min: x.min, k: x.k })),
+    all = TR.sess.concat(acts).sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+  if (!all.length) return `<p class="empty">Finished sessions and logged activities are listed here.</p>`;
+  return (
+    all
+      .slice(0, sessAll ? 60 : 6)
+      .map(s =>
+        s.act
+          ? `<button class="entry" data-act="goDate" data-date="${s.d}"><span class="n">${esc(s.n)}</span><span class="k muted small">${s.min ? s.min + ' min' : ''}</span><span class="s">${niceDate(s.d)}${s.k ? ' · about ' + fmt(s.k) + ' kcal' : ''}</span></button>`
+          : `<button class="entry" data-act="sessView" data-id="${s.id}"><span class="n">${esc(s.n)}</span><span class="k muted small">${s.dur} min</span><span class="s">${niceDate(s.d)} · ${s.sets} sets${s.vol ? ' · ' + fmt(s.vol) + ' kg' : ''}${s.prs ? ' · ' + s.prs + ' record' + (s.prs === 1 ? '' : 's') : ''}</span></button>`,
+      )
+      .join('') +
+    (all.length > 6 && !sessAll
+      ? `<button class="link" data-act="sessShowAll" style="align-self:flex-start;margin-top:8px">Show all ${Math.min(all.length, 60)}</button>`
+      : '')
+  );
+}
+A.sessShowAll = () => {
+  sessAll = true;
+  render();
+};
 function trainHero(tk, p) {
   const rd = readyRow(tk),
     did = TR.sess.find(s => s.d === tk && s.kind === 'train');
@@ -130,16 +157,6 @@ function viewTrain() {
   <div class="rail-w"><div class="rail-h"><h2>Recovery routines</h2><span class="muted tiny">Guided, with a timer</span></div><div class="rail">${ROUTINES.map(r => `<button class="rcard" data-act="routine" data-id="${r.id}"><b>${esc(r.n)}</b><small>${esc(r.about)}</small><span class="tn">${ic('clock')} ${Math.round(rtTotal(r) / 60)} min</span></button>`).join('')}</div></div>
   ${week}
   <section class="card"><div class="between"><h2>Recent sessions</h2>${TR.sess.length ? `<button class="link" data-act="trainStats">All trends</button>` : ''}</div>
-    ${
-      TR.sess.length
-        ? TR.sess
-            .slice(0, 5)
-            .map(
-              s =>
-                `<button class="entry" data-act="sessView" data-id="${s.id}"><span class="n">${esc(s.n)}</span><span class="k muted small">${s.dur} min</span><span class="s">${niceDate(s.d)} · ${s.sets} sets${s.vol ? ' · ' + fmt(s.vol) + ' kg' : ''}${s.prs ? ' · ' + s.prs + ' record' + (s.prs === 1 ? '' : 's') : ''}</span></button>`,
-            )
-            .join('')
-        : `<p class="empty">Finished sessions are listed here, each one ready to repeat.</p>`
-    }</section>
+    ${recentTraining()}</section>
   ${Store.owner !== false ? gymStrip() : ''}${find}${coachCardForClient()}`;
 }

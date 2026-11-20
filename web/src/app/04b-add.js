@@ -119,7 +119,21 @@ function renderAddList() {
         .trim();
       if (bare.length >= 2 && bare !== q.toLowerCase()) r = searchAll(bare, ADD.more ? 40 : 14);
     }
-    let h = '';
+    // still nothing: a slip of the thumb? Look for the nearest words the food lists do have, and say so
+    let meant = '';
+    if (!r.mine.length && !r.gen.length && !r.br.length) {
+      const fix = respell(q);
+      if (fix) {
+        const r2 = searchAll(fix, ADD.more ? 40 : 14);
+        if (r2.mine.length || r2.gen.length || r2.br.length) {
+          r = r2;
+          meant = fix;
+        }
+      }
+    }
+    let h = meant
+      ? `<p class="small muted">Nothing for "${esc(q)}". Showing results for <b>${esc(meant)}</b>.</p>`
+      : '';
     const ask =
       !ADD.pick && mealLike(q)
         ? `<button class="say slim" data-act="sayQ"><span class="say-i">${ic('spark')}</span><span class="grow"><b>Work this out as a meal</b><small>Splits "${esc(q.length > 44 ? q.slice(0, 42) + '…' : q)}" into foods and amounts</small></span>${ic('chev-r')}</button>`
@@ -131,7 +145,8 @@ function renderAddList() {
     if (r.br.length)
       h += `<div class="grp">Branded products</div><div class="list">${r.br.map(x => foodRow(x.food)).join('')}</div>`;
     const loading = DB.st.gen === 'loading' || DB.st.br === 'loading' || DB.st.more === 'loading';
-    const found = !!h;
+    const found = !!(r.mine.length || r.gen.length || r.br.length);
+    if (!found) h = '';
     if (!h && loading) h = `<div class="busy"><div class="spinner"></div>Loading the food database</div>`;
     else if (!h && ask)
       h = `<p class="small muted">No single food matches that. Work it out as a meal, or search for one food at a time.</p>`;
@@ -178,10 +193,17 @@ function renderAddList() {
   );
   let list;
   if (ADD.tab === 'recent') {
+    const favs = P.rec.filter(r => r.fav && !shown.has(keyOf(r)));
+    favs.forEach(r => shown.add(keyOf(r)));
     const rs = P.rec.filter(r => !shown.has(keyOf(r)));
-    list = rs.length
+    list = favs.length
+      ? `<div class="grp">Favourites</div><div class="list">${favs.map(r => foodRow(resolveRecent(r))).join('')}</div>${rs.length ? `<div class="grp">Recent</div>` : ''}`
+      : '';
+    list += rs.length
       ? `<div class="list">${rs.map(r => foodRow(resolveRecent(r))).join('')}</div>`
-      : `<p class="empty">${shown.size ? 'Everything else you log will be listed here.' : 'Foods you log are listed here, ready to add again in one tap.'}</p>`;
+      : favs.length
+        ? ''
+        : `<p class="empty">${shown.size ? 'Everything else you log will be listed here.' : 'Foods you log are listed here, ready to add again in one tap.'}</p>`;
   } else if (ADD.tab === 'foods') {
     const fs = Object.values(S.foods);
     list = `<button class="btn sm ghost" data-act="newFood" style="align-self:flex-start">${ic('plus')} New food from a label</button>${fs.length ? `<div class="list">${fs.map(c => foodRow(customFood(c))).join('')}</div>` : `<p class="empty">Save a food from its label once and it is here every time.</p>`}`;

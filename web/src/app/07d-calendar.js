@@ -185,6 +185,17 @@ function planFor(k) {
       done: !!pl.done[k + '|' + e.id],
     });
   });
+  // anything else logged that day: a run, a match, a cycle, a recovery routine. Training of every kind is on the calendar.
+  P.xlog
+    .filter(x => x.d === k && !ss.some(s => s.n === x.n))
+    .forEach(x =>
+      out.push({
+        type: 'act',
+        done: 1,
+        t: x.n,
+        sub: [x.min ? x.min + ' min' : '', x.k ? 'about ' + fmt(x.k) + ' kcal' : ''].filter(Boolean).join(', '),
+      }),
+    );
   gymMine(k).forEach(x => out.push(x));
   return out.sort((a, b) => ((a.tm || '99') < (b.tm || '99') ? -1 : (a.tm || '99') > (b.tm || '99') ? 1 : 0));
 }
@@ -342,6 +353,8 @@ function renderCal() {
       const K = PLAN_KINDS[it.k] || PLAN_KINDS.other;
       return `<div class="ag ${it.done ? 'done' : ''}">${tm}<button class="ag-i ev" data-act="calEv" data-id="${it.id}" data-date="${sel}" aria-label="Edit ${esc(it.t)}">${ic(K[1])}</button><button class="grow ag-t" data-act="calEv" data-id="${it.id}" data-date="${sel}"><b>${esc(it.t)}</b><small>${esc(it.sub || K[0])}</small></button>${it.k === 'rest' ? '' : `<button class="tick sm" data-act="calTick" data-id="${it.id}" data-date="${sel}" aria-pressed="${!!it.done}" aria-label="Done">${ic('check')}</button>`}</div>`;
     }
+    if (it.type === 'act')
+      return `<div class="ag done">${tm}<span class="ag-i train">${ic('check')}</span><span class="grow"><b>${esc(it.t)}</b><small>${esc(it.sub)}</small></span></div>`;
     if (it.done)
       return `<div class="ag done">${tm}<span class="ag-i ${it.type}">${ic('check')}</span><button class="grow ag-t" data-act="sessView" data-id="${it.sid}"><b>${esc(it.t)}</b><small>${esc(it.sub)}</small></button></div>`;
     if (it.missed)
@@ -529,7 +542,7 @@ A.calLog = async () => {
 
 /* what is on the plan for a day, in one line for Today */
 function planStrip(k) {
-  const items = planFor(k).filter(it => !it.skipped);
+  const items = planFor(k).filter(it => !it.skipped && it.type !== 'act');
   if (!items.length) return '';
   const left = items.filter(it => !it.done && !it.missed);
   return `<button class="pstrip" data-act="cal" data-date="${k}">${ic('cal')}<span class="grow"><b>${left.length ? 'On your plan' : 'Plan done for the day'}</b><small>${esc(
@@ -608,6 +621,10 @@ A.calItem = ({ date, i }) => {
     tk = today();
   if (!it) return;
   if (it.type === 'ev') return A.calEv({ id: it.id, date });
+  if (it.type === 'act') {
+    closeAll();
+    return goDate(date);
+  }
   if (it.done && it.sid) return A.sessView({ id: it.sid });
   if (it.missed) return toast('That one was missed. The program carries on from where you left off.');
   if (it.type === 'rehab') return date === tk ? A.calRehab() : toast('Rehab is done on the day.');

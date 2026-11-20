@@ -1,0 +1,23 @@
+plan: {'days': [0, 3, 5], 'tm': '18:00', 'rehab': 'daily', 'since': '2026-11-19'}
+TODAY ITEMS: Today | Add | Day A | Squat and push, about 55 min | Move | Skip | Start |  | Weighed 85.9 kg. |  | Open this day's diary
+cells with marks: 9
+NEXT DAY: Saturday 21 November | Today | Add | 18:00 | Day B | Hinge and pull, about 55 min | Move | Skip
+after move sel: Sunday 22 November | Today | Add | 18:00 | Day B | Hinge and pull, about 55 min | Move | Skip
+moved: {'2026-11-21': '2026-11-22'}
+skip: {'2026-11-21': 1} moved: {}
+skipped day: Saturday 21 November | Today | Add | Training skipped | Put it back if plans change. | Put back
+TODAY NOW: Today | Add | 18:00 | Day A | Squat and push, about 55 min | Move | Skip | Start | 20:00 | Padel doubles | 90 min, every Thursday |  | Weighed 85.9 kg. |  | Open this day's diary
+tick toast: Done | Log it as exercise
+done keys: ['2026-11-19|3t90t8m....'] ev: [('Padel doubles', 'match', 3, '', '20:00'), ('Physio', 'appt', None, '2026-11-20', '09:30')]
+plan rows: 32 | weeks 4 | HEAD: Your plan | Full body, 3 days | Week 1 of 8, 0 of 24 sessions done. Next session today.
+THIS WEEK: This week | 2 sessions, about 110 min | Mon | 16 | Padel | 60 min, about 400 kcal | Tue | 17 | Nothing logged | Wed | 18 | Nothing logged | Thu | 19 | Day A | 18:00, Squat and push, about 55 min | Today | Padel doubles | 20:00, 90 min, every Thursday | Fri | 20 | Physio | 09:30, 60 min | Sat | 21 | Day B | 18:00, Hinge and pull,
+DETAIL: Day B | Saturday 21 November, 18:00 | 6 exercises | about 55 min |  | Hinge and pull |  | Deadlift | 3 × 4-6, rest 180 s | Overhead press | 4 × 6-10, rest 120 s | Pull-up | 4 × 6-10, rest 120 s | Bulgarian split squat | 3 × 8-10, rest 90 s | Dumbbell curl | 3 
+weeks after more: 8
+next month: December 2026 cells 35
+STRIP: Mon | 17 | Tue | 18 | Wed | Thu | 20 | Fri | Sat | 22 | Sun |  | 0 of 3 strength sessions this week, 60 minutes active. |  |  Calendar
+HERO k: Planned for today at 18:00. Full body, 3 days, week 1 of 8
+PSTRIP: On your plan | 18:00 Day A, 20:00 Padel doubles (done)
+NEXT: Log something to keep your 8-day streak |  | Yesterday's breakfast: Porridge, Banana, raw, Flat white, 393 kcal. |  | Same again | Something else
+AFTER SESSION: This week | 2 sessions, about 55 min | Mon | 16 | Padel | 60 min, about 400 kcal | Tue | 17 | Nothing logged | Wed | 18 | Nothing logged | Thu | 19 | Day A | 18:00, 1 min, 2 sets | Padel doubles | 20:00, 90 min, every Thursday | Fri | 20 | Physio | 09:30, 60 m
+after reload pstrip: Plan done for the day | 18:00 Day A (done), 20:00 Padel doubles (done)
+ERRS []

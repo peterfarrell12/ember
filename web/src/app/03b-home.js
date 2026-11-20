@@ -85,7 +85,7 @@ function heroCard(d, t, z) {
       <div class="h-kv tn"><span>Eaten</span><b>${fmt(t.k)}</b>${t.ex ? `<span>Exercise</span><b>${P.exAdd ? '+' : ''}${fmt(t.ex)}</b>` : ''}<span>Budget</span><b>${fmt(z.b)}</b></div></div>
     <div class="gauge" role="img" aria-label="${fmt(t.k)} of ${fmt(z.b)} kcal eaten. Your zone is ${fmt(z.lo)} to ${fmt(z.hi)}."><i class="gz" style="left:${pc(z.lo)}%;width:${pc(z.hi) - pc(z.lo)}%"></i><i class="gf" style="width:${pc(t.k)}%"></i><i class="gt" style="left:${pc(z.b)}%"></i></div>
     <div class="g-lab"><span>${note}</span><span class="tn">Zone ${fmt(z.lo)}–${fmt(z.hi)}</span></div>
-    <div class="h-mac">${mac('Protein', t.p, P.t.p, 'p')}${mac('Carbs', t.c, P.t.c, 'c')}${mac('Fat', t.f, P.t.f, 'f')}</div>
+    <button class="h-mac" data-act="dayNut" aria-label="Protein ${r0(t.p)} of ${P.t.p} g, carbs ${r0(t.c)} of ${P.t.c} g, fat ${r0(t.f)} of ${P.t.f} g. Open the full nutrition for the day, with fibre, sugars and salt.">${mac('Protein', t.p, P.t.p, 'p')}${mac('Carbs', t.c, P.t.c, 'c')}${mac('Fat', t.f, P.t.f, 'f')}</button>
   </section>`;
 }
 /* The single most useful thing to do next, or nothing. */
@@ -245,7 +245,7 @@ function trackers(d, t, isToday) {
       : `<div class="trk">${head}<div class="trk-a">${acts}</div></div>`;
   };
   return `<div class="trks">
-    ${tile('drop', 'Water', fmt(d.w), '/ ' + fmt(P.t.w) + ' ml', d.w >= P.t.w ? 'Target reached' : fmt(P.t.w - d.w) + ' ml to go', bar(d.w, P.t.w, 'ice'), `<button class="tkb" data-act="water" data-n="-250" aria-label="Remove 250 ml">${ic('minus')}</button><button class="tkb w" data-act="water" data-n="250">${ic('plus')} 250 ml</button>`, '', true)}
+    ${tile('drop', 'Water', fmt(d.w), '/ ' + fmt(P.t.w) + ' ml', d.w >= P.t.w ? 'Target reached' : fmt(P.t.w - d.w) + ' ml to go', bar(d.w, P.t.w, 'ice'), `<button class="tkb" data-act="water" data-n="-250" aria-label="Remove 250 ml">${ic('minus')}</button><button class="tkb w" data-act="water" data-n="250">${ic('plus')} 250 ml</button>`, 'waterSheet', true)}
     ${tile('cup', 'Caffeine', fmt(tot), '/ ' + CAF_MAX + ' mg', tot ? (atBed > 50 ? 'About ' + atBed + ' mg still active at ' + P.bed : 'About ' + atBed + ' mg left by ' + P.bed) : S.date === today() ? 'None today' : 'None that day', bar(tot, CAF_MAX, tot > CAF_MAX ? 'ember' : 'gold'), `<button class="tkb" data-act="caf" aria-label="All drinks and your caffeine curve">${ic('chart')}</button><button class="tkb w" data-act="cafAdd" data-id="${usualDrink().id}">${ic('plus')}<span class="ell">${esc(usualDrink().s || usualDrink().n)}</span></button>`, 'caf', true)}
     ${tile('pulse', 'Exercise', fmt(t.ex), 'kcal', [mins ? mins + ' min' : '', h.st ? fmt(h.st) + ' steps' : ''].filter(Boolean).join(', ') || (d.x.length ? d.x.length + (d.x.length === 1 ? ' activity' : ' activities') : 'Nothing yet'), '', `<button class="tkb w" data-act="addExercise">${ic('plus')} Add</button>`)}
     ${tile('scale', 'Weight', lw ? lw.kg : '–', 'kg', lw ? (lw.d === today() ? 'Weighed in today' : 'Last ' + niceDate(lw.d)) + (pace != null && Math.abs(pace) >= 0.05 ? ', ' + (pace < 0 ? 'down ' : 'up ') + Math.abs(r1(pace)) + ' kg a week' : '') : 'No weigh-ins yet', '', `<button class="tkb" data-act="tab" data-tab="progress" aria-label="Weight trend">${ic('chart')}</button><button class="tkb w" data-act="addWeight">${ic('plus')} Weigh in</button>`)}
