@@ -21,7 +21,11 @@ try {
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
   base: './', // relative paths, so the build works from any folder and later inside the phone shell
-  plugins: [singleScope({ dir: here('./src/app') }), foodData({ dir: here('../prototype/app') }), serviceWorker()],
+  plugins: [
+    singleScope({ dir: here('./src/app') }),
+    foodData({ dir: here('../prototype/app'), own: here('./data') }),
+    serviceWorker(),
+  ],
   // the app, and the two plain reading pages beside it
   build: {
     rollupOptions: {

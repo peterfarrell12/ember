@@ -356,7 +356,7 @@ function nutTable(x) {
   const row = (l, v, u, sub) =>
     `<span class="${sub ? 'sub' : ''}">${l}</span><b>${v == null ? 'not listed' : v + ' ' + u}</b>`;
   return `<div class="row" style="align-items:baseline;gap:8px;margin-bottom:12px"><span class="num bigk">${fmt(x.k)}</span><span class="muted">kcal</span></div>
-  <div class="nut">${row('Protein', r1(x.p), 'g')}${row('Carbohydrate', r1(x.c), 'g')}${row('of which sugars', x.su == null ? null : r1(x.su), 'g', 1)}${row('Fat', r1(x.f), 'g')}${row('of which saturates', x.sf == null ? null : r1(x.sf), 'g', 1)}${row('Fibre', r1(x.fi), 'g')}${row('Salt', salt == null ? null : Math.round((x.na * 2.5) / 10) / 100, 'g')}</div>`;
+  <div class="nut">${row('Protein', r1(x.p), 'g')}${row('Carbohydrate', r1(x.c), 'g')}${row('of which sugars', x.su == null ? null : r1(x.su), 'g', 1)}${row('Fat', r1(x.f), 'g')}${row('of which saturates', x.sf == null ? null : r1(x.sf), 'g', 1)}${row('Fibre', x.fi == null ? null : r1(x.fi), 'g')}${row('Salt', salt == null ? null : Math.round((x.na * 2.5) / 10) / 100, 'g')}</div>`;
 }
 
 /* ---------- food detail ---------- */
@@ -366,10 +366,14 @@ const LIQ =
   /\b(milk|juice|water|cola|coke|pepsi|fanta|sprite|7up|lemonade|beer|lager|stout|ale|cider|wine|prosecco|champagne|drink|smoothie|coffee|americano|latte|cappuccino|espresso|tea|squash|cordial|shake|milkshake|kombucha|soda|tonic|whiskey|whisky|vodka|gin|rum|broth|stock|soup|kefir|lucozade|guinness|heineken)\b/;
 const NOT_LIQ =
   /\b(powder|powdered|bar|cheese|biscuit|cake|bread|loaf|dried|dry|bags?|beans|ground|ice cream|cracker|crisps|instant|granules|leaves|butter|sweets|capsules?|pods?|pie|sausages?|steak|chicken|beef|pork|tuna|sardines?|mackerel|battered|sauce|marinade|rub|mix|casserole|toffee|pudding|noodles?|cube|cubes|concentrate|cereal|oats|porridge|yog(h)?urt|toast)\b/;
+/* What a food is, for telling a drink from a solid and for offering spoonfuls. The UK tables name the food first
+   and how it was made after ("Rice, white, boiled in unsalted water", "Apples, stewed with sugar"), so only the
+   first part says what it is. */
+const kindOf = food => (food.src === 'M' ? String(food.n).split(',')[0] : food.n);
 function isLiquid(food) {
   if (food.liq != null) return !!food.liq;
   if (food.src === 'DR') return true;
-  const n = norm(food.n + ' ' + (food.b || '')) + ' ';
+  const n = norm(kindOf(food) + ' ' + (food.b || '')) + ' ';
   if (/chocolate/.test(n) && !/\b(drink|shake|milkshake|hot chocolate|chocolate milk)\b/.test(n)) return false;
   if ((food.ports || []).some(([l]) => /\bml\b|\bcan\b|\bbottle\b/i.test(l) && !/fl oz/i.test(l)) && !NOT_LIQ.test(n))
     return true;
@@ -401,6 +405,14 @@ const DRINK_SIZES = [
     [
       ['1 measure, 35.5 ml', 35.5],
       ['1 double, 71 ml', 71],
+    ],
+  ],
+  [
+    /\b(tea|coffee|americano|latte|cappuccino|espresso)\b/,
+    [
+      ['1 mug, 260 ml', 260],
+      ['1 cup, 190 ml', 190],
+      ['1 large mug, 350 ml', 350],
     ],
   ],
   [
@@ -447,6 +459,8 @@ const RAW_YIELD = [
   [/\b(salmon|cod|fish|tuna steak)\b/, 0.8, 'raw'],
 ];
 const JUNK_PORT = /guideline amount|school container|quantity not specified|\bfl oz\b|^1 oz\b/i;
+/* American measures on USDA foods: cups, ounces, pounds and anything sized in inches. Not offered; grams always are. */
+const US_PORT = /\bcups?\b|\boz\b|\blbs?\b|"|\binch(es)?\b/i;
 /**
  * The list of units a food can be measured in: g or ml, its own portions, drink sizes, spoonfuls,
  * weighed-raw conversions and convert-from units.
@@ -456,12 +470,19 @@ const JUNK_PORT = /guideline amount|school container|quantity not specified|\bfl
 function unitsFor(food) {
   const liq = !food.nog && isLiquid(food),
     bw = liq ? 'ml' : 'g',
-    n = norm(food.n) + ' ';
+    n = norm(kindOf(food)) + ' ';
   /** @type {Unit[]} */
   const u = food.nog ? [] : [{ l: bw, short: 'g', g: 1, base: true, bw }];
   const seen = new Set();
-  for (const [l0, g] of food.ports || []) {
-    if (!(g > 0) || JUNK_PORT.test(l0) || (l0 === '1 serving' && g === 100)) continue;
+  const usda = /^[FNS]$/.test(food.src);
+  for (const [l1, g] of food.ports || []) {
+    // "1 medium (7" to 7-7/8" long)" is offered as "1 medium"; "1 fry, NS as to shape" as "1 fry"
+    const l0 = usda
+      ? String(l1)
+          .replace(/\s*\([^)]*("|\binch)[^)]*\)/gi, '')
+          .replace(/, (NFS|NS as to [^,]+)(?=,|$)/g, '')
+      : l1;
+    if (!(g > 0) || JUNK_PORT.test(l0) || (usda && US_PORT.test(l0)) || (l0 === '1 serving' && g === 100)) continue;
     const l = String(l0).replace(/\bRACC\b/g, 'serving');
     if (seen.has(l)) continue;
     seen.add(l);
@@ -498,8 +519,6 @@ function unitsFor(food) {
         ? [
             ['litres', 'l', 1000],
             ['pints', 'pint', 568],
-            ['US cups', 'cup', 240],
-            ['fl oz', 'fl oz', 28.4],
           ]
         : [
             ['kg', 'kg', 1000],
@@ -580,6 +599,16 @@ function startAmount(food, units) {
       } else {
         qty = last.lq || qty;
         sv = last.ls || 1;
+      }
+    } else {
+      // the measure used last time is no longer offered (an American cup): keep the same amount, in grams or ml
+      const p = (food.ports || []).find(x => x[0] === last.lu),
+        b = units.findIndex(u => u.base);
+      if (p && b >= 0) {
+        ui = b;
+        qty = r0(p[1] * (last.lq || 1) * (last.ls || 1));
+        sv = 1;
+        known = true;
       }
     }
   }
@@ -1724,7 +1753,7 @@ A.openData = () => {
   openSheet(
     `${sh('Data and sources')}<div class="sheet-b">
     <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button>${Store.account ? `<button class="btn ghost" data-act="signOut">Sign out</button><button class="link" data-act="deleteAccount" style="color:var(--bad);align-self:center">Delete my account</button>` : ''}<p class="small muted" style="text-align:center"><a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a></p></div>
-    <div class="card stack"><h2>Food database</h2><div class="kv small"><span>Everyday foods, USDA FoodData Central</span><b>${cnt('gen')}</b><span>Branded products, Ireland and UK first</span><b>${cnt('br')}</b><span>More branded products</span><b>${cnt('more')}</b></div>
+    <div class="card stack"><h2>Food database</h2><div class="kv small"><span>Everyday foods, UK food tables and USDA FoodData Central</span><b>${cnt('gen')}</b><span>Branded products, Ireland and UK first</span><b>${cnt('br')}</b><span>More branded products</span><b>${cnt('more')}</b></div><p class="tiny muted">UK figures are from McCance and Widdowson's Composition of Foods Integrated Dataset. Contains public sector information licensed under the Open Government Licence v3.0.</p>
       <p class="small muted">Everyday foods: U.S. Department of Agriculture, FoodData Central (Foundation Foods, FNDDS and SR Legacy), public domain. Branded products: <a href="https://world.openfoodfacts.org" class="link">Open Food Facts</a> contributors, Open Database Licence. Entries whose stated calories disagree with their macros by more than a fifth were left out.</p></div>
     <div class="card stack"><h2>Targets</h2><p class="small muted">Suggested calories use the Mifflin-St Jeor equation and your activity level. They are a starting point, not medical advice.</p></div></div>`,
     true,

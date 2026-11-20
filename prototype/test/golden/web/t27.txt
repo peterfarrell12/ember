@@ -1,0 +1,29 @@
+ADD {'qty': '1', 'sv': '2', 'unit': '1 medium or regular slice (28 g)', 'eq': '56 g', 'kcal': '150', 'go': 'Log to breakfast'}
+ diary: ('Bread, white', '2 × 1 medium or regular slice · 56 g', 56, 150, 1, '1 medium or regular slice', 2)
+EDIT opens {'qty': '1', 'sv': '2', 'unit': '1 medium or regular slice (28 g)', 'eq': '56 g', 'kcal': '150', 'go': 'Save'}
+ + {'qty': '1', 'sv': '2.5', 'unit': '1 medium or regular slice (28 g)', 'eq': '70 g', 'kcal': '188', 'go': 'Save'}
+ -> g {'qty': '28', 'sv': '2.5', 'unit': 'g', 'eq': '70 g', 'kcal': '188', 'go': 'Save'}
+ -> thick {'qty': '1', 'sv': '1', 'unit': '1 large or thick slice (43 g)', 'eq': '43 g', 'kcal': '115', 'go': 'Save'}
+ saved: ('Bread, white', '2 × 1 large or thick slice · 86 g', 86, 230, 1, '1 large or thick slice', 2)
+ row: Bread, white | 230 | USDA | 2 × 1 large or thick slice · 86 g
+ reopen {'qty': '1', 'sv': '2', 'unit': '1 large or thick slice (43 g)', 'eq': '86 g', 'kcal': '230', 'go': 'Save'}
+OATS opens {'qty': '1', 'sv': '1', 'unit': '1 serving (40 g)', 'eq': '40 g', 'kcal': '148', 'go': 'Log to breakfast'}
+ 45 g x 2 {'qty': '45', 'sv': '2', 'unit': 'g', 'eq': '90 g', 'kcal': '333', 'go': 'Log to breakfast'}
+ diary: ('Organic Jumbo Oats', '2 × 45 g · 90 g', 90, 333, 45, 'g', 2)
+ row: Organic Jumbo Oats | 333 | LABEL | Flahavan's · 2 × 45 g · 90 g
+ reopen {'qty': '45', 'sv': '2', 'unit': 'g', 'eq': '90 g', 'kcal': '333', 'go': 'Save'}
+ recent row: Porridge | 178 kcal | USDA | 234 g · 9 times
+QUICK ('Guinness 0.0%', '1 pint · 568 ml', 568, 97, 1, '1 pint', 1) | foot: 1 added, 97 kcal | Last: Guinness 0.0% to breakfast | Amount | Done
+ opens {'qty': '1', 'sv': '1', 'unit': '1 pint (568 ml)', 'eq': '568 ml', 'kcal': '97', 'go': 'Save'}
+ saved: ('Guinness 0.0%', '1 can, 440 ml · 440 ml', 440, 75, 1, '1 can, 440 ml', 1) | foot: 1 added, 75 kcal | Last: Guinness 0.0% to breakfast | Amount | Done
+entries today: 3 ('Bread, white', '2 × 1 large or thick slice · 86 g', 86, 230, 1, '1 large or thick slice', 2)
+OLD entry editor has quantity: True {'qty': '1', 'sv': '2', 'unit': '1 large or thick slice (43 g)', 'eq': '86 g', 'kcal': '230', 'go': 'Save'}
+yesterday entries: 7
+ legacy row: Porridge | 178 | USDA | 1 cup · 234 g
+ LEGACY editor: {'qty': '234', 'sv': '1', 'unit': 'g', 'eq': '234 g', 'kcal': '178', 'go': 'Save'} ['g', 'kg', 'oz', 'lb']
+REVIEW amount opens {'qty': '1', 'sv': '1', 'unit': '1 serving (331.2 ml)', 'eq': '331 ml', 'kcal': '89', 'go': 'Use this amount'}
+ review row: Heineken 0.0 | Heineken | LABEL | 153 kcal | 1 pint | Amount and unit | Swap food | ml | Log 1 item · 153 kcal
+ diary: ('Heineken 0.0', '1 pint · 568 ml', 568, 153, 1, '1 pint', 1)
+CUSTOM {'qty': '1', 'sv': '1', 'unit': '1 bar (60 g)', 'eq': '60 g', 'kcal': '228', 'go': 'Log to breakfast'} ['g', '1 bar (60 g)', '1 pack (180 g)', 'kg', 'oz', 'lb']
+ diary: ('Castlerea protein bar', '1 bar · 60 g', 60, 228, 1, '1 bar', 1)
+ERRS []

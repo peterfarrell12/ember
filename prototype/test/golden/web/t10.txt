@@ -1,0 +1,22 @@
+CAF: 275 | of 400 mg today | 50 mg | Bed 23:00 | 08:00 | 12:00 | 16:00 | 20:00 |  | About 48 mg left at bedtime, which is low enough not to bother most people. |  | Today's drinks | Cold brew | 180 mg | 07:30 · caffeine only · tap to remove | Filter or instant coffee | 95 mg | 09:42 · caffeine only · tap to remove | Add a drink |  | 
+food: Coffee, cappuccino, latte
+cf entries: [('Cold brew', 180, 'drink'), ('Filter or instant coffee', 95, 'drink'), ('Coffee, cappuccino, latte', 95, 'food')] hist cf 370
+rest: Rest 2:45
+TOOLS: Warm-up for Back squat | 40 kg × 8 | 40% | 10 each side | 60 kg × 5 | 60% | 20 each side | 80 kg × 3 | 80% | 25 + 5 each side | 100 kg, working sets | 25 + 15 each side |  | Rest a minute between warm-up sets. They are not logged.
+  cele: Session complete | Day A
+again note shown: True
+timer: Work | 20 | Work, round 1 of 8 |  | Next: Rest · 3:50 left
+ANALYTICS: Progress | Food | Weight | Activity | Training | This week | 1 of 3 sessions | 9 | training load |  | A few more weeks and Ember can tell you whether this week is a jump or a dip. |  | 28/9 | 5/10 | 12/10 | 19/10 | 26/10 | 2/11 | 9/11 | 9 | 16/11 |  | Load is minutes trained multiplied by how hard you rated the session. |  | Sets per muscle group this week | Legs | 4 | Glutes | 0 | Chest | 0 | Back | 0 | Shoulders | 0 | Arms | 0 | Core | 0 |  | Around 10 or more hard sets a week per muscle group is a common target 
+PLAN: First Hyrox | Overview | Plan | Sessions | Photos | Notes | Program | Change |  | Hyrox build, 4 days · week 1 of 8 |  | Next: Strength and sleds · Lower strength, then heavy sled work |  | Run this session with Sean | Edit for Sean | Copy plan as text | Rehab | Assign |  | No rehab plan. |  | Daily tasks | Set |  | Training session · Hit your protein target |  | Nutrition targets | Set |  | 1,950 kcal · 150 g protei
+player title: Strength and sleds / with Sean Murphy
+  cele: Session complete | Strength and sleds with Sean Murphy
+SESS TAB: First Hyrox | Overview | Plan | Sessions | Photos | Notes | Quick session | Add one by hand | Sessions | Strength and sleds | 1 min | Today · 3 sets · 1,800 kg | Strongest lifts | Trap bar deadlift | 140 kg | Estimated one-rep max · last 120 kg × 5
+copy fallback sheet: False | text: 
+  cele: Rehab done | Knee: Settle it with Sean Murphy
+OVER: First Hyrox | Overview | Plan | Sessions | Photos | Notes | Pain at 6 out of 10. | 75% | 3 of 4 sessions in 7 days | 64 | Recovery score | 83.2 kg | Weight | n/a | No food data this week | Weight | Weigh-in |  | One weigh-in so far: 83.2 kg. |  | Recent activity | Rehab: Knee: Settle it, 1 min, pain 6/10 | Today | Assigned Knee | Today | Check-in: 2 sessions, 83.2 kg. Good week | Today | Weighed in at 83.2 kg | Today
+CLIENT LIST: Clients | Add | Your profile | 0 of 5 trust checks | Coach catalogue | How clients find you | 10 | Clients | 66% | Sessions done | 5 | Need a look | Needs a look | You | Behind on sessions: 1 of 3 in the last 7 days | Conor Devlin | Pain at 5 out of 10 | Niamh Kilroy | No activity for 6 days · Behind on sessions: 0 of 3 in the last 7 days · Food logged on 1 of the last 7 days | Ciara Mulvey | Behind on sessions: 1 of 3 in the last 7 days · Low recovery score: 34 | Sean Murphy | Pain at 6 out of 10 | Y | You | You |
+cl docs: 9 | meta has clients: False
+manual: Sean Murphy {'k': 1950, 'p': 150} progAt 1 sess [('Knee: Settle it', 'rehab', 1), ('Strength and sleds', 'train', 3)] wts [{'d': '2026-11-19', 'kg': 83.2}] lifts ['trapdl', 'quadset'] rehab {'id': 'r-knee', 'n': 'Knee', 'phase': 0} pain 6 prog sets 6
+own sessions untouched: sess 1 | TR sess 1
+after reload clients: 10
+ERRS []

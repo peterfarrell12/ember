@@ -1,0 +1,17 @@
+speaker btn visible: True | mic: True
+1: I had a fry this morning || Nice. What was in the fry, and how many of each? | chips: Two rashers, two sausages, an egg and toast
+2 card: Log to breakfast? | 864 kcal, 45 g protein | bacon, fried | ESTIMATE | 50 g | 235 | Sausages, pork, chilled, grilled | UK | 100 g | 294 | Eggs, chicken, whole, fried in sunflower oil | UK | 50 g | 100 | Bread, white, toasted | UK | 60 g | 160 | Butter, salted | UK | 10 g | 74 | Breakfast | Lunch | Dinner | Snacks | Change amounts | Cancel | Log it
+3 card: Log to breakfast? | 1,011 kcal, 52 g protein | bacon, fried | ESTIMATE | 50 g | 235 | Sausages, pork, chilled, grilled | UK | 150 g | 441 | Eggs, chicken, whole, fried in sunflower oil | UK | 50 g | 1
+4: Logged 5 items, 1,010 kcal, to breakfast. You have 970 kcal and 103 g of protein left today.
+   diary: [('bacon, fried', 50, 235, 'b', 'AI'), ('Sausages, pork, chilled, gri', 150, 441, 'b', 'M'), ('Eggs, chicken, whole, fried ', 50, 100, 'b', 'M'), ('Bread, white, toasted', 60, 160, 'b', 'M'), ('Butter, salted', 10, 74, 'b', 'M')]
+5: Got it. || Logged Flat white: 130 mg of caffeine and 78 kcal. || padel tomorrow at eight || It is in the calendar. || Added Padel doubles to your calendar, Fri 20 Nov at 20:00. || I weighed 85.4 this morning || Saved. || Weigh-in saved: 85.4 kg.
+6 card: Remove Butter, salted (74 kcal) from today? | Cancel | Remove
+7: how am I doing today? || You have eaten 1014 kcal so far today. Anything else?
+water 500 | cf [('Flat white', 130)] | entries [('bacon, fried', 235), ('Sausages, pork, chille', 441), ('Eggs, chicken, whole, ', 100), ('Bread, white, toasted', 160), ('Flat white, oat milk', 78)] | events [('Padel doubles', '2026-11-20', '20:00')] | last weight {'d': '2026-11-19', 'kg': 85.4}
+spoken: 11 | e.g. You have eaten 1014 kcal so far today. Anything else?
+PROMPT STATE: Now: 2026-11-19 Thu, 09:42. Meal slot right now: Breakfast. / Today: 1014 of 1980 kcal eaten (zone 1782 to 2079), 966 left. Protein 53 of 155 g, carbs 58 of 205 g, fat 64 of 60 g. Water 500 of 3000 ml. Caffeine 130 mg. Day open. / Diary today: / Breakfast: bacon, fried (50 g, 235 kcal, 17 g protein); Sausages, pork, chilled, grilled (150 g, 441 kcal, 22 g protein); Eggs, chicken, whole, fried in sunflower oil (50 g, 100 kcal, 7 g protein); Bread, white, toasted (60 g, 160 kcal, 6 g protein); Flat white, oat milk (130 ml oat milk, 78 kcal, 1 g protein) / Lunch: nothing / Dinner: nothing / Snacks: nothing / Plan for the next 8 days: / 2026-11-19 Thu: nothing planned / 2026-11-20 Fri: 20:00 Padel doubles / 2026-11
+live: two scrambled eggs on toast
+8 voice: two scrambled eggs on toast || You have eaten 1014 kcal so far today. Anything else?
+sheets: 0 | hero: Eaten 1,014 Budget 1,980
+fab hidden in coach view: True
+ERRS []

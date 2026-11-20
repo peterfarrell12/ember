@@ -1,0 +1,7 @@
+PROMPT: They want real heat. / They said: "half a chorizo". Treat a craving as the brief and build around anything they want to use up. / Size: each dish must come to between 470 and 590 kcal in total, never more, with 45 g of protein or more where the dish allows. Add up your own ingredient figures and adjust the amounts until each dish fits before you answer. For the whole day they have 1802 kcal, 149 g protein, 177 g carbs and 57 g fat left, so lean away from whichever of carbs or fat is nearly used up. Count the oil, butter, sauces and cheese honestly. / Already eaten today: Porridge. Do not build a dish around any of these again; balance against them instead, for example with vegetables or fibre if there has been little. / Foods they often eat, as a hint to their taste only, not a list to reuse: Banana, raw; Greek yogur
+cards: 3 | Chicken and rice bowl 1 | 508 kcal · 52 g protein |  | Fits. Leaves 1,295 kcal for today · 56 g carbs, 6 g fat |  | About 520 kcal and 45 g protein, built from foods you eat. |  | 1 breast chicken breast, grilled, 1 cup 
+METHOD: 1. Heat a pan over a high heat for 2 minutes. | 2. Sear the chicken for 4 minutes a side. | 3. Rest, slice and serve over the rice. | Tip: swap the rice for couscous.
+recipes: [('Chicken and rice bowl 1', 2, True)]
+second ask avoids: True | leave out saved: mushrooms
+review: Log 2 items · 520 kcal
+ERRS []

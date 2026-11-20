@@ -106,7 +106,19 @@ function renderAddList() {
   const tiles = $('#addTiles');
   if (tiles) tiles.classList.toggle('hide', !!q);
   if (q.length >= 2) {
-    const r = searchAll(q, ADD.more ? 40 : 14);
+    let r = searchAll(q, ADD.more ? 40 : 14);
+    // "a pint of guinness", "mug of tea", "2 slices of toast": when the words as typed find nothing, look for the food itself
+    if (!r.mine.length && !r.gen.length && !r.br.length) {
+      const bare = q
+        .toLowerCase()
+        .replace(
+          /^(a|an|one|two|three|four|half an?|some|\d+)?\s*((small|large|big|medium|half)\s+)?(pints?|glass(es)?|mugs?|cups?|bowls?|slices?|bottles?|cans?|tins?|bags?|packets?|pieces?|portions?|plates?|handfuls?|spoons?|spoonfuls?)\s+of\s+/,
+          '',
+        )
+        .replace(/^(a|an|one|two|three|four|some|\d+)\s+/, '')
+        .trim();
+      if (bare.length >= 2 && bare !== q.toLowerCase()) r = searchAll(bare, ADD.more ? 40 : 14);
+    }
     let h = '';
     const ask =
       !ADD.pick && mealLike(q)

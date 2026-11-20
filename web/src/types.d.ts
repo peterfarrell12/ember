@@ -136,4 +136,4 @@ interface Window {
 }
 
 declare const __APP_VERSION__: string;
-declare const __FOOD_FILES__: { gen: string; br: string; more: string };
+declare const __FOOD_FILES__: { gen: string; br: string; more: string; uk: string };

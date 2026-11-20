@@ -7,3 +7,4 @@ dist-local
 android
 ios
 assets
+data/foods-uk.json

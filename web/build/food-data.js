@@ -1,5 +1,6 @@
-// Vite plugin: serve and ship the three food lists from prototype/app without keeping a second
-// 12 MB copy in git.
+// Vite plugin: serve and ship the food lists. Three come from prototype/app, so there is no second
+// 12 MB copy in git; the UK list (web/data/foods-uk.json, made by web/scripts/build-uk-foods.py from
+// the UK government's food composition dataset) is the web app's own.
 //
 // In a build each list is written with a fingerprint of its contents in its name
 // (foods-generic.3fa9c1d2.json), so a browser can be told to keep it for a year: the name only
@@ -9,7 +10,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const LISTS = { gen: 'foods-generic.json', br: 'foods-brands.json', more: 'foods-brands-more.json' };
+const LISTS = {
+  gen: 'foods-generic.json',
+  br: 'foods-brands.json',
+  more: 'foods-brands-more.json',
+  uk: 'foods-uk.json',
+};
 const HEADERS = `/sw.js
   Cache-Control: no-cache
 /assets/*
@@ -18,8 +24,9 @@ const HEADERS = `/sw.js
   Cache-Control: public, max-age=31536000, immutable
 `;
 
-export default function foodData({ dir }) {
-  const read = name => fs.readFileSync(path.join(dir, name));
+export default function foodData({ dir, own }) {
+  const where = name => path.join(name === LISTS.uk ? own : dir, name);
+  const read = name => fs.readFileSync(where(name));
   const stamped = name =>
     name.replace(/\.json$/, '.' + crypto.createHash('sha256').update(read(name)).digest('hex').slice(0, 8) + '.json');
   let names = LISTS; // while developing: the plain names, served straight from prototype/app
@@ -34,7 +41,7 @@ export default function foodData({ dir }) {
         const name = (req.url || '').split('?')[0].replace(/^\//, '');
         if (!Object.values(LISTS).includes(name)) return next();
         res.setHeader('Content-Type', 'application/json');
-        fs.createReadStream(path.join(dir, name)).pipe(res);
+        fs.createReadStream(where(name)).pipe(res);
       });
     },
     generateBundle() {

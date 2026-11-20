@@ -22,12 +22,23 @@ const DBwait = {};
 function loadDB(which) {
   if (DBwait[which]) return DBwait[which];
   DB.st[which] = 'loading';
-  return (DBwait[which] = fetch(FILES[which])
-    .then(r => {
+  /* The everyday list is two lists joined: USDA, then the UK government's food tables (rashers, chips, a pint of
+     stout, under the names and with the figures people here know). If the UK list fails to load, USDA alone still works. */
+  const uk =
+    which === 'gen'
+      ? fetch(FILES.uk)
+          .then(r => (r.ok ? r.json() : []))
+          .catch(() => [])
+      : Promise.resolve([]);
+  return (DBwait[which] = Promise.all([
+    fetch(FILES[which]).then(r => {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.json();
-    })
-    .then(rows => {
+    }),
+    uk,
+  ])
+    .then(([list, extra]) => {
+      const rows = list.concat(extra);
       DB[which] = rows;
       DB.L[which] = which === 'gen' ? rows.map(r => norm(r[0])) : rows.map(r => norm(r[0] + ' ' + r[1]));
       DB.st[which] = 'ready';
@@ -40,6 +51,7 @@ function loadDB(which) {
     }));
 }
 const SRC = {
+  M: ['UK', 'v', "McCance and Widdowson's Composition of Foods, the UK government's food tables"],
   F: ['USDA', 'v', 'USDA food survey database'],
   N: ['USDA lab', 'v', 'USDA Foundation Foods, lab analysed'],
   S: ['USDA', 'v', 'USDA Standard Reference'],
@@ -71,8 +83,9 @@ const srcBadge = s => {
 function genFood(i) {
   const r = DB.gen[i];
   return {
-    id: 'g' + i,
-    n: r[0],
+    id: r[11] ? 'u' + r[11] : 'g' + i, // a UK food is known by its code in the UK tables, a USDA one by its place in the list
+    n: r[0].replace(/, (NFS|NS as to [^,]+)(?=,|$)/g, ''), // USDA's "not further specified" notes mean nothing to a person logging lunch
+
     b: '',
     k: r[1],
     p: r[2],
@@ -266,6 +279,8 @@ const POOR = [
   [' restaurant', 6],
   [' fast food', 6],
 ];
+const UK_COOKED =
+  /^ (bacon|sausage|beef|pork|lamb|chicken|turkey|gammon|veal|duck|liver|kidney|cod|haddock|salmon|plaice|mackerel|trout|potato|rice|pasta|spaghetti|noodles|egg|lentils|black pudding|white pudding|burger|mince)/;
 function searchSet(which, toks, raw, limit) {
   const L = DB.L[which];
   if (!L) return [];
@@ -285,7 +300,12 @@ function searchSet(which, toks, raw, limit) {
     if (s < 0) continue;
     if (which === 'gen') {
       const src = rows[i][10];
-      s += src === 'F' ? 30 : src === 'N' ? 26 : 4;
+      s += src === 'M' ? 58 : src === 'F' ? 30 : src === 'N' ? 26 : 4;
+      if (src === 'M') {
+        // in the UK tables "potato chips" are chips, never crisps; and the cooked form of a food is the one people log
+        if (raw.indexOf('crisp') >= 0 && hay.indexOf(' chips') >= 0 && hay.indexOf('crisp') < 0) continue;
+        if (hay.indexOf(' raw') >= 0 && raw.indexOf('raw') < 0 && UK_COOKED.test(hay)) s -= 16;
+      }
       const nm = rows[i][0].toLowerCase(),
         c1 = nm.indexOf(',');
       if (c1 > 0) {
@@ -461,6 +481,59 @@ const STAPLE = {
   juice: 'orange juice 100%',
   water: 'water tap',
 };
+/* The same everyday words, pointed at the UK tables where they hold the food people here mean: a back rasher,
+   not American streaky bacon. Keyed by what was typed, or by the American entry the list above names. */
+const STAPLE_UK = {
+  'bacon cooked': 'bacon rashers back grilled',
+  bacon: 'bacon rashers back grilled',
+  rasher: 'bacon rashers back grilled',
+  rashers: 'bacon rashers back grilled',
+  'pork sausage': 'sausages pork chilled grilled',
+  sausage: 'sausages pork chilled grilled',
+  sausages: 'sausages pork chilled grilled',
+  'flat white': 'coffee cappuccino latte',
+  latte: 'coffee cappuccino latte',
+  cappuccino: 'coffee cappuccino latte',
+  beer: 'lager standard',
+  lager: 'lager standard',
+  stout: 'stout guinness',
+  guinness: 'stout guinness',
+  cider: 'cider dry',
+  chips: 'potato chips homemade fried',
+  'chipper chips': 'potato chips takeaway fish and chip shops',
+  'oven chips': 'potato chips oven ready baked',
+  crisps: 'potato crisps fried sunflower oil',
+  porridge: 'porridge made',
+  oats: 'porridge oats unfortified',
+  'porridge oats': 'porridge oats unfortified',
+  'black pudding': 'black pudding dry-fried',
+  'white pudding': 'white pudding',
+  toast: 'bread white toasted',
+  'brown bread': 'bread brown average',
+  'white bread': 'bread white sliced',
+  'soda bread': 'bread soda',
+  'fried egg': 'eggs chicken whole fried',
+  'boiled egg': 'eggs chicken whole boiled',
+  'poached egg': 'eggs chicken whole poached',
+  'scrambled egg': 'eggs chicken scrambled',
+  'scrambled eggs': 'eggs chicken scrambled',
+  butter: 'butter salted',
+  cheddar: 'cheese cheddar english',
+  'baked beans': 'baked beans canned in tomato sauce',
+  beans: 'baked beans canned in tomato sauce',
+  banana: 'bananas flesh only',
+  apple: 'apples eating raw',
+  milk: 'milk semi-skimmed pasteurised average',
+  tea: 'tea infusion average with',
+  mash: 'potatoes old mashed with butter',
+  'mashed potato': 'potatoes old mashed with butter',
+  'roast potatoes': 'potatoes old roasted',
+  spuds: 'potatoes old boiled',
+  potatoes: 'potatoes old boiled',
+  rice: 'rice white long grain boiled',
+  'chicken breast': 'chicken breast grilled without skin',
+  'chicken fillet': 'chicken breast grilled without skin',
+};
 const PHRASE = [
   [/semi[- ]skimmed/g, 'reduced fat'],
   [/full[- ]fat milk/g, 'whole milk'],
@@ -505,9 +578,27 @@ function searchAll(q, n = 14) {
   for (const [re, to] of PHRASE) gq = gq.replace(re, to);
   if (/\btoast\b/.test(gq) && !/french|melba/.test(gq)) gq = gq.replace(/\btoast\b/, 'bread toasted');
   let gen = searchSet('gen', gq === raw ? toks : tokens(gq), gq, n);
-  if (STAPLE[raw]) {
-    const top = searchSet('gen', tokens(STAPLE[raw]), STAPLE[raw], 3).map(x => ({ ...x, s: x.s + 200 }));
-    const seen = new Set(top.map(x => x.food.id));
+  if (gq !== raw) {
+    const have = new Set(gen.map(x => x.food.id));
+    gen = gen
+      .concat(searchSet('gen', toks, raw, n).filter(x => !have.has(x.food.id)))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, n);
+  }
+  // an everyday word leads with the UK food it means, then the USDA one: matching a described meal still has both to
+  // choose from, so a figure Claude gave for American bacon is not forced onto a back rasher
+  const uk = STAPLE_UK[raw] || STAPLE_UK[STAPLE[raw]],
+    tops = [uk, STAPLE[raw]].filter((x, i, all) => x && all.indexOf(x) === i);
+  if (tops.length) {
+    const seen = new Set(),
+      top = [];
+    tops.forEach(st =>
+      searchSet('gen', tokens(st), st, 3).forEach(x => {
+        if (seen.has(x.food.id)) return;
+        seen.add(x.food.id);
+        top.push({ ...x, s: x.s + 200 + (x.food.src === 'M' ? 0 : 28) }); // level with the UK rows' head start; UK still listed first
+      }),
+    );
     gen = top.concat(gen.filter(x => !seen.has(x.food.id))).slice(0, n);
   }
   return { mine: searchMine(toks, raw).slice(0, 6), gen, br };

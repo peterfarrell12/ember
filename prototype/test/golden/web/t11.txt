@@ -1,0 +1,28 @@
+NEXT: Log something to keep your 8-day streak |  | Yesterday's breakfast: Porridge, Banana, raw, Flat white, 393 kcal. |  | Same again | Something else
+RAIL: Your usual breakfast | One tap adds it to breakfast | Porridge | 178 kcal, 234 g | Banana, raw | 105 kcal, 1 medium | Greek yogurt, plain, low fat | 124 kcal, 1 container | Flat white | 110 kcal, 1 regular | Chicken breast, grilled | 248 kcal, 150 g | Basmati rice, cooked | 242 kcal, 200 g | Wholeme
+  cele: 9-day streak
+  cele: Kindling
+  cele: One full week
+  cele: Level 5
+after same-again entries: [('Porridge', 'b'), ('Banana, raw', 'b'), ('Flat white', 'b')]
+rail add: 1 | toast: 130 mg caffeine counted | +5 XP · Logged | Banana, raw added to breakfast | Undo
+after undo: 0
+HERO: 1,587 | kcal left | Eaten | 393 | Budget | 1,980 | 1,389 kcal to reach your zone | Zone 1,782–2,079 | Protein | 14 / 155 g | Carbs | 66 / 205 g | Fat | 8 / 60 g
+NEXT2: None
+ADD default: YOUR USUAL BREAKFAST | Porridge | 178 kcal | USDA | 234 g · 9 times | Banana, raw | 105 kcal | USDA | 1 medium · 118 g · 7 times | Greek yogurt, plain, low fat | 124 kcal | USDA | 1 container · 170 g · 4 times | Flat white | 110 kcal | USDA | 1 regular · 240 g · 3 times | Recent | My foods | Recipes | Chicken breast, grilled | 248 kcal | USDA | 150 g | Basmati rice, cooked | 242 kcal | USDA | 200 
+ADD lunch: Same as yesterday's lunch | Wholemeal wrap, Chicken breast, grilled | 434 kcal | Add all | YOUR USUAL LUNCH | Wholemeal wrap | 186 kcal | LABEL | Tesco · 1 wrap · 64 g · 6 times | Chicken breast, grilled | 248 kcal | USDA | 150 g · 5 times | Basmati rice, cooked | 242 kcal | USDA | 200 g · 3 times | Recent | My foods | Recipes |
+FOOT: 2 added, 434 kcal | Last: Chicken breast, grilled to lunch | Amount | Done | left pill: 1,153 kcal left
+lunch entries: [('Wholemeal wrap', '1 wrap · 64 g', 186), ('Chicken breast, grilled', '150 g', 248)]
+after addUndo lunch: ['Wholemeal wrap'] | foot: 1 added, 186 kcal | Last: Wholemeal wrap to lunch | Amount | Done
+SEARCH: EVERYDAY FOODS | Chicken, breast, grilled without skin, meat only | 192 kcal | UK | 1 breast · 130 g | Chicken breast, grilled without sauce, skin eaten | 268 kcal | USDA | 1 medium breast · 130 g | Chicken breast, grilled without sauce, skin not eaten | 211 kcal | USDA | 1 medium breast · 120 g | C
+FOOT2: 2 added, 378 kcal | Last: Chicken, breast, grilled without skin, meat only to lunch | Amount | Done
+REVIEW: Log 5 items · 925 kcal
+water: 250
+sheets after Done: 0
+dinner usual: Same as yesterday's dinner | Chicken breast, grilled, Basmati rice, cooked | 539 kcal | Add all | YOUR USUAL DINNER | Chicken breast, grilled | 248 kcal | USDA | 150 g · 7 times | Basmati rice, cooked
+detail btn: Log to dinner
+main h N
+ingredient btn found: True
+pick mode: qadd 0 seg 0 tiles 0
+rec top: [('Chicken breast, grilled', 14, {'l': 6, 'd': 8}), ('Porridge', 10, {'b': 10}), ('Chicken, breast, grilled without skin, meat only', 1, {'l': 1}), ('Wholemeal wrap', 7, {'l': 7})]
+ERRS []
