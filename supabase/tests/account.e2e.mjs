@@ -202,8 +202,8 @@ try {
       await ready(a);
       await closeSheets(a);
       await until(
-        'the three food lists to be kept on the device',
-        () => a.evaluate(async () => (await (await caches.open('ember-lists')).keys()).length === 3),
+        'the four food lists to be kept on the device',
+        () => a.evaluate(async () => (await (await caches.open('ember-lists')).keys()).length === 4),
         60000,
       );
       await a.context().setOffline(true);
