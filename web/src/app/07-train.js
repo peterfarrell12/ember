@@ -441,7 +441,7 @@ I.pk = () => {
 };
 A.pkPick = ({ id }) => {
   const cb = PK.cb;
-  closeSheet();
+  if (!PK.keep) closeSheet();
   cb(id);
 };
 A.pkNew = () => {
@@ -450,7 +450,11 @@ A.pkNew = () => {
   saveTR();
   A.pkPick({ id });
 };
-A.exLib = () => openPicker(id => A.exInfo({ id }), 'Exercise library');
+/* Browsing the library: an exercise opens over the list, so closing it comes back to the search you were in. */
+A.exLib = () => {
+  openPicker(id => A.exInfo({ id }), 'Exercise library');
+  PK.keep = true;
+};
 A.exInfo = ({ id }) => {
   const e = EXS[id] || { n: exn(id), g: exg(id), eq: 'other', cue: '' },
     L = lifts()[id];
