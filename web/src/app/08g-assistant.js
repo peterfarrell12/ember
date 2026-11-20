@@ -182,12 +182,20 @@ function asMic() {
   }
   if (AS.ov) voStatus();
 }
-A.asMic = () => {
+A.asMic = () => asListen(false);
+/* auto: the app is opening the microphone itself, to hear the answer to a question it has just asked.
+   Phones only allow that straight after a tap, so when it is refused nothing is made of it: the question
+   and its answers stay on screen and the microphone waits to be tapped. */
+function asListen(auto) {
   if (!AS || !AI.dict) return;
   if (AS.speaking) return (asHush(), asMic());
-  if (AS.listening) return void AI.dict.stop().catch(() => {});
+  if (AS.listening) {
+    AS.byHand = true; // stopped by the person: say nothing about not hearing anything
+    return void AI.dict.stop().catch(() => {});
+  }
   if (AS.busy) return;
-  AS.buf = '';
+  AS.buf = AS.part = '';
+  AS.byHand = false;
   const l = $('#asLive');
   if (l) l.textContent = '';
   if (AS.ov) {
@@ -195,7 +203,10 @@ A.asMic = () => {
     if (AS.vo && (AS.vo.ok.length || AS.vo.hint)) AS.vo = null;
     renderVo();
   }
-  AI.dict.start().catch(e => {
+  // the panel listens for one thing said and lets the browser judge when it has been said; the chat keeps
+  // listening through pauses
+  AI.dict.start({ once: !!AS.ov }).catch(e => {
+    if (auto) return; // see above
     if (e && e.code === 'not_granted') {
       AI.dict = null;
       const b = $('#asMic');
@@ -204,12 +215,17 @@ A.asMic = () => {
       voEnd();
       toast('Dictation is off for this page. Type, or use the microphone key on your keyboard.');
       if (ov) A.assistant();
-    } else {
-      voEnd();
-      toast('Dictation did not start. Try again.');
-    }
+    } else if (AS && AS.ov) {
+      AS.vo = {
+        ok: [],
+        bad: [],
+        say: 'The microphone did not start. Tap it to try again, or open the chat to type.',
+        hint: true,
+      };
+      renderVo();
+    } else toast('Dictation did not start. Try again.');
   });
-};
+}
 /* called from the shared dictation listeners */
 function asDict(kind, v) {
   if (!AS) return;
@@ -219,33 +235,47 @@ function asDict(kind, v) {
     asMic();
     if (!AS.listening) {
       clearTimeout(AS.timer);
-      const t = AS.buf.trim();
-      AS.buf = '';
+      // some browsers never mark the words as final: what was heard last still counts
+      const t = (AS.buf + (AS.part && !AS.buf.endsWith(AS.part) ? ' ' + AS.part : '')).trim();
+      AS.buf = AS.part = '';
       if (t) {
         AS.voice = true;
         asSend(t);
-      } else if (AS.ov && !AS.busy && !AS.pend && !AS.vo) {
-        AS.vo = { ok: [], bad: [], say: 'Nothing heard. Tap the microphone and try again.', hint: true };
+      } else if (AS.ov && !AS.busy && !AS.pend && (!AS.vo || AS.vo.hint)) {
+        AS.vo = {
+          ok: [],
+          bad: [],
+          say: AS.byHand
+            ? 'Tap the microphone when you are ready to talk.'
+            : 'Nothing heard. Tap the microphone and try again.',
+          hint: true,
+        };
         renderVo();
-        AS.bye = setTimeout(voEnd, 8000);
-      }
+        AS.bye = setTimeout(voEnd, 12000);
+      } else if (AS.ov) renderVo();
     }
     return;
   }
   if (!AS.listening) return;
   if (l && v) l.classList.remove('ph');
+  // a pause after the last thing heard, final or not, ends the listening
+  const quiet = ms => {
+    clearTimeout(AS.timer);
+    AS.timer = setTimeout(() => {
+      if (AS && AS.listening && AI.dict) AI.dict.stop().catch(() => {});
+    }, ms);
+  };
   if (kind === 'partial') {
+    AS.part = v || '';
     if (l) l.textContent = (AS.buf + ' ' + (v || '')).trim() || 'Listening…';
-    if (v) clearTimeout(AS.timer);
+    if (v) quiet(2400);
     return;
   }
   if (v) {
     AS.buf = (AS.buf + ' ' + v).trim();
+    AS.part = '';
     if (l) l.textContent = AS.buf;
-    clearTimeout(AS.timer);
-    AS.timer = setTimeout(() => {
-      if (AS && AS.listening && AI.dict) AI.dict.stop().catch(() => {});
-    }, 1600);
+    quiet(1600);
   }
 }
 A.asGo = () => {
@@ -257,6 +287,10 @@ A.asGo = () => {
   asSend(t);
 };
 A.asChip = (_, el) => {
+  if (AS.listening && AI.dict) {
+    AS.byHand = true;
+    AI.dict.stop().catch(() => {});
+  }
   AS.voice = false;
   asSend(el.textContent);
 };
@@ -345,7 +379,19 @@ async function asSend(text) {
   AS.chips = [];
   renderAs();
   try {
-    const r = await AI.sample.json(asPrompt(), { cache: false });
+    let r;
+    try {
+      r = await AI.sample.json(asPrompt(), { cache: false });
+    } catch (e) {
+      if (!e || e.code !== 'invalid_json') throw e;
+      // not the expected shape. Plain words are taken as the reply; anything else is asked for once more.
+      const words = String(e.text || '').trim();
+      if (words && !/[{}[\]]/.test(words)) r = { say: words.slice(0, 400), actions: [], chips: [] };
+      else {
+        if (!AS) return;
+        r = await AI.sample.json(asPrompt(), { cache: false });
+      }
+    }
     if (!AS) return;
     AS.busy = false;
     await asHandle(r || {});
@@ -353,6 +399,7 @@ async function asSend(text) {
     if (!AS) return;
     AS.busy = false;
     AS_LOG.push({ r: 'a', t: aiError(e) });
+    if (AS.ov) AS.vo = { ok: [], bad: [aiError(e)], say: '' };
     renderAs();
   }
 }
@@ -389,7 +436,7 @@ async function asHandle(r) {
     closeAll();
     return fn();
   }
-  if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) A.asMic();
+  if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) asListen(true);
 }
 async function asConfirm(yes) {
   if (!AS.pend) return;
@@ -773,7 +820,7 @@ function asPrompt() {
       p26: myUnread() ? 'Unread messages from their coach: ' + myUnread() + '.\n' : '',
       p27: FEATURES.coach ? coachContext() : '',
       pend,
-      p29: AS_LOG.slice(-16)
+      p29: AS_LOG.slice(Math.max(AS.from || 0, AS_LOG.length - 16))
         .map(m => (m.r === 'u' ? 'Person: ' : m.r === 'a' ? 'You: ' : '[app] ') + m.t)
         .join('\n'),
     },
@@ -789,6 +836,7 @@ A.voice = async () => {
   if (AS) return;
   if (!AI.sample || !AI.dict) return A.assistant();
   AS = asNew(true);
+  AS.from = AS_LOG.length; // what was said before the panel opened is not this conversation
   if (S.date !== today()) {
     try {
       await loadDay(today());
@@ -901,7 +949,7 @@ async function voAfter(say, notes, snap) {
   }
   await asSpeak([say].concat(bad).join(' '));
   if (!AS) return;
-  if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) A.asMic();
+  if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) asListen(true);
 }
 function renderVo() {
   const out = $('#voOut');
@@ -932,11 +980,20 @@ function renderVo() {
       (v.undo ? `<button class="btn sm ghost" data-act="voUndo">${ic('undo')} Undo</button>` : '') +
       (v.xp ? `<span class="pill gold">${ic('bolt', 'fill')}+${v.xp} XP</span>` : '');
   } else if (v.say || v.bad.length) {
-    h = `<p class="vo-say${v.hint ? ' muted' : ''}">${esc([v.say].concat(v.bad).filter(Boolean).join(' '))}</p>`;
-    acts = (AS.chips || [])
-      .slice(0, 2)
-      .map(c => `<button class="vo-chip" data-act="asChip">${esc(c)}</button>`)
-      .join('');
+    // a question comes with its likely answers as choices: tap one, or say it
+    const opts = v.hint ? [] : (AS.chips || []).slice(0, 4);
+    h =
+      `<p class="vo-say${v.hint ? ' muted' : ''}">${esc([v.say].concat(v.bad).filter(Boolean).join(' '))}</p>` +
+      (opts.length
+        ? `<div class="vo-opts">${opts.map(c => `<button class="vo-chip" data-act="asChip">${esc(c)}</button>`).join('')}</div>`
+        : '');
+  }
+  // what was heard stays in view above the answer, so a mishearing is plain to see
+  if (!AS.busy && !v.hint && (v.ok.length || v.say || v.bad.length || p)) {
+    const said = AS_LOG.slice(AS.from || 0)
+      .filter(m => m.r === 'u')
+      .pop();
+    if (said && AS.voice) h = `<p class="vo-heard small">Heard: ${esc(said.t)}</p>` + h;
   }
   out.innerHTML = h;
   $('#voActs').innerHTML = acts + `<button class="link vo-chat" data-act="voChat">Open chat</button>`;

@@ -68,3 +68,70 @@ test('a refusal of the microphone is reported as not granted, which is what turn
   const broken = browserDictation(fakeRecognition({ throwOnStart: true }).Rec);
   await assert.rejects(broken.start(), e => e.code === 'failed');
 });
+
+test('words the browser never marked as final are passed on when listening ends (Safari)', async () => {
+  const { Rec, made } = fakeRecognition();
+  const d = browserDictation(Rec);
+  const seen = [];
+  d.onState(s => seen.push(['state', s.state]));
+  d.onFinal(p => seen.push(['final', p.text]));
+  await d.start();
+  made[0].hear([['dirty chai', false]]);
+  made[0].hear([['dirty chai latte', false]]);
+  await d.stop();
+  await new Promise(r => setTimeout(r, 5));
+  assert.deepEqual(seen, [
+    ['state', 'listening'],
+    ['final', 'dirty chai latte'],
+    ['state', 'idle'],
+  ]);
+});
+
+test('once listens for a single thing said; without it listening carries on through pauses', async () => {
+  const { Rec, made } = fakeRecognition();
+  const d = browserDictation(Rec);
+  await d.start({ once: true });
+  assert.equal(made[0].continuous, false);
+  await d.stop();
+  await new Promise(r => setTimeout(r, 5));
+  await d.start();
+  assert.equal(made[1].continuous, true);
+});
+
+test('a second start while the last session is still closing waits for it, then listens again', async () => {
+  const { Rec, made } = fakeRecognition();
+  const d = browserDictation(Rec);
+  const states = [];
+  d.onState(s => states.push(s.state));
+  await d.start();
+  d.stop(); // not awaited: the session has been told to stop but has not ended yet
+  await d.start();
+  assert.equal(made.length, 2, 'a new session was opened rather than the call being dropped');
+  assert.deepEqual(states, ['listening', 'idle', 'listening']);
+});
+
+test('if the browser does not know en-IE it listens in en-GB instead', async () => {
+  const made = [];
+  class Rec {
+    constructor() {
+      made.push(this);
+    }
+    start() {
+      queueMicrotask(() => {
+        if (this.lang === 'en-IE') {
+          this.onerror({ error: 'language-not-supported' });
+          this.onend();
+        } else this.onstart();
+      });
+    }
+    stop() {
+      queueMicrotask(() => this.onend());
+    }
+  }
+  const d = browserDictation(Rec);
+  await d.start();
+  assert.deepEqual(
+    made.map(r => r.lang),
+    ['en-IE', 'en-GB'],
+  );
+});

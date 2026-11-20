@@ -143,12 +143,49 @@ try {
     await pg.keyboard.press('Escape');
   });
 
-  await step('hearing nothing says so, and Escape closes the panel', async () => {
+  await step('a vague meal gets a question with its likely answers as choices; tapping one logs it', async () => {
+    const p3 = await open();
+    await say(p3, 'I had a fry this morning');
+    await p3.click('#asFab');
+    await p3.waitForSelector('.vo-opts .vo-chip');
+    const t = await panel(p3);
+    assert.match(t, /Heard: I had a fry this morning/);
+    assert.match(t, /What was in the fry/);
+    await p3.click('.vo-opts .vo-chip >> nth=0');
+    await p3.waitForSelector('.vo-names');
+    assert.match(await panel(p3), /Logged 5 items/);
+    await p3.close();
+  });
+
+  await step('voice works again after the panel has closed, as a fresh conversation', async () => {
+    const p4 = await open();
+    await say(p4, 'I had a fry this morning');
+    await p4.click('#asFab');
+    await p4.waitForSelector('.vo-opts .vo-chip'); // a question is left unanswered
+    await p4.click('[data-act="voClose"]');
+    await say(p4, 'I just had a flat white');
+    await p4.click('#asFab');
+    await p4.waitForSelector('.vo-tick');
+    assert.match(await panel(p4), /Logged Flat white/);
+    const prompts = await p4.evaluate(() => window.__asPrompts),
+      talk = prompts[prompts.length - 1].split('Conversation so far:').pop();
+    assert.doesNotMatch(talk, /fry/, 'the unanswered question is not carried into the new request');
+    assert.match(talk, /flat white/);
+    await p4.close();
+  });
+
+  await step('stopping the microphone by hand is not reported as a failure; silence is', async () => {
     const p2 = await open(320, 568);
     await p2.click('#asFab');
     await p2.waitForSelector('#vo');
     await p2.click('#asMic'); // stop listening with nothing said
+    await p2.waitForFunction(() =>
+      /Tap the microphone when you are ready/.test(document.querySelector('#vo').innerText),
+    );
+    await p2.evaluate(() => (window.__silence = true));
+    await p2.click('#asMic'); // listen again: this time nothing is heard and the browser gives up
     await p2.waitForFunction(() => /Nothing heard/.test(document.querySelector('#vo').innerText));
+    await p2.evaluate(() => (window.__silence = false));
     const box = await p2.$eval('#vo', el => {
       const r = el.getBoundingClientRect();
       return { left: r.left, right: r.right, wide: document.documentElement.scrollWidth };

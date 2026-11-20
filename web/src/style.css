@@ -3807,6 +3807,26 @@ button.tw {
   padding: 0 4px;
   font-size: 13px;
 }
+.vo-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.vo-opts .vo-chip {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 14.5px;
+}
+.vo-opts .vo-chip:active {
+  background: var(--surface-2);
+}
+.vo-heard.small {
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
 .vo-chip {
   min-height: 36px;
   max-width: 100%;
