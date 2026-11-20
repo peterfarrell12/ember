@@ -3586,6 +3586,206 @@ button.tw {
   transform: translateY(3px);
   border-bottom-width: 1px;
 }
+/* the voice panel: opens from the talk button, over whatever screen is showing */
+.vo {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 90px;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px 6px 6px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.45);
+  animation: voIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes voIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+.vo-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 96px;
+  max-height: 46vh;
+  padding-bottom: 8px;
+}
+.vo-main #voOut {
+  overflow-y: auto;
+  min-height: 0;
+}
+.vo-st {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.vo-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 14px;
+}
+.vo-bars i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ember);
+  transform-origin: center;
+  animation: voBar 0.9s ease-in-out infinite;
+}
+.vo-bars i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.vo-bars i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.vo-bars i:nth-child(4) {
+  animation-delay: 0.45s;
+}
+@keyframes voBar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.vo .vo-live {
+  font-size: 19px;
+  line-height: 1.3;
+  font-weight: 650;
+  color: var(--ink);
+  min-height: 25px;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+.vo .vo-live.ph {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.vo-names {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.vo-heard {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.vo .as-dots {
+  padding: 10px 0 2px;
+}
+.vo-say {
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.vo-say.muted {
+  color: var(--muted);
+}
+.vo-ok {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vo-ok .grow {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.vo-ok b {
+  font-size: 16px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.vo-tick {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--good);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  animation: voPop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.vo-tick svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 3;
+  stroke-dasharray: 26;
+  animation: voDraw 0.36s 0.12s ease-out backwards;
+}
+@keyframes voPop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes voDraw {
+  from {
+    stroke-dashoffset: 26;
+  }
+}
+.vo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.vo-acts .btn.sm {
+  width: auto;
+  flex: none;
+}
+.vo-acts .vo-chat {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+.vo-chip {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+}
+.vo-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vo-side .mic.as-mic {
+  width: 52px;
+  height: 52px;
+}
 .mic.as-mic {
   width: 48px;
   height: 48px;

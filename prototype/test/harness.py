@@ -68,3 +68,15 @@ async def ctx_new_page(self, *args, **kwargs):
 BrowserContext.new_page = ctx_new_page
 Browser.new_context = new_context
 Browser.new_page = new_page
+
+
+async def open_chat(pg):
+    """Tap the talk button and end up in the assistant's chat.
+    In the prototype the button opens the chat. In the web app it opens the voice panel over the screen,
+    and the chat is one tap further (covered on its own by web/test/browser/voice.e2e.mjs)."""
+    await pg.click('#asFab')
+    await pg.wait_for_selector('#asBody .bub, [data-act="voChat"]')
+    if await pg.query_selector('[data-act="voChat"]'):
+        await pg.click('[data-act="voChat"]')
+    await pg.wait_for_selector('#asBody .bub')
+

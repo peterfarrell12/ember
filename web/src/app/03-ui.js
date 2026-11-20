@@ -1,5 +1,6 @@
 /* ---------- toasts, celebrations, sheets ---------- */
 function toast(msg, kind = '', action = null) {
+  if (AS && AS.ov) return; // the voice panel says what happened itself
   const el = document.createElement('div');
   el.className = 'toast ' + kind;
   el.innerHTML =
@@ -23,7 +24,7 @@ function toast(msg, kind = '', action = null) {
 }
 let celeOpen = false;
 function flushCele() {
-  if (celeOpen || !celeQ.length) return;
+  if (celeOpen || !celeQ.length || (AS && AS.ov)) return; // a celebration waits for the voice panel to close
   const c = celeQ.shift();
   celeOpen = true;
   $('#cele').innerHTML = `<div class="cele" role="dialog" aria-modal="true"><div class="box">

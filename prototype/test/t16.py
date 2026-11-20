@@ -1,5 +1,5 @@
 import asyncio, json, sys
-from harness import async_playwright, TODAY
+from harness import async_playwright, TODAY, open_chat
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -19,7 +19,7 @@ async def main():
         pg.on('console', lambda m: errs.append(m.type+': '+m.text) if m.type in ('error','warning') and 'ERR_FAILED' not in m.text else None); pg.on('pageerror', lambda e: errs.append('PAGEERROR: '+str(e)))
         await pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
         await pg.goto(URL+'#today'); await pg.wait_for_selector('.hero2'); await cont(pg); await pg.wait_for_selector('#asFab:not(.hide)'); await pg.screenshot(path=f'180-fab{sfx}.png')
-        await pg.click('#asFab'); await pg.wait_for_selector('#asBody .bub'); await pg.wait_for_timeout(300); await pg.screenshot(path=f'181-as-open{sfx}.png'); print('speaker btn visible:', await pg.is_visible('#asSpk'), '| mic:', await pg.is_visible('#asMic'))
+        await open_chat(pg); await pg.wait_for_timeout(300); await pg.screenshot(path=f'181-as-open{sfx}.png'); print('speaker btn visible:', await pg.is_visible('#asSpk'), '| mic:', await pg.is_visible('#asMic'))
         await say(pg, 'I had a fry this morning'); print('1:', await last(pg, 2), '| chips:', (await pg.inner_text('#asChips')).replace('\n',' | '))
         await pg.click('#asChips [data-act="asChip"] >> nth=0'); await pg.wait_for_timeout(1500); await pg.screenshot(path=f'182-as-card{sfx}.png'); print('2 card:', (await pg.inner_text('.as-card')).replace('\n',' | ')[:420])
         await say(pg, 'It was three sausages', 1500); print('3 card:', (await pg.inner_text('.as-card')).replace('\n',' | ')[:200])

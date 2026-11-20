@@ -78,6 +78,21 @@ function asHush() {
   if (AS) AS.speaking = false;
 }
 
+const asNew = ov => ({
+  pend: null,
+  busy: false,
+  listening: false,
+  speaking: false,
+  buf: '',
+  timer: 0,
+  chips: [],
+  voice: false,
+  after: null,
+  ov,
+  vo: null,
+  bye: 0,
+  xp0: null,
+});
 A.assistant = async () => {
   if (AS) return;
   if (!AI.sample)
@@ -86,17 +101,7 @@ A.assistant = async () => {
         ? 'The assistant needs Claude, which is not available in this view.'
         : 'Still connecting. Try again in a moment.',
     );
-  AS = {
-    pend: null,
-    busy: false,
-    listening: false,
-    speaking: false,
-    buf: '',
-    timer: 0,
-    chips: [],
-    voice: false,
-    after: null,
-  };
+  AS = asNew(false);
   if (S.date !== today()) {
     try {
       await loadDay(today());
@@ -164,8 +169,18 @@ function asMic() {
   const l = $('#asLive');
   if (l) {
     l.classList.toggle('hide', !AS.listening);
-    if (AS.listening && !l.textContent) l.textContent = 'Listening…';
+    if (AS.listening && !l.textContent) {
+      l.textContent = !AS.ov
+        ? 'Listening…'
+        : AS.pend
+          ? 'Say yes or no.'
+          : AS.vo && AS.vo.say
+            ? 'Go ahead.'
+            : 'Say what you had, or ask a question.';
+      l.classList.add('ph');
+    }
   }
+  if (AS.ov) voStatus();
 }
 A.asMic = () => {
   if (!AS || !AI.dict) return;
@@ -175,13 +190,24 @@ A.asMic = () => {
   AS.buf = '';
   const l = $('#asLive');
   if (l) l.textContent = '';
+  if (AS.ov) {
+    clearTimeout(AS.bye);
+    if (AS.vo && (AS.vo.ok.length || AS.vo.hint)) AS.vo = null;
+    renderVo();
+  }
   AI.dict.start().catch(e => {
     if (e && e.code === 'not_granted') {
       AI.dict = null;
       const b = $('#asMic');
       if (b) b.remove();
+      const ov = AS && AS.ov;
+      voEnd();
       toast('Dictation is off for this page. Type, or use the microphone key on your keyboard.');
-    } else toast('Dictation did not start. Try again.');
+      if (ov) A.assistant();
+    } else {
+      voEnd();
+      toast('Dictation did not start. Try again.');
+    }
   });
 };
 /* called from the shared dictation listeners */
@@ -198,10 +224,16 @@ function asDict(kind, v) {
       if (t) {
         AS.voice = true;
         asSend(t);
+      } else if (AS.ov && !AS.busy && !AS.pend && !AS.vo) {
+        AS.vo = { ok: [], bad: [], say: 'Nothing heard. Tap the microphone and try again.', hint: true };
+        renderVo();
+        AS.bye = setTimeout(voEnd, 8000);
       }
     }
     return;
   }
+  if (!AS.listening) return;
+  if (l && v) l.classList.remove('ph');
   if (kind === 'partial') {
     if (l) l.textContent = (AS.buf + ' ' + (v || '')).trim() || 'Listening…';
     if (v) clearTimeout(AS.timer);
@@ -236,6 +268,7 @@ document.addEventListener('keydown', e => {
 });
 
 function renderAs() {
+  if (AS && AS.ov) return renderVo();
   const b = $('#asBody');
   if (!b || !AS) return;
   const p = AS.pend;
@@ -297,6 +330,7 @@ A.asEdit = () => {
 
 async function asSend(text) {
   if (!AS || AS.busy || !text) return;
+  AS.xp0 = P.xp;
   asHush();
   AS_LOG.push({ r: 'u', t: String(text).slice(0, 600) });
   if (
@@ -328,7 +362,9 @@ async function asHandle(r) {
   AS.chips = Array.isArray(r.chips) ? r.chips.map(c => String(c).slice(0, 90)) : [];
   if (acts.some(a => a && ['food', 'remove_food', 'message_coach', 'set_target'].includes(a.do))) AS.pend = null;
   if (say) AS_LOG.push({ r: 'a', t: say });
-  const notes = [];
+  const notes = [],
+    snap = AS.ov ? await voSnap(acts) : null;
+  if (!AS) return;
   for (const a of acts) {
     try {
       const n = await asDo(a || {});
@@ -338,7 +374,12 @@ async function asHandle(r) {
     }
     if (!AS) return;
   }
+  if (AS.ov && AS.pend && AS.pend.kind === 'food') {
+    notes.push(await asCommit(true));
+    if (!AS) return;
+  }
   notes.forEach(n => AS_LOG.push({ r: 'app', t: n }));
+  if (AS.ov) return voAfter(say, notes, snap);
   renderAs();
   await asSpeak([say].concat(notes).join(' '));
   if (!AS) return;
@@ -351,9 +392,20 @@ async function asHandle(r) {
   if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) A.asMic();
 }
 async function asConfirm(yes) {
+  if (!AS.pend) return;
+  if (AS.xp0 == null) AS.xp0 = P.xp;
+  const note = await asCommit(yes);
+  if (!AS) return;
+  AS_LOG.push({ r: 'app', t: note });
+  AS.chips = [];
+  if (AS.ov) return voAfter('', [note], null);
+  renderAs();
+  await asSpeak(note);
+}
+/* does what the waiting card offered, or drops it; returns the line that says what happened */
+async function asCommit(yes) {
   const p = AS.pend;
   AS.pend = null;
-  if (!p) return;
   let note = 'Cancelled. Nothing was saved.';
   if (yes && p.kind === 'food') {
     const es = p.items.map(it => ({ ...portion(it.food, it.g), m: p.meal, u: r0(it.g) + ' g' }));
@@ -361,6 +413,7 @@ async function asConfirm(yes) {
       if (it.food.src !== 'AI') remember(it.food, it.g, 'g', p.meal);
     });
     await logEntries(es, 'say', { keep: true, quiet: true });
+    AS.names = es.map(e => e.n);
     const l = leftNow();
     note =
       'Logged ' +
@@ -396,11 +449,7 @@ async function asConfirm(yes) {
     render();
     note = 'Targets changed to ' + fmt(P.t.k) + ' kcal and ' + P.t.p + ' g protein.';
   }
-  if (!AS) return;
-  AS_LOG.push({ r: 'app', t: note });
-  AS.chips = [];
-  renderAs();
-  await asSpeak(note);
+  return note;
 }
 const asDate = v => (/^\d{4}-\d\d-\d\d$/.test(String(v || '')) ? v : '');
 /* one requested action; returns a line telling Claude and the person what happened */
@@ -730,9 +779,186 @@ function asPrompt() {
     },
   ];
 }
+/* ---------- voice: the talk button opens a small panel over the screen you are on ----------
+   It listens straight away and shows the words as they are heard. Something simple ("I just had an americano",
+   "add 500 ml of water", "two eggs on toast") is logged at once and answered with a tick and an Undo. A question
+   gets its answer in the panel. Anything longer can be carried into the chat, which keeps the conversation. */
+const VO_OK =
+  /^(Logged|Added|Took off|Weigh-in saved|Recovery check-in saved|Moved|Skipped|Booked|Cancelled (?!\.)|Removed|Targets changed|Sent)\b/;
+A.voice = async () => {
+  if (AS) return;
+  if (!AI.sample || !AI.dict) return A.assistant();
+  AS = asNew(true);
+  if (S.date !== today()) {
+    try {
+      await loadDay(today());
+      S.date = today();
+    } catch (e) {
+      AS = null;
+      return;
+    }
+  }
+  const el = document.createElement('div');
+  el.className = 'vo';
+  el.id = 'vo';
+  el.setAttribute('role', 'region');
+  el.setAttribute('aria-label', 'Voice');
+  el.innerHTML = `<div class="vo-main"><div class="vo-st" id="voSt"></div><div id="voOut" aria-live="polite"></div><div class="as-live vo-live hide" id="asLive" aria-live="polite"></div><div class="vo-acts" id="voActs"></div></div>
+    <div class="vo-side"><button class="icon-btn" data-act="voClose" aria-label="Close voice">${ic('x')}</button><button class="mic as-mic" id="asMic" data-act="asMic" aria-label="Talk">${ic('mic')}</button></div>`;
+  $('#app').appendChild(el);
+  render();
+  ttsGet();
+  loadDB('gen');
+  loadDB('br');
+  loadGym();
+  A.asMic();
+};
+function voEnd() {
+  const a = AS,
+    el = $('#vo');
+  if (el) el.remove();
+  if (!a || !a.ov) return;
+  AS = null;
+  clearTimeout(a.timer);
+  clearTimeout(a.bye);
+  if (a.listening && AI.dict) AI.dict.stop().catch(() => {});
+  try {
+    if (TTS) TTS.stop();
+    else if (synthOk()) speechSynthesis.cancel();
+  } catch (e) {}
+  asFab();
+  flushCele();
+}
+A.voClose = () => voEnd();
+/* carry on in the chat: the conversation so far, and any card that was waiting, come along */
+A.voChat = async () => {
+  const pend = AS && AS.ov ? AS.pend : null;
+  voEnd();
+  await A.assistant();
+  if (AS && pend) {
+    AS.pend = pend;
+    renderAs();
+  }
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && AS && AS.ov && !sheets.length) voEnd();
+});
+/* what today looked like before a spoken request, so a log made by voice can be undone in one tap */
+async function voSnap(acts) {
+  if (!acts.length || !acts.every(a => a && ['food', 'water', 'caffeine'].includes(a.do))) return null;
+  const d = await loadDay(today());
+  return {
+    d: clone(d),
+    xp: P.xp,
+    gems: P.gems,
+    lg: P.lg.xp,
+    st: { logs: P.st.logs, say: P.st.say, quests: P.st.quests },
+    cele: celeQ.length,
+  };
+}
+A.voUndo = async () => {
+  const sn = AS && AS.vo && AS.vo.undo;
+  if (!sn) return;
+  clearTimeout(AS.bye);
+  P.xp = sn.xp;
+  P.gems = sn.gems;
+  P.lg.xp = sn.lg;
+  Object.assign(P.st, sn.st);
+  celeQ.length = Math.min(celeQ.length, sn.cele);
+  commitDay(sn.d);
+  if (!AS) return;
+  AS_LOG.push({ r: 'app', t: 'Undone. That was taken back off today.' });
+  AS.vo = { ok: [], bad: [], say: 'Undone. Nothing was added.', hint: true };
+  renderVo();
+  AS.bye = setTimeout(voEnd, 3500);
+};
+/* after a turn: a tick for what was done, the reply for a question, a card for what needs a yes */
+async function voAfter(say, notes, snap) {
+  if (AS.after) {
+    const fn = AS.after;
+    voEnd();
+    return fn();
+  }
+  const ok = notes.filter(n => VO_OK.test(n)),
+    bad = notes.filter(n => !VO_OK.test(n)),
+    quick = ok.length > 0 && !bad.length && !AS.pend;
+  AS.vo = {
+    ok,
+    bad,
+    say: quick ? '' : say,
+    undo: quick ? snap : null,
+    xp: Math.max(0, P.xp - (AS.xp0 == null ? P.xp : AS.xp0)),
+    names: quick && AS.names && AS.names.length > 1 ? AS.names : null,
+  };
+  AS.xp0 = AS.names = null;
+  renderVo();
+  if (quick) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(12);
+    } catch (e) {}
+    AS.bye = setTimeout(voEnd, snap ? 7000 : 5000);
+    return;
+  }
+  await asSpeak([say].concat(bad).join(' '));
+  if (!AS) return;
+  if (AS.voice && AI.dict && !AS.listening && !AS.busy && (AS.pend || /\?\s*$/.test(say))) A.asMic();
+}
+function renderVo() {
+  const out = $('#voOut');
+  if (!out || !AS) return;
+  const p = AS.pend,
+    v = AS.vo || { ok: [], bad: [], say: '' };
+  let h = '',
+    acts = '';
+  if (AS.busy) {
+    const said = AS_LOG.filter(m => m.r === 'u').pop();
+    h = `<p class="vo-heard">${esc(said ? said.t : '')}</p><div class="as-dots" aria-label="Thinking"><i></i><i></i><i></i></div>`;
+  } else if (p) {
+    const q =
+      p.kind === 'remove'
+        ? 'Remove ' + p.names + ' (' + fmt(p.k) + ' kcal) from today?'
+        : p.kind === 'msg'
+          ? 'Send this to your coach?'
+          : 'Change your daily targets to ' + fmt(p.k) + ' kcal' + (p.p ? ' and ' + p.p + ' g protein' : '') + '?';
+    h = `<p class="vo-say"><b>${esc(q)}</b></p>${p.kind === 'msg' ? `<p class="small">${esc(p.text)}</p>` : ''}`;
+    acts = `<button class="btn sm ghost" data-act="asNo">Cancel</button><button class="btn sm ember" data-act="asYes">${p.kind === 'remove' ? 'Remove' : p.kind === 'msg' ? 'Send' : 'Change'}</button>`;
+  } else if (v.ok.length) {
+    const all = v.ok.join(' '),
+      cut = all.search(/[.:] /),
+      head = cut > 0 ? all.slice(0, cut) : all.replace(/\.$/, ''),
+      rest = cut > 0 ? all.slice(cut + 2) : '';
+    h = `<div class="vo-ok"><span class="vo-tick">${ic('check')}</span><span class="grow"><b>${esc(head)}</b>${v.names ? `<span class="small vo-names">${esc(v.names.join(', '))}</span>` : ''}${rest ? `<span class="small muted">${esc(rest)}</span>` : ''}</span></div>`;
+    acts =
+      (v.undo ? `<button class="btn sm ghost" data-act="voUndo">${ic('undo')} Undo</button>` : '') +
+      (v.xp ? `<span class="pill gold">${ic('bolt', 'fill')}+${v.xp} XP</span>` : '');
+  } else if (v.say || v.bad.length) {
+    h = `<p class="vo-say${v.hint ? ' muted' : ''}">${esc([v.say].concat(v.bad).filter(Boolean).join(' '))}</p>`;
+    acts = (AS.chips || [])
+      .slice(0, 2)
+      .map(c => `<button class="vo-chip" data-act="asChip">${esc(c)}</button>`)
+      .join('');
+  }
+  out.innerHTML = h;
+  $('#voActs').innerHTML = acts + `<button class="link vo-chat" data-act="voChat">Open chat</button>`;
+  asMic();
+}
+/* the small line at the top of the panel: what it is doing right now */
+function voStatus() {
+  const st = $('#voSt');
+  if (!st) return;
+  const now = AS.listening ? 'Listening' : AS.busy ? 'Working it out' : AS.speaking ? 'Speaking' : '';
+  if (st.dataset.now === now) return;
+  st.dataset.now = now;
+  st.innerHTML =
+    (AS.listening ? `<span class="vo-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>` : '') + now;
+}
 /* the talk button that sits above the tab bar */
 function asFab() {
   const b = $('#asFab');
-  if (b) b.classList.toggle('hide', !(S.ready && P && P.onboarded && !isCoach() && !isGym() && AI.sample));
+  if (b)
+    b.classList.toggle(
+      'hide',
+      !(S.ready && P && P.onboarded && !isCoach() && !isGym() && AI.sample) || !!(AS && AS.ov),
+    );
 }
 document.addEventListener('aiready', asFab);

@@ -1,5 +1,5 @@
 import asyncio, json, sys, datetime
-from harness import async_playwright, TODAY
+from harness import async_playwright, TODAY, open_chat
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -46,7 +46,7 @@ async def main():
         await pg.click('[data-act="close"]'); await pg.wait_for_timeout(300)
         await pg.click('#chipCal'); await pg.wait_for_selector('#calBody .pwk'); print('CAL has class:', 'class' in (await pg.inner_text('#calBody')).lower(), '| rows ev', len(await pg.query_selector_all('.pr.ev'))); await pg.click('[data-act="close"]')
         # assistant books
-        await pg.click('#asFab'); await pg.wait_for_selector('#asBody .bub'); await pg.fill('#asT', 'book me into spin'); await pg.click('[data-act="asGo"]'); await pg.wait_for_timeout(1200); print('ASSISTANT:', t((await pg.inner_text('#asBody'))[-200:], 200)); await pg.click('[data-act="close"]')
+        await open_chat(pg); await pg.fill('#asT', 'book me into spin'); await pg.click('[data-act="asGo"]'); await pg.wait_for_timeout(1200); print('ASSISTANT:', t((await pg.inner_text('#asBody'))[-200:], 200)); await pg.click('[data-act="close"]')
         g = await gym(pg); print('my bookings:', [(k, 'in' if 'me' in v['in'] else 'wait') for k, v in g['book'].items() if 'me' in v['in'] or 'me' in v['wait']], '| appts', [(a['type'], a['d'], a['tm']) for a in g['appts']], '| pass left', [m for m in g['members'] if m['id']=='me'][0]['left'])
         print('ERRS', errs); await b.close()
 asyncio.run(main())
