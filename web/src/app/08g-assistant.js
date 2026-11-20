@@ -175,7 +175,9 @@ function asMic() {
         : AS.pend
           ? 'Say yes or no.'
           : AS.vo && AS.vo.say
-            ? 'Go ahead.'
+            ? (AS.chips || []).length
+              ? 'Pick one, or say it.'
+              : 'Go ahead.'
             : 'Say what you had, or ask a question.';
       l.classList.add('ph');
     }
