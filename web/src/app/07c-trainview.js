@@ -120,7 +120,7 @@ function viewTrain() {
     tdone = ts.filter(t => t.done).length;
   const tasks = `<section class="card"><div class="between"><h2>Today's tasks</h2><button class="link" data-act="taskManage">${ts.length ? 'Edit' : 'Add'}</button></div>
     ${ts.length ? `<div class="row small muted" style="margin-top:8px"><div class="grow">${bar(tdone, ts.length, 'good')}</div><span class="tn">${tdone} of ${ts.length}</span></div>` : ''}
-    ${ts.map(t => (t.auto ? `<div class="task ${t.done ? 'on' : ''}"><span class="tb">${t.done ? ic('check') : ''}</span><span>${esc(t.label)}</span></div>` : `<button class="task ${t.done ? 'on' : ''}" data-act="taskTick" data-id="${t.id}"><span class="tb">${t.done ? ic('check') : ''}</span><span>${esc(t.label)}</span></button>`)).join('') || `<p class="empty">No tasks set. Add the habits you want ticked off each day.</p>`}</section>`;
+    ${ts.map(t => (t.auto ? `<button class="task ${t.done ? 'on' : ''}" data-act="taskGo" data-k="${t.auto}"><span class="tb">${t.done ? ic('check') : ''}</span><span>${esc(t.label)}</span></button>` : `<button class="task ${t.done ? 'on' : ''}" data-act="taskTick" data-id="${t.id}"><span class="tb">${t.done ? ic('check') : ''}</span><span>${esc(t.label)}</span></button>`)).join('') || `<p class="empty">No tasks set. Add the habits you want ticked off each day.</p>`}</section>`;
   const rp = TR.rehab && rehabPlan(TR.rehab.id);
   let rehab;
   if (rp) {

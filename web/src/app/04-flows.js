@@ -375,6 +375,12 @@ function isLiquid(food) {
   if (food.src === 'DR') return true;
   const n = norm(kindOf(food) + ' ' + (food.b || '')) + ' ';
   if (/chocolate/.test(n) && !/\b(drink|shake|milkshake|hot chocolate|chocolate milk)\b/.test(n)) return false;
+  // nothing you drink by the glass has over 200 kcal in 100 ml, bar spirits and cream liqueurs: "Dairy Milk" is a bar
+  if (
+    food.k > 200 &&
+    !/\b(whisk(e)?y|vodka|gin|rum|brandy|cognac|tequila|liqueur|baileys|spirit|poitin|schnapps)\b/.test(n)
+  )
+    return false;
   if ((food.ports || []).some(([l]) => /\bml\b|\bcan\b|\bbottle\b/i.test(l) && !/fl oz/i.test(l)) && !NOT_LIQ.test(n))
     return true;
   return LIQ.test(n) && !NOT_LIQ.test(n);

@@ -57,7 +57,7 @@ async def main():
         for i in range(8): await pg.click('[data-act="rtNext"]'); await pg.wait_for_timeout(80)
         await cont(pg)
         # tasks
-        await pg.click('[data-act="taskManage"]'); await pg.fill('#tmNew','Creatine'); await pg.click('[data-act="taskAdd"]'); await pg.click('[data-act="taskToggle"][data-k="steps"]'); await pg.click('[data-act="close"]'); await pg.click('button.task >> nth=0'); await cont(pg)
+        await pg.click('[data-act="taskManage"]'); await pg.fill('#tmNew','Creatine'); await pg.click('[data-act="taskAdd"]'); await pg.click('[data-act="taskToggle"][data-k="steps"]'); await pg.click('[data-act="close"]'); await pg.click('button.task[data-act="taskTick"] >> nth=0'); await cont(pg)
         await pg.evaluate("document.querySelector('#main').scrollTop=0"); await pg.wait_for_timeout(2800); await pg.screenshot(path='72-train-full.png'); await pg.evaluate("document.querySelector('#main').scrollTop=640"); await pg.screenshot(path='73-train-full2.png')
         print('TRAIN:', (await pg.inner_text('#main')).replace('\n',' | ')[:1500])
         await pg.click('[data-act="exLib"]'); await pg.fill('#pkQ','squat'); await pg.wait_for_timeout(150); await pg.click('#pkList [data-id="squat"]'); await pg.wait_for_timeout(200); await pg.screenshot(path='74-exinfo.png'); print('exinfo:', (await pg.inner_text('.sheet-b >> nth=-1')).replace('\n',' | ')[:300])

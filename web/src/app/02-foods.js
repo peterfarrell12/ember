@@ -4,6 +4,7 @@ const DB = {
   br: null,
   more: null,
   L: {},
+  off: {},
   st: { gen: 'idle', br: 'idle', more: 'idle' },
   codes: null,
   codesMore: null,
@@ -41,6 +42,7 @@ function loadDB(which) {
       const rows = list.concat(extra);
       DB[which] = rows;
       DB.L[which] = which === 'gen' ? rows.map(r => norm(r[0])) : rows.map(r => norm(r[0] + ' ' + r[1]));
+      if (which !== 'gen') DB.off[which] = new Set(rows.map((r, i) => (labelOff(r) ? i : -1)).filter(i => i >= 0));
       DB.st[which] = 'ready';
       document.dispatchEvent(new CustomEvent('dbready', { detail: which }));
     })
@@ -99,6 +101,26 @@ function genFood(i) {
     src: r[10],
   };
 }
+/* A product label whose energy cannot be squared with its own protein, carbohydrate and fat: kJ typed as kcal,
+   a decimal point lost. Such a product is left out of search results; scanning its barcode still finds it.
+   Drinks with alcohol are exempt: alcohol carries energy the macros do not show. */
+const BOOZE =
+  /\b(beer|lager|stout|ale|cider|wine|prosecco|champagne|whisk(e)?y|vodka|gin|rum|liqueur|spirit|brandy|cognac|tequila|sherry|port|baileys|guinness|heineken|ipa|alcohol)\b/i;
+function labelOff(r) {
+  const kcal = r[2],
+    made = r[3] * 4 + r[4] * 4 + r[5] * 9;
+  if (!(kcal > 0)) return false;
+  if (made > kcal * 2.5 + 80) return true;
+  return kcal > made * 2.2 + 60 && !BOOZE.test(r[0] + ' ' + r[1]);
+}
+/* A name printed in capitals on the pack is shown in ordinary case: "SPICY CHICKEN PIZZA" reads as shouting. */
+const calm = s => {
+  s = String(s || '');
+  if (s.length <= 3 || s !== s.toUpperCase() || !/[A-Z]{3}/.test(s)) return s;
+  // words with a digit in them keep their case: 7UP, 0.0, B12
+  const out = s.replace(/[^\s]+/g, w => (/\d/.test(w) ? w : w.toLowerCase()));
+  return out[0].toUpperCase() + out.slice(1);
+};
 function brFood(set, i) {
   const r = DB[set][i];
   const ports = [];
@@ -106,8 +128,8 @@ function brFood(set, i) {
   if (r[11] && r[11] !== r[10] && r[11] <= 1000) ports.push(['1 pack', r[11]]);
   return {
     id: (set === 'br' ? 'b' : 'm') + i,
-    n: r[0],
-    b: r[1],
+    n: calm(r[0]),
+    b: calm(r[1]),
     k: r[2],
     p: r[3],
     c: r[4],
@@ -279,6 +301,8 @@ const POOR = [
   [' restaurant', 6],
   [' fast food', 6],
 ];
+const FOREIGN =
+  /[äöüßàâçèéêëîïôùûñ]|\b(mit|und|ohne|avec|pour|sans|aux|con|para|sin|geschmack|fromage|beurre|käse|queso|leche|lait|zucker|sucre)\b/i;
 const UK_COOKED =
   /^ (bacon|sausage|beef|pork|lamb|chicken|turkey|gammon|veal|duck|liver|kidney|cod|haddock|salmon|plaice|mackerel|trout|potato|rice|pasta|spaghetti|noodles|egg|lentils|black pudding|white pudding|burger|mince)/;
 function searchSet(which, toks, raw, limit) {
@@ -329,7 +353,11 @@ function searchSet(which, toks, raw, limit) {
       }
       for (const [w, v] of GOOD) if (hay.indexOf(w) >= 0) s += v;
       for (const [w, v] of POOR) if (hay.indexOf(w) >= 0 && raw.indexOf(w.trim()) < 0) s -= v;
-    } else s += Math.min(34, Math.log2(1 + rows[i][13]) * 5) + (which === 'br' ? 6 : 0) - (rows[i][1] ? 0 : 6);
+    } else {
+      if (DB.off[which] && DB.off[which].has(i)) continue;
+      s += Math.min(34, Math.log2(1 + rows[i][13]) * 5) + (which === 'br' ? 6 : 0) - (rows[i][1] ? 0 : 6);
+      if (FOREIGN.test(rows[i][0])) s -= 25; // a product named in another language is rarely the one meant here
+    }
     out.push([s, i]);
   }
   out.sort((a, b) => b[0] - a[0]);

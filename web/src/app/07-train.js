@@ -1287,6 +1287,25 @@ const TASK_AUTO = {
   weigh: ['Weigh in', d => P.wts.some(w => w.d === d.date)],
   close: ['Close out the day', d => !!d.done],
 };
+/* A task that ticks itself cannot be ticked by hand, so a tap on it goes to the thing that ticks it. */
+A.taskGo = ({ k }) => {
+  const d = day();
+  if (TASK_AUTO[k] && TASK_AUTO[k][1](d, totals(d))) return toast('Done for today. This one ticks itself.');
+  const go = {
+    ready: () => A.ready(),
+    train: () => A.trainStart(),
+    move: () => A.addExercise(),
+    mob: () => A.routine({ id: ROUTINES[0].id }),
+    rehab: () => (TR.rehab ? A.rehabGo() : A.rehabList()),
+    weigh: () => A.addWeight(),
+    protein: () => A.tab({ tab: 'today' }),
+    water: () => A.waterSheet(),
+    close: () => A.tab({ tab: 'today' }),
+    nocaf: () => A.caf(),
+  }[k];
+  if (go) return go();
+  toast('This one ticks itself: ' + (k === 'steps' ? 'when your steps for the day reach 8,000.' : 'when it is done.'));
+};
 function tasksFor(d) {
   const t = totals(d);
   return P.tasks
