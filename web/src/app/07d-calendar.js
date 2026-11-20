@@ -52,6 +52,71 @@ function nextTrainDate() {
   }
   return '';
 }
+/* ---------- the plan as a calendar file (.ics), for the phone's own calendar and its alerts ---------- */
+function planIcs(days = 28) {
+  const tk = today(),
+    stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
+    txt = s =>
+      String(s)
+        .replace(/[\\;,]/g, m => '\\' + m)
+        .replace(/\n/g, ' '),
+    out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ember//Training plan//EN', 'CALSCALE:GREGORIAN'];
+  let n = 0;
+  for (let i = 0; i < days; i++) {
+    const k = addDays(tk, i),
+      ymd = k.replace(/-/g, '');
+    planFor(k)
+      .filter(x => !x.skipped && !x.done && !x.missed)
+      .forEach(x => {
+        const tm = /^\d\d:\d\d$/.test(x.tm || '') ? x.tm.replace(':', '') + '00' : '';
+        out.push(
+          'BEGIN:VEVENT',
+          // the same entry gets the same id each time, so adding the plan again updates it
+          'UID:' +
+            ymd +
+            '-' +
+            norm(x.type + ' ' + x.t)
+              .trim()
+              .replace(/ /g, '-') +
+            '@ember',
+          'DTSTAMP:' + stamp,
+          tm ? 'DTSTART:' + ymd + 'T' + tm : 'DTSTART;VALUE=DATE:' + ymd,
+          tm
+            ? 'DURATION:PT' + clamp(r0(x.min || 60), 10, 600) + 'M'
+            : 'DTEND;VALUE=DATE:' + addDays(k, 1).replace(/-/g, ''),
+          'SUMMARY:' + txt(x.t),
+          ...(x.sub ? ['DESCRIPTION:' + txt(x.sub)] : []),
+          ...(tm ? ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + txt(x.t), 'TRIGGER:-PT30M', 'END:VALARM'] : []),
+          'END:VEVENT',
+        );
+        n++;
+      });
+  }
+  out.push('END:VCALENDAR');
+  return { n, text: out.join('\r\n') + '\r\n' };
+}
+A.calExport = async () => {
+  const { n, text } = planIcs();
+  if (!n) return toast('Nothing is planned in the next four weeks yet.');
+  const file = new File([text], 'ember-plan.ics', { type: 'text/calendar' });
+  try {
+    // a phone offers its calendar from the share sheet; a computer downloads the file
+    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Ember plan' });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = 'ember-plan.ics';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(n + (n === 1 ? ' entry' : ' entries') + ' saved as ember-plan.ics. Open it to add them to your calendar.');
+};
 function planFor(k) {
   const pl = plan(),
     tk = today(),
@@ -81,6 +146,7 @@ function planFor(k) {
         plan: 1,
         t: dy.n,
         sub: [dy.focus, 'about ' + estMin(dy.items) + ' min'].filter(Boolean).join(', '),
+        min: estMin(dy.items),
         tm: pl.tm,
       });
     }
@@ -112,6 +178,7 @@ function planFor(k) {
       k: e.k,
       t: e.t,
       tm: e.tm || '',
+      min: e.min || 0,
       sub: [e.min && e.k !== 'rest' ? e.min + ' min' : '', e.wd != null ? 'every ' + WDL[e.wd] : '']
         .filter(Boolean)
         .join(', '),
@@ -162,7 +229,8 @@ function calPattern() {
             )}</div>`
           : ''
       }
-      <p class="tiny muted">Ember does not send reminders yet.</p></section>`;
+      <button class="btn sm ghost" data-act="calExport" style="align-self:flex-start">${ic('cal')} Add to my phone's calendar</button>
+      <p class="tiny muted">Ember does not send reminders yet. This puts the next four weeks, as planned today, into your own calendar, with an alert half an hour before anything that has a time. If the plan changes, add it again: the entries update rather than double up.</p></section>`;
 }
 let CAL = null;
 A.cal = ({ date } = {}) => {
