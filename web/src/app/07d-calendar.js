@@ -162,7 +162,7 @@ function calPattern() {
             )}</div>`
           : ''
       }
-      <p class="tiny muted">Ember cannot send reminders. Ask Claude in the chat to copy these into your phone's calendar if you want alerts.</p></section>`;
+      <p class="tiny muted">Ember does not send reminders yet.</p></section>`;
 }
 let CAL = null;
 A.cal = ({ date } = {}) => {

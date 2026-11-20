@@ -151,6 +151,11 @@ svg.ic.fill {
   outline-offset: 2px;
   border-radius: 6px;
 }
+/* a sheet takes focus when it opens so the keyboard and screen readers start inside it; it shows no ring itself */
+.sheet:focus-visible {
+  outline: none;
+  border-radius: 22px 22px 0 0;
+}
 
 #app {
   height: 100%;

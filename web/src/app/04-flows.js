@@ -189,15 +189,29 @@ A.copyYesterday = async ({ meal }) => {
     }),
   );
 };
+/* what a day held just before something was removed from it, so the toast can offer to put it back */
+let removed = null;
+const keepForUndo = d => (removed = { date: d.date, e: d.e.slice(), cf: cafOf(d).slice() });
+A.undoRemove = async () => {
+  if (!removed) return;
+  const was = removed;
+  removed = null;
+  const d = await loadDay(was.date);
+  d.e = was.e;
+  d.cf = was.cf;
+  commitDay(d);
+  toast('Put back');
+};
 A.clearMeal = async ({ meal }) => {
   const d = await loadDay(S.date);
   if (!d.e.some(e => e.m === meal)) return;
+  keepForUndo(d);
   dropEntries(
     d,
     d.e.filter(e => e.m === meal).map(e => e.id),
   );
   commitDay(d);
-  toast(MEALS[meal] + ' cleared');
+  toast(MEALS[meal] + ' cleared', '', { act: 'undoRemove', label: 'Undo' });
 };
 A.saveMeal = async ({ meal }) => {
   const d = await loadDay(S.date);
@@ -331,10 +345,11 @@ A.saveEntry = async () => {
 A.delEntry = async () => {
   const d = await loadDay(S.date),
     had = cafOf(d).length;
+  keepForUndo(d);
   dropEntries(d, [EE.id]);
   closeSheet();
   commitDay(d);
-  toast(cafOf(d).length < had ? 'Removed, with its caffeine' : 'Removed');
+  toast(cafOf(d).length < had ? 'Removed, with its caffeine' : 'Removed', '', { act: 'undoRemove', label: 'Undo' });
 };
 function nutTable(x) {
   const salt = x.na != null ? r1(((x.na * 2.5) / 1000) * 10) / 10 : null;
@@ -712,6 +727,12 @@ A.fdStep = ({ d }) => {
 A.fdGo = async () => {
   const g = fdGrams();
   if (!(g > 0)) return toast(FD.sv > 0 ? 'Enter a serving size above zero.' : 'Enter a number of servings above zero.');
+  // an amount nobody eats in one go is almost always grams typed into a per-item unit: say so once before saving it
+  const kcal = (FD.food.k * g) / 100;
+  if ((g > 3000 || kcal > 6000) && FD.sure !== g) {
+    FD.sure = g;
+    return toast('That comes to ' + fmt(kcal) + ' kcal. Check the amount, or tap again to log it.');
+  }
   const u = FD.units[FD.ui];
   const label = amtLabel(u, FD.qty, FD.sv, g, FD.bw, FD.food.nog),
     amt = { q: FD.qty, us: u.short, sv: FD.sv };

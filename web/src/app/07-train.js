@@ -441,13 +441,30 @@ A.trainDay = ({ i }) => {
   P.prog.at = +i;
   startSession(d.n, d.items, { progId: p.id });
 };
-A.quickStart = () => startSession('Workout', [], {});
+/* a session already under way is never replaced without a word: it opens, and can be finished or discarded there */
+A.quickStart = () => {
+  if (WK) {
+    openPlayer();
+    return toast('You have a session in progress. Finish or discard it first.');
+  }
+  startSession('Workout', [], {});
+};
 A.wkResume = () => openPlayer();
+let wkGone = null;
 A.wkDiscard = () => {
+  wkGone = WK;
   WK = null;
   saveDraft();
   render();
-  toast('Session discarded');
+  toast('Session discarded', '', { act: 'wkUndiscard', label: 'Undo' });
+};
+A.wkUndiscard = () => {
+  if (!wkGone || WK) return;
+  WK = wkGone;
+  wkGone = null;
+  saveDraft();
+  render();
+  toast('Session restored');
 };
 function openPlayer() {
   closeAll();
@@ -509,8 +526,30 @@ function renderPlayer() {
       .join('') +
     `<button class="btn ghost" data-act="wkAdd">${ic('plus')} Add an exercise</button>${WK.items.length ? '' : `<p class="empty">Add your first exercise to get going.</p>`}`;
 }
+/* a set's weight and reps: kept within what a person can do, so one slip of the thumb cannot wreck the records;
+   a weight typed into one set fills the empty sets after it */
 I.wk = el => {
-  WK.items[+el.dataset.i].sets[+el.dataset.j][el.dataset.f] = el.value;
+  const f = el.dataset.f,
+    max = f === 'w' ? 500 : 600,
+    v = num(el.value);
+  if (el.value !== '' && (v < 0 || v > max)) {
+    el.value = String(clamp(v, 0, max));
+    toast(f === 'w' ? 'The most a set can be is 500 kg.' : 'The most a set can be is 600.');
+  }
+  const it = WK.items[+el.dataset.i];
+  it.sets[+el.dataset.j][f] = el.value;
+  if (f === 'w') {
+    delete it.sets[+el.dataset.j].auto;
+    it.sets.forEach((s, j) => {
+      if (j <= +el.dataset.j || s.done || !(s.w === '' || s.w == null || s.auto)) return;
+      s.w = el.value;
+      s.auto = 1;
+      const box = /** @type {HTMLInputElement} */ (
+        $(`#wkBody input[data-i="${el.dataset.i}"][data-j="${j}"][data-f="w"]`)
+      );
+      if (box) box.value = el.value;
+    });
+  }
   saveDraft();
 };
 I.wkRpe = el => {

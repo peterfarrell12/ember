@@ -231,7 +231,7 @@ function restHero(tk, p, did) {
     ${evs.length ? `<div class="th-meta">${evs.map(e => `<span>${e.tm ? e.tm + ' ' : ''}${esc(e.t)}</span>`).join('')}</div>` : ''}
     <div class="th-list">${restSuggest(tk, did)}</div>
     <div class="th-next"><span>${nx ? 'Next session: <b>' + esc(sessionOn(nx).n) + '</b>, ' + midDate(nx) + (plan().tm ? ' at ' + plan().tm : '') : 'No more sessions planned yet'}</span></div>
-    <div class="th-links">${!did && nx ? `<button data-act="calMoveTo" data-from="${nx}" data-to="${tk}">Train today instead</button>` : ''}${did ? `<button data-act="sessView" data-id="${did.id}">See the session</button>` : ''}<button data-act="cal">Open the plan</button></div>${readyRow(tk)}</section>`;
+    <div class="th-links">${!did && nx ? `<button data-act="calMoveTo" data-from="${nx}" data-to="${tk}">Train today instead</button>` : ''}${did ? `<button data-act="sessView" data-id="${did.id}">See the session</button>` : ''}<button data-act="cal">Open the plan</button><button data-act="progView" data-id="${p.id}">Whole program</button><button data-act="progs">Change program</button></div>${readyRow(tk)}</section>`;
 }
 
 /* ---------- appearance ---------- */
@@ -266,7 +266,7 @@ function viewMore() {
     <div class="pstats"><div><b class="num">${st.count}</b><span>day streak</span></div><div><b class="num">${logged}</b><span>days logged</span></div><div><b class="num">${fmt(P.gems)}</b><span>gems</span></div><div><b class="num">${(P.ach || []).length || Object.keys(P.ach || {}).length}</b><span>awards</span></div></div>
     ${grp('Your plan', [row('openTargets', 'target', 'Targets and profile', fmt(P.t.k) + ' kcal, ' + P.t.p + ' g protein'), row('cal', 'cal', 'Calendar and schedule', 'Training days, matches and what you did'), row('photos', 'camera', 'Progress photos', 'Private, with before and after')])}
     ${grp('Food', [row('openRecipes', 'book', 'Recipes and saved meals', nr ? nr + ' saved' : 'Build one once, log it in a tap'), row('openFoods', 'fork', 'My foods', nf ? nf + ' saved' : 'Add foods from a label'), row('ideas', 'spark', 'What can I eat?', 'Dishes sized to what you have left')])}
-    ${grp('Body and devices', [row('openConnections', 'link', 'Connect a wearable', P.ad ? 'Synced ' + niceDate(P.ad.at.slice(0, 10)) : 'WHOOP, Garmin, Apple Health, Strava'), row('preview', 'spark', DEMO ? 'Exit the preview' : 'Preview with sample data', DEMO ? 'Back to your own data' : 'See Ember with a wearable, a workout and a full week')])}
+    ${grp('Body and devices', [row('openConnections', AI.mcp ? 'link' : 'upload', AI.mcp ? 'Connect a wearable' : 'Import from a wearable', P.ad ? 'Synced ' + niceDate(P.ad.at.slice(0, 10)) : AI.mcp ? 'WHOOP, Garmin, Apple Health, Strava' : 'Files from Apple Health, Garmin, Strava, WHOOP'), row('preview', 'spark', DEMO ? 'Exit the preview' : 'Preview with sample data', DEMO ? 'Back to your own data' : 'See Ember with a wearable, a workout and a full week')])}
     ${FEATURES.coach || FEATURES.gym ? grp('People', [FEATURES.coach ? row('chat', 'chat', 'Messages with your coach', un ? un + ' unread' : 'Ask about your plan') : '', FEATURES.coach && own ? row('catalogue', 'search', 'Find a coach', 'Checked profiles, plans and reviews') : '', FEATURES.gym ? row('gym', 'home', 'My gym', 'Book classes, one-to-ones and spaces') : '']) : ''}
     ${grp('App', [
       row('assistant', 'mic', 'Assistant', 'Talk or type to log, ask and plan'),

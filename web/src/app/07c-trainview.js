@@ -54,7 +54,7 @@ function trainHero(tk, p) {
       all = WK.items.reduce((s, it) => s + it.sets.length, 0);
     return `<section class="thero"><div><div class="th-k">In progress${WK.client && CO.clients[WK.client] ? ' with ' + esc(CO.clients[WK.client].name) : ''}</div><div class="th-t">${esc(WK.name)}</div><div class="th-f">Started ${Math.max(1, Math.round((Date.now() - WK.start) / 60000))} min ago. ${sets} of ${all} sets done.</div></div>
       <div class="bar hb p"><i style="width:${all ? (sets / all) * 100 : 0}%"></i></div>
-      <div class="two"><button class="btn ember" data-act="wkResume">${ic('play', 'fill')} Resume</button><button class="btn onhero" data-act="wkDiscard">Discard</button></div>${rd}</section>`;
+      <div class="two"><button class="btn ember" data-act="wkResume">${ic('play', 'fill')} Resume</button><button class="btn onhero" data-act="wkDiscard">Discard</button></div>${p ? `<div class="th-links"><button data-act="progView" data-id="${p.id}">Whole program</button></div>` : ''}${rd}</section>`;
   }
   if (p && (did || (plan().since && plan().days.length && !trainPlanned(tk)))) return restHero(tk, p, did);
   if (p) {

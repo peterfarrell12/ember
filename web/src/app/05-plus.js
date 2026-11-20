@@ -542,8 +542,8 @@ function viewMove() {
         : `<p class="empty">Nothing yet. Log a workout, or pull them in from your watch.</p>`
     }</section>
   <section class="card stack"><div class="between"><h2>Devices</h2>${P.ad ? `<span class="muted small">Synced ${niceDate(P.ad.at.slice(0, 10))}</span>` : ''}</div>
-    <p class="small muted">${ab.length ? 'Your devices logged ' + fmt(ab.reduce((s, d) => s + d.ab, 0)) + ' active kcal so far this week.' : 'Pull workouts, weight and steps from Apple Health, Garmin and WHOOP through athletedata, or import a file.'}</p>
-    <div class="two"><button class="btn sm" data-act="adSync">${ic('pulse')} Sync devices</button><button class="btn sm ghost" data-act="openConnections">${ic('link')} Connections</button></div></section>`;
+    <p class="small muted">${ab.length ? 'Your devices logged ' + fmt(ab.reduce((s, d) => s + d.ab, 0)) + ' active kcal so far this week.' : AI.mcp ? 'Pull workouts, weight and steps from Apple Health, Garmin and WHOOP through athletedata, or import a file.' : 'Bring in workouts, weigh-ins and steps from a file: Apple Health, Garmin Connect, Strava, WHOOP or Happy Scale. Syncing straight from a watch is not available yet.'}</p>
+    ${AI.mcp ? `<div class="two"><button class="btn sm" data-act="adSync">${ic('pulse')} Sync devices</button><button class="btn sm ghost" data-act="openConnections">${ic('link')} Connections</button></div>` : `<button class="btn sm" data-act="openConnections" style="align-self:flex-start">${ic('upload')} Import a file</button>`}</section>`;
 }
 
 /* ---------- file imports ---------- */
@@ -951,12 +951,12 @@ A.adSync = async () => {
 };
 A.openConnections = () => {
   openSheet(
-    `${sh('Connections and import')}<div class="sheet-b">
-    <div class="card stack"><div class="between"><h2>Apple Health, Garmin, WHOOP</h2>${P.ad ? `<span class="pill good">Synced ${niceDate(P.ad.at.slice(0, 10))}</span>` : ''}</div>
+    `${sh(AI.mcp ? 'Connections and import' : 'Import')}<div class="sheet-b">
+    <div class="card stack${AI.mcp ? '' : ' hide'}"><div class="between"><h2>Apple Health, Garmin, WHOOP</h2>${P.ad ? `<span class="pill good">Synced ${niceDate(P.ad.at.slice(0, 10))}</span>` : ''}</div>
       <p class="small muted">Through your athletedata connector. Ember pulls the last 14 days of workouts, weigh-ins, steps and energy burned, and counts a session once even if two devices recorded it. Strava sessions arrive the same way once Strava is linked in athletedata.</p>
       <button class="btn" data-act="adSync">${ic('pulse')} Sync devices</button><div id="adOut"></div></div>
     <div class="card stack"><h2>Import a file</h2>
-      <p class="small muted">Works without any subscription. Weight history or workouts from a CSV export: Happy Scale, Garmin Connect, Strava, WHOOP. Or everything from Apple Health in one go.</p>
+      <p class="small muted">Weight history or workouts from a CSV export: Happy Scale, Garmin Connect, Strava, WHOOP. Or everything from Apple Health in one go.</p>
       <div class="two"><button class="btn sm ghost" data-act="pickCsv">${ic('upload')} CSV file</button><button class="btn sm ghost" data-act="pickHealth">${ic('upload')} Health export</button></div><div id="impOut"></div>
       <p class="tiny muted">Apple Health: open the Health app, tap your picture, then Export All Health Data, save the zip to Files and pick it here. Happy Scale: Settings, then Export Data.</p></div></div>`,
     true,

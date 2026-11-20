@@ -1,0 +1,24 @@
+tile btn: Coffee
+1st coffee nut: No calories to count |  | Black, with no sugar. Pick a milk above if you take on | foot: Log 95 mg
+semi dash: 14 | kcal | 1.1 g | protein | 1.4 g | carbs | 0.5 g | fat |  | Worked  | ml 30 | foot: Caffeine only | Log with 14 kcal
+A cf=[('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
+instant: sheets 0 | toast: +5 XP · Logged | Filter or instant coffee: 95 mg caffeine and 14 kcal to breakfast | Undo
+B cf=[('Filter or instant coffee', 95, 'drink', False), ('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True), ('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
+C undo cf=[('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
+flat semi: 61 | kcal | 4.6 g | protein | 6.2 g | carbs | 2.2 g | fat |  | Worked 
+flat whole: 83 | kcal | 4.3 g | protein | 6.1 g | carbs | 4.7 g | fat |  | Worked 
+flat oat 180 +1 sugar: 124 | kcal | 2 g | protein | 16.6 g | carbs | 5.4 g | fat |  | Worked 
+americano: No calories to count |  | Black, with no sugar. Pick a milk  | foot: Log 130 mg
+espresso instant: sheets 1
+cola: 139 | kcal | 0 g | protein | 35 g | carbs | 0 g | 
+cola zero foot: Log 35 mg
+D cf=[('Filter or instant coffee', 95, 'drink', False), ('Flat white', 130, 'drink', False), ('Americano', 130, 'drink', False), ('Espresso', 65, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True), ('Flat white, oat milk', 124, 's', 'caf', True)]
+DRINKS: Today's drinks | Filter or instant coffee | 95 mg | 09:42 · 14 kcal in breakfast · tap to remove | Flat white | 130 mg | 09:42 · 124 kcal in snacks · tap to remove | Americano | 130 mg | 09:42 · caffeine only · tap to remove | Espresso | 65 mg | 09:42 · caffeine only · tap to remove
+ADD: Add a drink |  | The first time you add a drink Ember asks how you take it, then remembers. The pencil changes it later. |  | Filter or instant coffee | 95 mg | 14 kcal, 30 ml semi-skimmed milk | Americano | 130 mg | black | Flat white | 130 mg | 124 kcal, 180 ml oat milk, 1 sugar | Espresso | 65 mg | No calories | Latte | 95 mg | Asks how you take it | Cappuccino | 95 mg | Asks how you take it | Cortado | 130 mg | A
+E del flat cf=[('Filter or instant coffee', 95, 'drink', False), ('Americano', 130, 'drink', False), ('Espresso', 65, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)] | toast Espresso: 65 mg caffeine | Undo | Removed, with its 124 kcal
+ASK: Count the caffeine too? | Coffee, Latte | 95 mg | About 95 mg of caffeine, a typical figure for this drink | Do the same every time, without asking | No | Add 95 mg to caffeine
+F cf=[('Filter or instant coffee', 95, 'drink', False), ('Americano', 130, 'drink', False), ('Espresso', 65, 'drink', False), ('Coffee, Latte', 95, 'food', True)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True), ('Coffee, Latte', 206, 'b', None, False)] | cafAuto yes
+G auto: sheets 1 cf=[('Filter or instant coffee', 95, 'drink', False), ('Americano', 130, 'drink', False), ('Espresso', 65, 'drink', False), ('Coffee, Latte', 95, 'food', True), ('Coffee, Latte', 95, 'food', True)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True), ('Coffee, Latte', 206, 'b', None, False), ('Coffee, Latte', 206, 'b', None, False)]
+H del food: cf n 4 | toast Removed, with its caffeine | Undo
+tile btn now: Coffee
+ERRS []

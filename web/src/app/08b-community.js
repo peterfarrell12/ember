@@ -330,7 +330,7 @@ A.review = () => {
 };
 A.setCoachName = () => {
   openSheet(
-    `${sh('Your name')}<div class="sheet-b"><label class="f">Name your coach and squad see<input class="inp" id="cnN" value="${esc(P.coachName || '')}" autocomplete="off"></label></div><div class="sheet-f"><button class="btn" data-act="setCoachNameSave">Save</button></div>`,
+    `${sh('Your name')}<div class="sheet-b"><label class="f">${FEATURES.coach ? 'Name your coach and squad see' : 'Your name'}<input class="inp" id="cnN" value="${esc(P.coachName || '')}" autocomplete="off"></label></div><div class="sheet-f"><button class="btn" data-act="setCoachNameSave">Save</button></div>`,
   );
 };
 A.setCoachNameSave = () => {

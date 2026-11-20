@@ -88,15 +88,49 @@ function openSheet(html, full = false) {
   wrap.addEventListener('mousedown', e => {
     if (e.target === wrap && !wrap._locked) closeSheet();
   });
+  const box = /** @type {HTMLElement} */ (wrap.firstElementChild),
+    title = box.querySelector('.sheet-h h3');
+  if (title) {
+    title.id = title.id || 'sheetTitle' + ++sheetSeq;
+    box.setAttribute('aria-labelledby', title.id);
+  }
+  box.tabIndex = -1;
+  wrap._from = document.activeElement;
   $('#sheets').appendChild(wrap);
   sheets.push(wrap);
-  return wrap.firstElementChild;
+  box.focus({ preventScroll: true });
+  return box;
 }
+let sheetSeq = 0;
+/* Tab stays inside the sheet on top */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab' || !sheets.length || celeOpen) return;
+  const box = topSheet(),
+    stops = $$('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])', box).filter(
+      el => !el.disabled && el.offsetParent !== null,
+    );
+  if (!stops.length) return e.preventDefault();
+  const first = stops[0],
+    last = stops[stops.length - 1],
+    at = document.activeElement;
+  if (!box.contains(at) || at === box) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  } else if (e.shiftKey && at === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && at === last) {
+    e.preventDefault();
+    first.focus();
+  }
+});
 function closeSheet(n = 1) {
   while (n-- > 0 && sheets.length) {
     const w = sheets.pop();
     if (w._onClose) w._onClose();
     w.remove();
+    if (!sheets.length && w._from && w._from.isConnected && w._from !== document.body)
+      w._from.focus({ preventScroll: true });
   }
   closeMenu();
 }
@@ -200,13 +234,8 @@ function viewFood() {
       const v = h ? h.k : 0;
       const x = padL + i * bw + bw * 0.15,
         w = bw * 0.7;
-      const col = !v
-        ? 'var(--line)'
-        : v > P.t.k * 1.08
-          ? 'var(--ember)'
-          : v >= P.t.k * 0.9
-            ? 'var(--good)'
-            : 'var(--muted)';
+      const b = P.t.k + (P.exAdd && h ? h.ex || 0 : 0);
+      const col = !v ? 'var(--line)' : v > b * 1.08 ? 'var(--ember)' : v >= b * 0.9 ? 'var(--good)' : 'var(--muted)';
       const lbl = n === 7 ? WD[(pdate(k).getDay() + 6) % 7][0] : i % 5 === 4 || i === n - 1 ? pdate(k).getDate() : '';
       return `<rect x="${x}" y="${v ? y(v) : H - padB - 3}" width="${w}" height="${v ? H - padB - y(v) : 3}" rx="${Math.min(4, w / 2)}" fill="${col}"/><text x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${lbl}</text>`;
     })
