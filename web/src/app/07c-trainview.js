@@ -133,10 +133,13 @@ function viewTrain() {
         H = 60;
       sp = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pain over your last sessions"><polyline points="${logs.map((k, i) => (6 + ((W - 12) * i) / (logs.length - 1)).toFixed(1) + ',' + (6 + (H - 22) * (TR.rlog[k].pain / 10)).toFixed(1)).join(' ')}" fill="none" stroke="var(--ember)" stroke-width="2.5" stroke-linejoin="round"/><text x="6" y="${H - 3}">Pain, last ${logs.length} sessions</text><text x="${W - 6}" y="${H - 3}" text-anchor="end">now ${TR.rlog[logs[logs.length - 1]].pain}/10</text></svg>`;
     }
+    // pain of 6 or more last time: hold the phase rather than offer the next one (general guidance, not a diagnosis)
+    const lastPain = logs.length ? TR.rlog[logs[logs.length - 1]].pain : 0,
+      sore = lastPain >= 6;
     rehab = `<section class="card stack"><div class="between"><div><div class="tiny muted" style="font-weight:700">Rehab, ${esc(rp.n.toLowerCase())}</div><h2>Phase ${TR.rehab.phase + 1} of ${rp.phases.length}: ${esc(ph.n)}</h2></div>${doneToday ? `<span class="pill good">Done today</span>` : ''}</div>
       <div class="phs" aria-hidden="true">${rp.phases.map((_, k) => `<i class="${k < TR.rehab.phase ? 'done' : k === TR.rehab.phase ? 'on' : ''}"></i>`).join('')}</div>
       ${ph.goal ? `<p class="small muted">${esc(ph.goal)}</p>` : ''}${sp}<button class="btn" data-act="rehabGo">${ic('play', 'fill')} ${doneToday ? 'Do it again' : "Do today's rehab"}</button>
-      ${rp.custom ? '' : `<p class="tiny muted">${GATE}</p>`}<div class="row" style="gap:16px;flex-wrap:wrap">${TR.rehab.phase < rp.phases.length - 1 ? `<button class="link" data-act="rehabPhase" data-n="1">Move to phase ${TR.rehab.phase + 2}</button>` : ''}${TR.rehab.phase > 0 ? `<button class="link" data-act="rehabPhase" data-n="-1">Back a phase</button>` : ''}<button class="link" data-act="rehabEnd" style="color:var(--muted)">End plan</button></div></section>`;
+      ${sore ? `<div class="banner">${ic('alert')}<span>Pain was ${lastPain} out of 10 last time. Stay at this phase, or drop back one, until it settles. If it does not, see a physio or your doctor.</span></div>` : ''}${rp.custom ? '' : `<p class="tiny muted">${GATE}</p>`}<div class="row" style="gap:16px;flex-wrap:wrap">${!sore && TR.rehab.phase < rp.phases.length - 1 ? `<button class="link" data-act="rehabPhase" data-n="1">Move to phase ${TR.rehab.phase + 2}</button>` : ''}${TR.rehab.phase > 0 ? `<button class="link" data-act="rehabPhase" data-n="-1">Back a phase</button>` : ''}<button class="link" data-act="rehabEnd" style="color:var(--muted)">End plan</button></div></section>`;
   } else
     rehab = `<button class="act" data-act="rehabList">${ic('shield')}<span>Start a rehab plan<small>Staged plans for hips, knees, ankles, backs, shoulders and more, or load your physio's</small></span></button>`;
   const wkS = TR.sess.filter(s => s.d >= ws),

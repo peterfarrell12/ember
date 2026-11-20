@@ -471,8 +471,23 @@ A.exInfo = ({ id }) => {
       .join(' ');
     chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Strength over time"><polyline points="${pts}" fill="none" stroke="var(--ember)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><text x="8" y="${H - 4}">${niceDate(L.h[0][0])}</text><text x="${W - 8}" y="${H - 4}" text-anchor="end">${niceDate(L.h[L.h.length - 1][0])}</text></svg>`;
   }
+  // each session's best set, newest first, and the heaviest of them
+  let hist = '';
+  if (L && L.h && L.h.length) {
+    const top = L.h.reduce((b, h) => (h[1] > b[1] ? h : b), L.h[0]);
+    hist = `<div class="grp">Your history</div><div class="list">${L.h
+      .slice(-10)
+      .reverse()
+      .map(
+        h =>
+          `<div class="res" style="cursor:default"><span class="n tn">${h[1]} kg × ${h[2]}</span><span class="k muted small tn">${r0(h[1] * (1 + h[2] / 30))} kg est. max</span><span class="s">${niceDate(h[0])}${h === top ? ' · heaviest' : ''}</span></div>`,
+      )
+      .join(
+        '',
+      )}</div><p class="tiny muted">The best set of each session. The estimated one-rep max is worked out from weight and reps.</p>`;
+  }
   openSheet(`${sh(e.n)}<div class="sheet-b"><div class="row"><span class="pill">${GROUPS[e.g] || 'Exercise'}</span><span class="pill">${EQUIP[e.eq] || 'Your exercise'}</span></div>${e.cue ? `<p>${esc(e.cue)}</p>` : ''}
-    ${L && (L.pr || L.last) ? `<div class="card stack">${L.pr ? `<div><span class="num" style="font-size:30px">${r0(L.pr)} kg</span> <span class="muted small">best estimated one-rep max</span></div><div class="small muted tn">${[90, 80, 70, 60].map(p => p + '% is ' + round25((L.pr * p) / 100) + ' kg').join(' · ')}</div>` : ''}${L.note ? `<div class="small">${ic('pen')} ${esc(L.note)}</div>` : ''}${L.last ? `<div class="small">Last time: ${esc(L.last.map(s => (s[0] ? s[0] + ' kg × ' : '') + s[1]).join(', '))}</div>` : ''}${chart}</div>` : `<p class="small muted">No sessions logged for this one yet.</p>`}</div>`);
+    ${L && (L.pr || L.last) ? `<div class="card stack">${L.pr ? `<div><span class="num" style="font-size:30px">${r0(L.pr)} kg</span> <span class="muted small">best estimated one-rep max</span></div><div class="small muted tn">${[90, 80, 70, 60].map(p => p + '% is ' + round25((L.pr * p) / 100) + ' kg').join(' · ')}</div>` : ''}${L.note ? `<div class="small">${ic('pen')} ${esc(L.note)}</div>` : ''}${L.last ? `<div class="small">Last time: ${esc(L.last.map(s => (s[0] ? s[0] + ' kg × ' : '') + s[1]).join(', '))}</div>` : ''}${chart}</div>${hist}` : `<p class="small muted">No sessions logged for this one yet.</p>`}</div>`);
 };
 
 /* ---------- workout player ---------- */
@@ -615,7 +630,7 @@ function renderPlayer() {
         return `<section class="card"><div class="between"><button class="wkn" data-act="exInfo" data-id="${it.ex}">${esc(exn(it.ex))}</button><button class="icon-btn" data-act="wkMenu" data-i="${i}" aria-label="Options">${ic('more', 'fill')}</button></div>
       <div class="small muted">${it.t.reps ? esc(it.sets.length + ' × ' + it.t.reps) : ''}${it.t.rest ? ' · rest ' + it.t.rest + ' s' : ''}${it.t.note ? ' · ' + esc(it.t.note) : ''}</div>
       ${L && L.last ? `<div class="tiny muted" style="margin-top:3px">Last time: ${esc(L.last.map(s => (s[0] ? s[0] + ' × ' : '') + s[1]).join(', '))}</div>` : ''}${L && L.note ? `<div class="tiny" style="margin-top:3px">${ic('pen')} ${esc(L.note)}</div>` : ''}${it.tip ? `<div class="pill good" style="margin-top:6px;white-space:normal">${ic('chart')} ${esc(it.tip)}</div>` : ''}
-      <div class="sets">${it.sets.map((s, j) => `<div class="setrow ${s.done ? 'on' : ''}"><span class="sn">${j + 1}</span>${showW ? `<input class="inp" inputmode="decimal" placeholder="kg" value="${s.w}" data-on="wk" data-i="${i}" data-j="${j}" data-f="w" aria-label="Weight, set ${j + 1}">` : ''}<input class="inp" inputmode="decimal" placeholder="${esc(it.t.reps || 'reps')}" value="${s.r}" data-on="wk" data-i="${i}" data-j="${j}" data-f="r" aria-label="${hold ? 'Time' : 'Reps'}, set ${j + 1}">${hold ? `<button class="icon-btn solid" data-act="wkHold" data-i="${i}" data-j="${j}" aria-label="Start the timer">${ic('timer')}</button>` : ''}<button class="tick" data-act="wkTick" data-i="${i}" data-j="${j}" aria-label="Set ${j + 1} done" aria-pressed="${!!s.done}">${ic('check')}</button></div>`).join('')}</div>
+      <div class="sets"><div class="sethead" aria-hidden="true"><span class="w22"></span>${showW ? '<span>kg</span>' : ''}<span>${hold ? 'seconds' : 'reps'}</span>${hold ? '<span class="w38"></span>' : ''}<span class="w44"></span></div>${it.sets.map((s, j) => `<div class="setrow ${s.done ? 'on' : ''}"><span class="sn">${j + 1}</span>${showW ? `<input class="inp" inputmode="decimal" placeholder="kg" value="${s.w}" data-on="wk" data-i="${i}" data-j="${j}" data-f="w" aria-label="Weight, set ${j + 1}">` : ''}<input class="inp" inputmode="decimal" placeholder="${esc(it.t.reps || 'reps')}" value="${s.r}" data-on="wk" data-i="${i}" data-j="${j}" data-f="r" aria-label="${hold ? 'Time' : 'Reps'}, set ${j + 1}">${hold ? `<button class="icon-btn solid" data-act="wkHold" data-i="${i}" data-j="${j}" aria-label="Start the timer">${ic('timer')}</button>` : ''}<button class="tick" data-act="wkTick" data-i="${i}" data-j="${j}" aria-label="Set ${j + 1} done" aria-pressed="${!!s.done}">${ic('check')}</button></div>`).join('')}</div>
       <button class="link" data-act="wkAddSet" data-i="${i}" style="font-size:13px">+ Add a set</button></section>`;
       })
       .join('') +

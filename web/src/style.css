@@ -1690,6 +1690,31 @@ a.link {
   align-items: center;
   gap: 8px;
 }
+.sethead {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+.sethead span {
+  flex: 1;
+}
+.sethead .w22 {
+  flex: none;
+  width: 22px;
+}
+.sethead .w38 {
+  flex: none;
+  width: 38px;
+}
+.sethead .w44 {
+  flex: none;
+  width: 44px;
+}
 .setrow .sn {
   width: 22px;
   height: 22px;

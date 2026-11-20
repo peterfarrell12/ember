@@ -204,7 +204,12 @@ function againRail(d) {
     us = usuals(m, 8),
     keyOf = r => (r.n + '|' + (r.b || '')).toLowerCase(),
     seen = new Set(us.map(keyOf));
-  const list = us.concat(P.rec.filter(r => !seen.has(keyOf(r)))).slice(0, 8);
+  // what is already in this meal today is not offered again: the strip is for what is still to log
+  const have = new Set(d.e.filter(e => e.m === m).map(keyOf));
+  const list = us
+    .concat(P.rec.filter(r => !seen.has(keyOf(r))))
+    .filter(r => !have.has(keyOf(r)))
+    .slice(0, 8);
   if (!list.length) return '';
   const strong = us.length && us[0].ms[m] >= 2;
   HOME.rows = [];
