@@ -30,6 +30,34 @@ function initAudio() {
     if (actx.state === 'suspended') actx.resume();
   } catch (e) {}
 }
+/* A short buzz where the phone can (Android; iPhones ignore it), for a rest or an interval ending in a pocket. */
+function buzz() {
+  try {
+    if (navigator.vibrate) navigator.vibrate(180);
+  } catch (e) {}
+}
+/* Keeps the screen on while a timer is running, where the browser allows it; asked for again when the app comes back. */
+let wakeLock = null,
+  wakeWanted = false;
+async function keepAwake(on) {
+  wakeWanted = on;
+  try {
+    const wl = /** @type {any} */ (navigator).wakeLock;
+    if (on && !wakeLock && wl) {
+      wakeLock = await wl.request('screen');
+      wakeLock.addEventListener('release', () => (wakeLock = null));
+    } else if (!on && wakeLock) {
+      const w = wakeLock;
+      wakeLock = null;
+      await w.release();
+    }
+  } catch (e) {
+    wakeLock = null;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (wakeWanted && document.visibilityState === 'visible') keepAwake(true);
+});
 function beep(f = 880, ms = 200) {
   try {
     if (!actx) return;
@@ -478,7 +506,10 @@ function openPlayer() {
   );
   const w = sheets[sheets.length - 1];
   w._locked = true;
-  w._onClose = () => clearInterval(wkTimer);
+  w._onClose = () => {
+    clearInterval(wkTimer);
+    keepAwake(false);
+  };
   renderPlayer();
   clearInterval(wkTimer);
   wkTimer = setInterval(wkClock, 400);
@@ -493,6 +524,8 @@ function wkClock() {
   const left = (t.end - Date.now()) / 1000;
   if (left <= 0) {
     beep(t.then ? 660 : 880);
+    buzz();
+    keepAwake(false);
     WK.timer = null;
     if (t.then) {
       const s = WK.items[t.then[0]] && WK.items[t.then[0]].sets[t.then[1]];
@@ -503,6 +536,7 @@ function wkClock() {
     return;
   }
   box.classList.remove('hide');
+  if (!wakeWanted) keepAwake(true); // the screen stays on while a rest is counting down
   $('#wkRestT').textContent = t.label + ' ' + mmss(Math.ceil(left));
   $('#wkRestBar').style.width = clamp(100 - (left / t.total) * 100, 0, 100) + '%';
 }
@@ -804,12 +838,48 @@ function sessSheet(s) {
   SV = s;
   openSheet(
     `${sh(s.n)}<div class="sheet-b"><div class="row" style="flex-wrap:wrap"><span class="pill">${niceDate(s.d)}</span><span class="pill">${s.dur} min</span>${s.vol ? `<span class="pill">${fmt(s.vol)} kg lifted</span>` : ''}${s.rpe && s.kind === 'train' ? `<span class="pill">Effort ${s.rpe}/10</span>` : ''}${s.prs ? `<span class="pill gold">${s.prs} record${s.prs === 1 ? '' : 's'}</span>` : ''}</div>
-    ${(s.items || []).length ? `<div class="list">${s.items.map(it => `<div class="res" style="cursor:default"><span class="n">${esc(it.n)}</span><span class="k"></span><span class="s" style="white-space:normal">${esc(it.sets.map(x => (x[0] ? x[0] + ' kg × ' : '') + x[1]).join(', '))}</span></div>`).join('')}</div>` : `<p class="small muted">Only the summary was kept for this one.</p>`}</div>
+    ${(s.items || []).length ? `<div class="list">${s.items.map(it => `<div class="res" style="cursor:default"><span class="n">${esc(it.n)}</span><span class="k"></span><span class="s" style="white-space:normal">${esc(it.sets.map(x => (x[0] ? x[0] + ' kg × ' : '') + x[1]).join(', '))}</span></div>`).join('')}</div>` : `<p class="small muted">Only the summary was kept for this one.</p>`}
+    ${TR.sess.some(x => x.id === s.id) ? `<button class="link" data-act="sessDel" id="sessDel" style="color:var(--bad);align-self:center">Delete this session</button>` : ''}</div>
     ${(s.items || []).length && !WK ? `<div class="sheet-f"><button class="btn" data-act="sessAgain">${ic('play', 'fill')} Do this session again</button></div>` : ''}`,
     true,
   );
 }
 let SV = null;
+/* Deleting a session of your own: for the one logged by mistake or with a slip of the thumb in it. It leaves the
+   list, the day's exercise and the lift history; each lift's record is worked out again from what remains.
+   Asked for twice, since it cannot be undone. XP already earned and the program's place stay as they are. */
+A.sessDel = async (_, el) => {
+  const s = SV;
+  if (!s || !TR.sess.some(x => x.id === s.id)) return;
+  if (el.dataset.sure !== '1') {
+    el.dataset.sure = '1';
+    el.textContent = 'Tap again to delete it for good';
+    return;
+  }
+  TR.sess = TR.sess.filter(x => x.id !== s.id);
+  Store.del('sessions', s.id);
+  const LS2 = lifts();
+  (s.items || []).forEach(it => {
+    const L = LS2[it.ex];
+    if (!L || !L.h) return;
+    const top = it.sets.reduce(
+      (b, [w, r]) => (w > 0 && r > 0 && w * (1 + r / 30) > b[0] ? [w * (1 + r / 30), w, r] : b),
+      [0],
+    );
+    const at = L.h.findIndex(h => h[0] === s.d && h[1] === top[1] && h[2] === top[2]);
+    if (at >= 0) L.h.splice(at, 1);
+    L.pr = L.h.reduce((b, h) => Math.max(b, Math.round(h[1] * (1 + h[2] / 30) * 10) / 10), 0);
+  });
+  saveTR();
+  const d = await loadDay(s.d),
+    xi = d.x.findIndex(x => x.tr === s.kind && x.n === s.n);
+  if (xi >= 0) d.x.splice(xi, 1);
+  const li = P.xlog.findIndex(x => x.d === s.d && x.n === s.n);
+  if (li >= 0) P.xlog.splice(li, 1);
+  closeSheet();
+  commitDay(d);
+  toast('Session deleted');
+};
 A.sessView = async ({ id }) => {
   let s = null;
   try {
@@ -1080,16 +1150,22 @@ function rtTick() {
   if (!RT || RT.i < 0 || !$('#rtN')) return;
   const s = RT.r.steps[RT.i];
   const left = RT.paused ? RT.paused : (RT.end - Date.now()) / 1000;
-  if (left <= 0) return rtAdvance();
+  if (left <= 0) return rtAdvance(true);
   $('#rtN').textContent = Math.ceil(left);
   $('#rtBar').style.width = clamp(100 - (left / s[1]) * 100, 0, 100) + '%';
 }
-function rtAdvance() {
-  RT.i++;
-  if (RT.i >= RT.r.steps.length) return rtDone();
+/* on: the step ran out by itself, so the next one starts when it was due to end (and any the page slept through
+   are passed over); otherwise it was skipped by hand and the next starts now */
+function rtAdvance(on) {
+  let end = on === true && RT.end ? RT.end : Date.now();
+  do {
+    RT.i++;
+    if (RT.i >= RT.r.steps.length) return rtDone();
+    end += RT.r.steps[RT.i][1] * 1000;
+  } while (end <= Date.now());
   beep(RT.r.id === 'q-breath' ? 440 : 760, 160);
   RT.paused = 0;
-  RT.end = Date.now() + RT.r.steps[RT.i][1] * 1000;
+  RT.end = end;
   renderRoutine();
 }
 A.rtStart = () => {
@@ -1099,6 +1175,7 @@ A.rtStart = () => {
   rtAdvance();
   clearInterval(rtTimer);
   rtTimer = setInterval(rtTick, 200);
+  keepAwake(true);
 };
 A.rtPause = () => {
   if (RT.paused) {
@@ -1110,6 +1187,7 @@ A.rtPause = () => {
 A.rtNext = () => rtAdvance();
 async function rtDone() {
   clearInterval(rtTimer);
+  keepAwake(false);
   const r = RT.r,
     min = Math.max(1, Math.round((Date.now() - RT.started) / 60000));
   beep(990, 400);

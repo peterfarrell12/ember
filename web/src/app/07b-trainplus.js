@@ -138,6 +138,7 @@ A.itStart = () => {
   itDraw();
   clearInterval(itTimer);
   itTimer = setInterval(itTick, 200);
+  keepAwake(true);
 };
 function itTick() {
   if (!IT || !IT.run || !$('#itN')) return;
@@ -145,10 +146,17 @@ function itTick() {
     s = r.plan[r.i];
   const left = r.paused ? r.paused : (r.end - Date.now()) / 1000;
   if (left <= 0) {
-    r.i++;
-    if (r.i >= r.plan.length) return itDone();
+    // the next interval starts when the last one was due to end, not when the page next woke up: a phone that
+    // dozed for a minute comes back in the right place rather than a minute behind
+    let end = r.end;
+    do {
+      r.i++;
+      if (r.i >= r.plan.length) return itDone();
+      end += r.plan[r.i][1] * 1000;
+    } while (end <= Date.now());
+    r.end = end;
     beep(r.plan[r.i][2] === 'w' ? 880 : 520, 220);
-    r.end = Date.now() + r.plan[r.i][1] * 1000;
+    buzz();
     return itDraw();
   }
   if (left <= 3 && Math.ceil(left) !== r.last) {
@@ -170,6 +178,7 @@ A.itPause = () => {
 A.itStop = () => itDone(true);
 async function itDone(stopped) {
   clearInterval(itTimer);
+  keepAwake(false);
   const min = Math.round((Date.now() - IT.run.t0) / 60000),
     name = IT_MODES[IT.mode][0] + ', ' + Math.max(1, min) + ' min';
   if (!stopped) beep(990, 500);

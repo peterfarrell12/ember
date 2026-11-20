@@ -47,6 +47,8 @@ npm test             # builds, then runs the same browser tests against the buil
 npm run lint         # ESLint
 npm run typecheck    # TypeScript over the files that opt in with // @ts-check
 npm run format       # Prettier
+npm run test:voice   # the voice panel in a browser, with scripted speech
+npm run test:scanner # the live barcode scanner with a simulated camera
 ```
 
 The phone apps are the web build inside a Capacitor shell (`web/android`, `web/ios`, app id `ie.ember.app`). `npm run native:sync` in `web/` rebuilds and copies the web app in; `web/src/app/native.js` holds what differs inside the app. The "Android test build" workflow produces an installable debug app. iPhone builds need a Mac with Xcode.
@@ -54,6 +56,8 @@ The phone apps are the web build inside a Capacitor shell (`web/android`, `web/i
 `prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
 
 Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.
+
+The web app has moved on from the prototype in places the owner asked for (the audit and "make it 10x better", November 2026): the talk button opens a voice panel over the current screen instead of the chat; the everyday food list leads with the UK government's food tables (`web/data/foods-uk.json`, see `web/data/README.md`; the Open Government Licence line on the Data and sources sheet must stay); American measures are not offered. Each such difference is a reviewed baseline in `prototype/test/golden/web/`.
 
 Coach and gym are behind `FEATURES` in `web/src/app/01-core.js`, off by default. With a flag off, the entry points are hidden, the actions do nothing and the shared documents are neither read nor written. `web/src/app/08z-features.js` lists the gated actions.
 
