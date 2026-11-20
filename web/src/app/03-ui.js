@@ -237,7 +237,7 @@ function viewFood() {
       const b = P.t.k + (P.exAdd && h ? h.ex || 0 : 0);
       const col = !v ? 'var(--line)' : v > b * 1.08 ? 'var(--ember)' : v >= b * 0.9 ? 'var(--good)' : 'var(--muted)';
       const lbl = n === 7 ? WD[(pdate(k).getDay() + 6) % 7][0] : i % 5 === 4 || i === n - 1 ? pdate(k).getDate() : '';
-      return `<rect x="${x}" y="${v ? y(v) : H - padB - 3}" width="${w}" height="${v ? H - padB - y(v) : 3}" rx="${Math.min(4, w / 2)}" fill="${col}"/><text x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${lbl}</text>`;
+      return `<rect x="${x}" y="${v ? y(v) : H - padB - 3}" width="${w}" height="${v ? H - padB - y(v) : 3}" rx="${Math.min(4, w / 2)}" fill="${col}"/><text x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${lbl}</text><rect class="hit" x="${padL + i * bw}" y="0" width="${bw}" height="${H}" fill="transparent" data-act="goDate" data-date="${k}"><title>${niceDate(k)}: ${v ? fmt(v) + ' kcal' : 'nothing logged'}. Tap to open the day.</title></rect>`;
     })
     .join('');
   const ty = y(P.t.k);
@@ -281,7 +281,7 @@ function viewFood() {
     cal += `<i class="${h && h.n > 0 ? (h.zn ? 'zone' : 'on') : h && h.z ? 'z' : ''} ${k === tk ? 't' : ''}">${dd}</i>`;
   }
   return `
-  <section class="card"><div class="between"><h2>Calories</h2><div class="seg" style="width:160px"><button data-act="range" data-n="7" aria-pressed="${n === 7}">7 days</button><button data-act="range" data-n="30" aria-pressed="${n === 30}">30 days</button></div></div><div class="muted small" style="margin-top:6px">Target ${fmt(P.t.k)} kcal</div>
+  <section class="card"><div class="between"><h2>Calories</h2><div class="seg" style="width:160px"><button data-act="range" data-n="7" aria-pressed="${n === 7}">7 days</button><button data-act="range" data-n="30" aria-pressed="${n === 30}">30 days</button></div></div><div class="muted small" style="margin-top:6px">${logged.length ? 'Target ' + fmt(P.t.k) + ' kcal. Tap a bar to open that day.' : 'Nothing logged in these ' + n + ' days yet. Each day you log shows as a bar against your ' + fmt(P.t.k) + ' kcal target.'}</div>
     <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calories per day" style="margin-top:10px"><line x1="0" x2="${W}" y1="${ty}" y2="${ty}" stroke="var(--ink)" stroke-dasharray="3 4" stroke-width="1" opacity=".5"/>${bars}</svg>
     <div class="row tiny muted" style="gap:12px;margin-top:8px;flex-wrap:wrap"><span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--good)"></i>In zone</span><span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--ember)"></i>Over</span><span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--muted)"></i>Under</span></div></section>
   <div class="stat4"><div class="stat"><div class="num">${logged.length ? fmt(avg('k')) : '0'}</div><span>Average kcal on logged days</span></div><div class="stat"><div class="num">${logged.length} of ${n}</div><span>Days logged</span></div><div class="stat"><div class="num">${zoneDays}</div><span>Days in your zone</span></div><div class="stat"><div class="num">${r0(avg('p'))} g</div><span>Average protein</span></div></div>

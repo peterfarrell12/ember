@@ -4580,3 +4580,7 @@ nav.tabs {
 .sheet {
   padding-bottom: env(safe-area-inset-bottom);
 }
+/* a chart bar opens its day */
+svg .hit {
+  cursor: pointer;
+}
