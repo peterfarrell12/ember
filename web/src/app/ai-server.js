@@ -20,7 +20,41 @@ export function looseJson(text) {
       return JSON.parse(t);
     } catch (e) {}
   }
+  // near misses a model makes now and then: a number written 080, a comma before a closing bracket
+  for (const t of tries) {
+    try {
+      return JSON.parse(mend(t));
+    } catch (e) {}
+  }
   throw { code: 'invalid_json', message: 'The reply was not valid JSON.', text: s };
+}
+
+/** Repair the small slips that make otherwise good JSON unreadable, touching nothing inside a string. */
+export function mend(text) {
+  let out = '',
+    inString = false,
+    escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      out += c;
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      out += c;
+      continue;
+    }
+    // a leading zero on a number: 080 becomes 80 (0.5 and a lone 0 are left alone)
+    if (c === '0' && /\d/.test(text[i + 1] || '') && /[\s:,[-]/.test(out.slice(-1) || ':')) continue;
+    // a comma with nothing after it before the bracket closes
+    if (c === ',' && /^\s*[}\]]/.test(text.slice(i + 1))) continue;
+    out += c;
+  }
+  return out;
 }
 
 /** Split a server-sent event stream into its JSON events as the bytes arrive. Returns a feed(chunk) function. */

@@ -1,7 +1,7 @@
 // Unit tests for the app's side of the `ai` server function. No network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { looseJson, eventReader, serverSample } from '../src/app/ai-server.js';
+import { looseJson, eventReader, serverSample, mend } from '../src/app/ai-server.js';
 
 test('a JSON reply is read whether bare, fenced or wrapped in a sentence', () => {
   assert.deepEqual(looseJson('[{"name":"egg"}]'), [{ name: 'egg' }]);
@@ -91,4 +91,20 @@ test('a product lookup returns the product when found and null otherwise, and ne
   assert.equal(await missing.lookup('Glenisk', 'Protein Yogurt'), null);
   const down = serverSample(access(async () => Promise.reject(new TypeError('Failed to fetch'))));
   assert.equal(await down.lookup('Glenisk', 'Protein Yogurt'), null);
+});
+
+test('a reply that is nearly JSON is repaired: a number with a leading zero, a stray last comma', () => {
+  // what Claude really sent for a meal plan on 24 November 2026: "kcal":080
+  assert.deepEqual(looseJson('{"meals":[{"name":"Banana and yoghurt","kcal":080,"p":20}],"kcal":1760}'), {
+    meals: [{ name: 'Banana and yoghurt', kcal: 80, p: 20 }],
+    kcal: 1760,
+  });
+  assert.deepEqual(looseJson('{"a":[1,2,],"b":007,"c":0.5,"d":0,}'), { a: [1, 2], b: 7, c: 0.5, d: 0 });
+  // nothing inside a string is touched
+  assert.deepEqual(looseJson('{"say":"Room 007, at 08:00,]","n":010}'), { say: 'Room 007, at 08:00,]', n: 10 });
+  assert.equal(mend('{"x":1080,"y":-05}'), '{"x":1080,"y":-5}');
+  assert.throws(
+    () => looseJson('not json at all'),
+    e => e.code === 'invalid_json',
+  );
 });

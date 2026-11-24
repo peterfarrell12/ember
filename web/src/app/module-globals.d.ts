@@ -64,6 +64,7 @@ declare global {
   const signOut: typeof m4.signOut;
   const TASKS: typeof m5.TASKS;
   const looseJson: typeof m6.looseJson;
+  const mend: typeof m6.mend;
   const eventReader: typeof m6.eventReader;
   const serverSample: typeof m6.serverSample;
   const browserDictation: typeof m7.browserDictation;

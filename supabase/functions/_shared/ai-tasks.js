@@ -223,7 +223,7 @@ Recent messages, oldest first:\n${v.p11}`,
 Target: about ${v.kcal} kcal and at least ${v.protein} g of protein a day. Each day's meals: ${v.meals}.
 What they want or avoid: ${v.likes || 'nothing in particular'}.
 Foods they log often, to keep it familiar: ${v.usual || 'not known'}.
-Reply with only JSON, no other text: {"days": [exactly 7 objects, Monday first: {"day": "Mon", "meals": [{"m": "b" for breakfast, "l" lunch, "d" dinner or "s" snack, "name": short dish name, "what": the foods and amounts as a person would say them, for example "2 eggs scrambled, 2 slices wholemeal toast, 10 g butter", "kcal": number, "p": grams of protein}], "kcal": the day's total, "p": the day's protein}], "shop": [up to 30 strings: the week's shopping list with amounts, for example "Chicken breast, 1 kg"]}. Every figure is your estimate.`,
+Reply with only JSON, no other text: {"days": [exactly 7 objects, Monday first: {"day": "Mon", "meals": [{"m": "b" for breakfast, "l" lunch, "d" dinner or "s" snack, "name": short dish name, "what": the foods and amounts as a person would say them, for example "2 eggs scrambled, 2 slices wholemeal toast, 10 g butter", "kcal": number, "p": grams of protein}], "kcal": the day's total, "p": the day's protein}], "shop": [up to 30 strings: the week's shopping list with amounts, for example "Chicken breast, 1 kg"]}. Every figure is your estimate. Numbers are plain JSON numbers: never write a leading zero.`,
   },
   // New in the web app: two or three sentences for the day, from what the diary shows.
   daily_note: {
