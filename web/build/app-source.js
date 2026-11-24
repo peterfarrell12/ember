@@ -28,6 +28,7 @@ export const MODULES = [
   'importer.js',
   'roadmap.js',
   'recipe-server.js',
+  'native-dictation.js',
 ];
 
 export const numbered = dir =>

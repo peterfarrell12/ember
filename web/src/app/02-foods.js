@@ -844,7 +844,8 @@ async function initAI() {
       if (Store.durable) {
         AI.sample = serverSample(aiAccess);
         AI.images = true;
-        AI.dict = browserDictation(); // null where the browser cannot do it, which hides the microphone
+        // the phone app listens through the phone's own recogniser; a browser through its own, where it has one
+        AI.dict = isNative() ? nativeDictation() : browserDictation(); // null hides the microphone
       }
       return;
     }

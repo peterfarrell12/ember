@@ -16,6 +16,7 @@ import * as m13 from './squads.js';
 import * as m14 from './importer.js';
 import * as m15 from './roadmap.js';
 import * as m16 from './recipe-server.js';
+import * as m17 from './native-dictation.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -94,4 +95,5 @@ declare global {
   const csvFilesInZip: typeof m14.csvFilesInZip;
   const roadmapApi: typeof m15.roadmapApi;
   const readRecipe: typeof m16.readRecipe;
+  const nativeDictation: typeof m17.nativeDictation;
 }
