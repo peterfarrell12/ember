@@ -80,3 +80,14 @@ async def open_chat(pg):
         await pg.click('[data-act="voChat"]')
     await pg.wait_for_selector('#asBody .bub')
 
+
+async def start_tracking(pg):
+    """Get through the first-run targets sheet and press Start tracking.
+    The prototype opens it filled in (30, 178 cm, 80 kg, male); the web app opens it empty and asks for real
+    numbers. Typing those same four details gives the same targets in both."""
+    await pg.wait_for_selector('#tgBody')
+    await pg.click('#tgBody button:has-text("Male")')
+    for k, v in (('age', '30'), ('cm', '178'), ('kg', '80')):
+        await pg.fill(f'#tgBody [data-k="{k}"]', v)
+    await pg.click('[data-act="saveTargets"]')
+

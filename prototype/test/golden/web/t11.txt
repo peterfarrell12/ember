@@ -1,9 +1,6 @@
 NEXT: Log something to keep your 8-day streak |  | Yesterday's breakfast: Porridge, Banana, raw, Flat white, 393 kcal. |  | Same again | Something else
 RAIL: Your usual breakfast | One tap adds it to breakfast | Porridge | 178 kcal, 234 g | Banana, raw | 105 kcal, 1 medium | Greek yogurt, plain, low fat | 124 kcal, 1 container | Flat white | 110 kcal, 1 regular | Chicken breast, grilled | 248 kcal, 150 g | Basmati rice, cooked | 242 kcal, 200 g | Wholeme
-  cele: 9-day streak
   cele: Kindling
-  cele: One full week
-  cele: Level 5
 after same-again entries: [('Porridge', 'b'), ('Banana, raw', 'b'), ('Flat white', 'b')]
 rail add: 1 | toast: 130 mg caffeine counted | +5 XP · Logged | Chicken breast, grilled added to breakfast | Undo
 after undo: 0

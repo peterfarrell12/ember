@@ -25,7 +25,14 @@ function toast(msg, kind = '', action = null) {
 let celeOpen = false;
 function flushCele() {
   if (celeOpen || !celeQ.length || (AS && AS.ov)) return; // a celebration waits for the voice panel to close
-  const c = celeQ.shift();
+  // everything earned by one action is shown on one card: the first is the headline, the rest are listed under it
+  const c = { ...celeQ.shift() };
+  if (celeQ.length) {
+    const rest = celeQ.splice(0, celeQ.length);
+    c.list = (c.list || []).concat(rest.map(r => [r.title, 'Also', 1]));
+    c.rewards = (c.rewards || []).concat(...rest.map(r => r.rewards || []));
+    c.confetti = c.confetti || rest.some(r => r.confetti);
+  }
   celeOpen = true;
   $('#cele').innerHTML = `<div class="cele" role="dialog" aria-modal="true"><div class="box">
     <div class="em ${c.tone || ''}">${ic(c.icon, c.fill ? 'fill' : '')}</div>

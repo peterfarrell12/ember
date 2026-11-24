@@ -13,7 +13,7 @@ async def main():
         await pg.goto(URL)
         await pg.wait_for_selector('#tgBody')
         await pg.screenshot(path='01-onboarding.png')
-        await pg.fill('[data-k="age"]','34'); await pg.fill('[data-k="cm"]','183'); await pg.fill('[data-k="kg"]','86')
+        await pg.click('#tgBody button:has-text("Male")'); await pg.fill('[data-k="age"]','34'); await pg.fill('[data-k="cm"]','183'); await pg.fill('[data-k="kg"]','86')
         print('target', await pg.input_value('#tgK'), await pg.input_value('#tgP'), await pg.input_value('#tgC'), await pg.input_value('#tgF'))
         await pg.click('[data-act="saveTargets"]')
         await pg.click('[data-act="celeNext"]')

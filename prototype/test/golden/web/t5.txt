@@ -1,9 +1,5 @@
 WEIGHT: Progress | Food | Weight | Activity | Training | Trend weight | 86.3 kg | Weigh-in | Scale 85.9 kg · Today | -1.7 kg since Tue 20 Oct | 82 | 85 | 88 | Goal 82 | Tue 20 Oct | Today | 1 month | 3 months | 1 year | All |  | The line is your trend, smoothed so water and salt do not throw it. Dots are what the scale said. |  | Goal 82 kg | Edit | 1.7 of 6 kg | 4.3 kg to go |  | At your pace of 0.4 kg a week you reach 82 kg around 8 February 2027. |  | 86 | 84 | 82 | -0.5 kg | Last 7 days | -1.7 kg | Last 30 days | -0.4 kg | Pace per week | 25.8 | BMI | What you really burn | 2,610 | kcal a day | High confidence |  | Worked out from 25 logged days averaging 2,181 kcal and how your trend weight moved over 28 days. The formula guessed 2,527. |  | Retune my calorie target | Weigh-ins | Import | Today | 85.9 kg | Trend 86.3 kg · tap to remove | Tue 17 Nov | 86.2 kg | Trend 86.5 kg · tap to remove 
   cele: 86 kg milestone
-  cele: Kindling
-  cele: One full week
-  cele: Milestone
-  cele: Level 5
 garmin.csv -> Added 2 workouts from the last 120 days. Anything already logged was skipped.
 strava.csv -> Added 1 workout from the last 120 days. Anything already logged was skipped.
 whoop.csv -> Added 1 workout from the last 120 days. Anything already logged was skipped.
@@ -30,7 +26,6 @@ photo prompt: These photos show one meal or product from different angles someon
 Read every word on any packaging before anyt
   cele: Level 6
   cele: The Stillness defeated
-  cele: Boss slayer
 wts 157 xlog [('2026-11-19', 'Running, steady', 160, 1971, 'm'), ('2026-11-18', 'Running', 42, 480, 'ad'), ('2026-11-16', 'Padel', 60, 400, 'm'), ('2026-11-16', 'Padel', 90, 630, 'ad'), ('2026-11-15', 'Running', 45, 612, 'csv'), ('2026-11-14', 'Running', 42, 455, 'ah'), ('2026-11-13', 'Strength Training', 62, 1105, 'csv'), ('2026-11-12', 'Weights', 55, 310, 'ah'), ('2026-11-11', 'Ride', 60, 702, 'csv')]
 ms {'86': '2026-11-19'} t {'k': 2200, 'p': 155, 'c': 260, 'f': 60, 'w': 3000} boss None st {'logs': 6, 'say': 0, 'photo': 1, 'scan': 0, 'zone': 0, 'prot': 0, 'water': 0, 'closed': 0, 'weigh': 0, 'quests': 0, 'work': 9, 'boss': 1, 'sess': 0, 'prs': 0, 'rehab': 0, 'mob': 0, 'ready': 0} ad {'at': '2026-11-19T09:42:SS.mmmZ', 'nx': 2, 'nw': 1, 'nd': 5}
 ERRS []

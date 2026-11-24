@@ -41,6 +41,10 @@ const fail = (status, code, message) => ({ status, body: { error: { code, messag
 /* ----- product lookup on the web ----- */
 export const SEARCH_PRICE_USD = 0.01; // per web search, on top of tokens
 export const SEARCHES_PER_PERSON_PER_DAY = 20;
+/* The free allowance: how many times one person can call on Claude in a day (a photo, a spoken or described
+   meal, a chat message, a meal plan each count as one). Searching, scanning a barcode and logging by hand never
+   touch Claude and are never limited. The owner's decision of 24 November 2026; change it here. */
+export const CALLS_PER_PERSON_PER_DAY = 40;
 const RECHECK_MISS_DAYS = 30; // a product that was not found is searched for again after this long
 const productKey = (brand, name) => (brand + '|' + name).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
 const host = u => {
@@ -176,6 +180,7 @@ export function createHandler({
   claude,
   products = null,
   searchesToday = async () => 0,
+  callsToday = async () => 0,
   now = () => new Date(),
   ceiling = DAILY_CEILING_USD,
 }) {
@@ -255,6 +260,8 @@ export function createHandler({
     if (req.task.search) return lookup(user, req, body.vars, day);
     if ((await spentToday(day)) >= ceiling)
       return fail(429, 'daily_limit', 'Today`s allowance is used up. It starts again at midnight UTC.');
+    if ((await callsToday(user.id, day)) >= CALLS_PER_PERSON_PER_DAY)
+      return fail(429, 'personal_limit', 'Your free allowance for today is used up. It starts again at midnight UTC.');
     const model = MODELS[req.task.tier] || MODELS.default;
     let message;
     try {

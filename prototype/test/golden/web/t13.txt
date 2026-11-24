@@ -2,7 +2,7 @@ tile btn: Coffee
 1st coffee nut: No calories to count |  | Black, with no sugar. Pick a milk above if you take on | foot: Log 95 mg
 semi dash: 14 | kcal | 1.1 g | protein | 1.4 g | carbs | 0.5 g | fat |  | Worked  | ml 30 | foot: Caffeine only | Log with 14 kcal
 A cf=[('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
-instant: sheets 0 | toast: +5 XP · Logged | Filter or instant coffee: 95 mg caffeine and 14 kcal to breakfast | Undo
+instant: sheets 0 | toast: +15 XP · 9-day streak | +5 XP · Logged | Filter or instant coffee: 95 mg caffeine and 14 kcal to breakfast | Undo
 B cf=[('Filter or instant coffee', 95, 'drink', False), ('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True), ('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
 C undo cf=[('Filter or instant coffee', 95, 'drink', False)] e=[('Filter or instant coffee, semi-skimmed milk', 14, 'b', 'caf', True)]
 flat semi: 61 | kcal | 4.6 g | protein | 6.2 g | carbs | 2.2 g | fat |  | Worked 

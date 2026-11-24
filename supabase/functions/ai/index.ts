@@ -66,6 +66,10 @@ const handle = createHandler({
       if (error) throw error;
     },
   },
+  async callsToday(userId: string, day: string) {
+    const { data } = await admin.from('ai_usage').select('calls').eq('user_id', userId).eq('day', day).maybeSingle();
+    return data ? data.calls : 0;
+  },
   async searchesToday(userId: string, day: string) {
     const { data } = await admin.from('ai_usage').select('searches').eq('user_id', userId).eq('day', day).maybeSingle();
     return data ? data.searches : 0;

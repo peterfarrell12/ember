@@ -107,6 +107,7 @@ try {
   a.on('pageerror', e => errs.push(String(e)));
   const setUp = async pg => {
     await pg.waitForSelector('#tgBody');
+    await pg.click('#tgBody button:has-text("Male")');
     await pg.fill('[data-k="age"]', '34');
     await pg.fill('[data-k="cm"]', '183');
     await pg.fill('[data-k="kg"]', '86');

@@ -7,6 +7,10 @@
   --muted: #5e6d66;
   --line: #dce2db;
   --ember: #e4511b;
+  /* ember where text sits on it, or where it is the text: dark enough for white on it and for it on paper (4.5:1) */
+  --ember-ink: #bf3d0d;
+  --on-ember: #fff;
+  --ember-edge: #8f2c08;
   --ember-soft: #fce6dc;
   --primary: #0f3d2e;
   --primary-edge: #082519;
@@ -44,6 +48,9 @@
     --muted: #93a39b;
     --line: #25352f;
     --ember: #ff6b36;
+    --ember-ink: #ff6b36;
+    --on-ember: #1a0d06;
+    --ember-edge: #a93710;
     --ember-soft: #3a1e13;
     --primary: #d5f0e2;
     --primary-edge: #8dbba5;
@@ -72,6 +79,9 @@
   --muted: #93a39b;
   --line: #25352f;
   --ember: #ff6b36;
+  --ember-ink: #ff6b36;
+  --on-ember: #1a0d06;
+  --ember-edge: #a93710;
   --ember-soft: #3a1e13;
   --primary: #d5f0e2;
   --primary-edge: #8dbba5;
@@ -303,12 +313,12 @@ nav.tabs button.tab[aria-current='page'] svg {
   width: 58px;
   height: 58px;
   border-radius: 20px;
-  background: var(--ember);
-  color: #fff;
+  background: var(--ember-ink);
+  color: var(--on-ember);
   display: grid;
   place-items: center;
   margin: -22px auto 0;
-  border-bottom: 4px solid #a93710;
+  border-bottom: 4px solid var(--ember-edge);
   box-shadow: 0 10px 20px -10px var(--ember);
 }
 .fab svg {
@@ -398,9 +408,9 @@ nav.tabs button.tab[aria-current='page'] svg {
   margin-bottom: 3px;
 }
 .btn.ember {
-  background: var(--ember);
-  color: #fff;
-  border-bottom-color: #a93710;
+  background: var(--ember-ink);
+  color: var(--on-ember);
+  border-bottom-color: var(--ember-edge);
 }
 .btn.ghost {
   background: var(--surface);
@@ -438,7 +448,7 @@ nav.tabs button.tab[aria-current='page'] svg {
   color: var(--ink);
 }
 .link {
-  color: var(--ember);
+  color: var(--ember-ink);
   font-weight: 700;
   font-size: 14px;
 }
@@ -487,9 +497,9 @@ nav.tabs button.tab[aria-current='page'] svg {
   height: 18px;
 }
 .wk.done .node {
-  background: var(--ember);
-  border-color: #a93710;
-  color: #fff;
+  background: var(--ember-ink);
+  border-color: var(--ember-edge);
+  color: var(--on-ember);
 }
 .wk.frozen .node {
   background: var(--ice-soft);
@@ -1092,11 +1102,11 @@ textarea.inp {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: var(--ember);
-  color: #fff;
+  background: var(--ember-ink);
+  color: var(--on-ember);
   display: grid;
   place-items: center;
-  border-bottom: 4px solid #a93710;
+  border-bottom: 4px solid var(--ember-edge);
   flex: none;
 }
 .mic svg {
@@ -1289,8 +1299,8 @@ textarea.inp {
   color: var(--muted);
 }
 .cal i.on {
-  background: var(--ember);
-  color: #fff;
+  background: var(--ember-ink);
+  color: var(--on-ember);
 }
 .cal i.z {
   background: var(--ice-soft);
@@ -2426,8 +2436,8 @@ button.h-mac {
   width: 42px;
   height: 42px;
   border-radius: 13px;
-  background: var(--ember);
-  color: #fff;
+  background: var(--ember-ink);
+  color: var(--on-ember);
   display: grid;
   place-items: center;
   flex: none;
@@ -4102,8 +4112,8 @@ main {
   text-decoration: line-through;
 }
 .slots button[aria-pressed='true'] {
-  background: var(--ember);
-  color: #fff;
+  background: var(--ember-ink);
+  color: var(--on-ember);
 }
 .gbars {
   display: flex;

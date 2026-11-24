@@ -1,5 +1,5 @@
 import asyncio
-from harness import async_playwright, TODAY
+from harness import async_playwright, TODAY, start_tracking
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel='chrome', args=['--no-sandbox'])
@@ -11,7 +11,7 @@ async def main():
         async def zx(route):
             print('zxing requested:', route.request.url); await route.fulfill(path='zx/package/umd/index.min.js', content_type='application/javascript')
         await pg.route('**/unpkg.com/**', zx)
-        await pg.goto('http://127.0.0.1:8765/index.html'); await pg.wait_for_selector('#tgBody'); await pg.click('[data-act="saveTargets"]'); await pg.wait_for_timeout(400); await pg.click('[data-act="celeNext"]')
+        await pg.goto('http://127.0.0.1:8765/index.html'); await start_tracking(pg); await pg.wait_for_timeout(400); await pg.click('[data-act="celeNext"]')
         print('BarcodeDetector in window:', await pg.evaluate("'BarcodeDetector' in window"))
         await pg.click('.fab'); await pg.click('[data-act="barcode"]')
         async with pg.expect_file_chooser() as fc: await pg.click('[data-act="bcPhoto"]')

@@ -1,5 +1,5 @@
 import asyncio, json
-from harness import async_playwright, TODAY
+from harness import async_playwright, TODAY, start_tracking
 URL='http://127.0.0.1:8765/index.html'
 async def cont(pg):
     await pg.wait_for_timeout(350)
@@ -15,7 +15,7 @@ async def main():
         pg.on('pageerror', lambda e: errs.append('PAGEERROR: '+str(e)))
         await pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
         await pg.goto(URL); await pg.wait_for_selector('#tgBody')
-        await pg.click('[data-act="saveTargets"]'); await cont(pg)
+        await start_tracking(pg); await cont(pg)
         print('sync class:', await pg.get_attribute('#sync','class'))
         # describe via AI + dictation
         await pg.click('.fab'); await pg.click('[data-act="say"]'); await pg.wait_for_selector('#micBtn')

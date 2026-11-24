@@ -9,8 +9,7 @@ import {
   checkProduct,
   MODELS,
   DAILY_CEILING_USD,
-  SEARCHES_PER_PERSON_PER_DAY,
-} from '../functions/ai/handler.js';
+  SEARCHES_PER_PERSON_PER_DAY, CALLS_PER_PERSON_PER_DAY } from '../functions/ai/handler.js';
 import { TASKS } from '../functions/_shared/ai-tasks.js';
 
 /** A stand-in Anthropic client that records what it was asked and replies as told. */
@@ -53,6 +52,7 @@ function setup(over = {}) {
     now: over.now || (() => new Date('2026-11-19T12:00:00Z')),
     products: over.products,
     searchesToday: async () => over.searches ?? 0,
+    callsToday: async () => over.calls ?? 0,
   });
   return { handle, claude, recorded };
 }
@@ -150,6 +150,16 @@ test('each call`s cost is recorded against the person and the day', async () => 
     { id: 'u1', day: '2026-11-19', input: 2500, output: 400, searches: 0, cost: (2500 * 2 + 400 * 10) / 1e6 },
   ]);
   assert.equal(costOf(MODELS.quick.id, { input_tokens: 1_000_000, output_tokens: 1_000_000 }).cost, 0.6);
+});
+
+test('one person`s free allowance for the day stops their calls, and only theirs', async () => {
+  const { handle, claude } = setup({ calls: CALLS_PER_PERSON_PER_DAY });
+  const r = await ask(handle, { task: 'parse_text', vars: { text: 'eggs' } });
+  assert.equal(r.status, 429);
+  assert.equal(r.body.error.code, 'personal_limit');
+  assert.equal(claude.calls.length, 0);
+  const under = setup({ calls: CALLS_PER_PERSON_PER_DAY - 1 });
+  assert.equal((await ask(under.handle, { task: 'parse_text', vars: { text: 'eggs' } })).status, 200);
 });
 
 test('once the day`s ceiling is reached nothing more is sent to Claude', async () => {

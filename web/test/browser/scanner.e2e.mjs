@@ -44,6 +44,13 @@ const open = async (args, grant) => {
   pg.on('pageerror', e => errs.push(String(e)));
   await pg.goto(APP);
   await pg.waitForSelector('#tgBody');
+  await pg.click('#tgBody button:has-text("Male")');
+  for (const [k, v] of [
+    ['age', '30'],
+    ['cm', '178'],
+    ['kg', '80'],
+  ])
+    await pg.fill(`#tgBody [data-k="${k}"]`, v);
   await pg.click('[data-act="saveTargets"]');
   await pg.waitForTimeout(400);
   await pg.click('[data-act="celeNext"]');

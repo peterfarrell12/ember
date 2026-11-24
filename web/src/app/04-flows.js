@@ -63,6 +63,7 @@ A.range = ({ n }) => {
 };
 
 /* ---------- logging ---------- */
+const STREAK_MILESTONES = [1, 3, 7, 14, 30, 50, 100, 200, 365];
 async function logEntries(entries, via, opts = {}) {
   const d = await loadDay(S.date);
   const tk = today();
@@ -84,12 +85,25 @@ async function logEntries(entries, via, opts = {}) {
   P.st.logs += entries.length;
   if (via === 'say') P.st.say++;
   if (via === 'photo') P.st.photo++;
-  if (xp) grant(xp, 0, d, entries.length > 1 ? entries.length + ' foods logged' : 'Logged');
+  // the first log of the day carries the streak in the same line as the XP; the full-screen moment is kept for milestones
+  const streakNow = first ? streak().count + 1 : 0,
+    milestone = STREAK_MILESTONES.includes(streakNow);
+  if (xp)
+    grant(
+      xp,
+      0,
+      d,
+      first && !milestone && streakNow > 1
+        ? streakNow + '-day streak'
+        : entries.length > 1
+          ? entries.length + ' foods logged'
+          : 'Logged',
+    );
   else if (!opts.quiet) toast(entries.length > 1 ? entries.length + ' foods logged' : 'Logged');
   if (!opts.keep) closeAll();
   commitDay(d, {
     onHist: () => {
-      if (first) {
+      if (first && milestone) {
         const c = streak().count;
         celeQ.unshift({
           icon: 'flame',
@@ -1628,7 +1642,8 @@ function openTargets(first) {
     orig: { ...P.t },
     auto: first,
   };
-  if (first) TG.t = calcTargets(TG);
+  // a new person starts with an empty form: targets worked out from made-up details would be wrong for nearly everyone
+  if (first) Object.assign(TG, { sex: '', age: 0, cm: 0, kg: 0, t: { k: 0, p: 0, c: 0, f: 0, w: 0 } });
   openSheet(
     `<div class="sheet-h"><h3>${first ? 'Set your daily targets' : 'Targets and profile'}</h3>${first ? '' : `<button class="icon-btn" data-act="close" aria-label="Close">${ic('x')}</button>`}</div><div class="sheet-b" id="tgBody"></div><div class="sheet-f"><button class="btn ${first ? 'ember' : ''}" data-act="saveTargets">${first ? 'Start tracking' : 'Save'}</button></div>`,
     true,
@@ -1649,7 +1664,6 @@ function openTargets(first) {
 function renderTargets() {
   const b = $('#tgBody');
   if (!b) return;
-  const s = calcTargets(TG);
   b.innerHTML = `${TG.first ? `<p class="muted">Four quick details and Ember works out a calorie and macro target. You can change any of it later.</p>` : ''}
     ${segHtml(
       'tgSex',
@@ -1659,7 +1673,7 @@ function renderTargets() {
       ],
       TG.sex,
     )}
-    <div class="grid3"><label class="f">Age<input class="inp" inputmode="numeric" value="${TG.age}" data-on="tg" data-k="age"></label><label class="f">Height cm<input class="inp" inputmode="decimal" value="${TG.cm}" data-on="tg" data-k="cm"></label><label class="f">Weight kg<input class="inp" inputmode="decimal" value="${TG.kg}" data-on="tg" data-k="kg"></label></div>
+    <div class="grid3"><label class="f">Age<input class="inp" inputmode="numeric" value="${TG.age || ''}" placeholder="34" data-on="tg" data-k="age"></label><label class="f">Height cm<input class="inp" inputmode="decimal" value="${TG.cm || ''}" placeholder="175" data-on="tg" data-k="cm"></label><label class="f">Weight kg<input class="inp" inputmode="decimal" value="${TG.kg || ''}" placeholder="78" data-on="tg" data-k="kg"></label></div>
     <label class="f">Activity<select class="inp" data-on="tgSel" data-k="act">${ACTS.map(a => `<option value="${a[0]}" ${a[0] === TG.act ? 'selected' : ''}>${a[1]}</option>`).join('')}</select></label>
     ${segHtml(
       'tgGoal',
@@ -1683,6 +1697,8 @@ function renderTargets() {
 }
 /* The targets card. Changing anything about you above recalculates it straight away; the old figures stay on show with a way back until you save. */
 function tgCard() {
+  if (TG.first && !tgReady())
+    return `<div class="card"><p class="small muted">Your calorie and macro targets appear here once the four details above are in.</p></div>`;
   const s = calcTargets(TG),
     o = TG.orig,
     t = TG.t,
@@ -1719,9 +1735,10 @@ function tgCard() {
       <label class="f">Water ml ${was('w', '')}<input class="inp" inputmode="numeric" id="tgW" value="${t.w}" data-on="tgT" data-k="w"></label></div>`;
 }
 /* touched: something about the person changed, so the targets follow it */
+const tgReady = () => !!TG.sex && TG.age >= 14 && TG.cm >= 120 && TG.kg >= 30;
 function tgRecalc(full, touched) {
   if (touched) TG.auto = true;
-  if (TG.auto) {
+  if (TG.auto && tgReady()) {
     const s = calcTargets(TG);
     TG.t = { k: s.k, p: s.p, c: s.c, f: s.f, w: s.w };
   }
@@ -1739,7 +1756,10 @@ function tgSaveLabel() {
 }
 I.tg = el => {
   const v = num(el.value, NaN);
-  if (!(v > 0)) return;
+  if (!(v > 0)) {
+    if (TG.first) TG[el.dataset.k] = 0;
+    return;
+  }
   TG[el.dataset.k] = v;
   tgRecalc(false, true);
 };
@@ -1786,6 +1806,7 @@ A.tgUndo = () => {
   toast('Back to how it was');
 };
 A.saveTargets = () => {
+  if (!TG.sex) return toast('Choose male or female: it changes the sum.');
   if (!(TG.age >= 14 && TG.age <= 100)) return toast('Enter your age.');
   if (!(TG.cm >= 120 && TG.cm <= 230)) return toast('Enter your height in centimetres.');
   if (!(TG.kg >= 30 && TG.kg <= 300)) return toast('Enter your weight in kilograms.');

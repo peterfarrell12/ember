@@ -865,6 +865,8 @@ const AI_MSG = {
   rate_limited: 'Claude is busy or you have hit a usage limit. Try again in a bit.',
   daily_limit:
     'Today’s AI allowance for Ember is used up. It starts again at midnight. You can still search and log by hand.',
+  personal_limit:
+    'You have used today’s free AI allowance (40 photo, voice and chat requests). It starts again at midnight. Searching, scanning and logging by hand are never limited.',
   session_expired: 'Sign in again, then retry.',
   refused: 'Claude could not work with that. Try rewording it.',
   image_rejected: 'That image could not be read. Try another photo.',
