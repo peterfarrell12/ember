@@ -106,6 +106,8 @@ async function logEntries(entries, via, opts = {}) {
     },
   });
   if (askCaf) cafAsk(d.date, askCaf);
+  else if (P.fast && P.fast.start && d.date === tk && entries.some(e => e.k > 20))
+    toast('You are on a fast. Has it ended?', '', { act: 'fastEnd', label: 'End fast' });
   return ids;
 }
 A.water = async ({ n }) => {

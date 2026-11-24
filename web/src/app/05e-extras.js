@@ -258,7 +258,7 @@ A.weekReview = () => {
     }${r.logged.length && r.logged.length < 5 ? `<p class="small">You logged ${r.logged.length} of 7 days. The averages above only count the days you logged.</p>` : ''}</div>`
     }
     <p class="tiny muted">Worked out on your device from your own diary. General guidance, not medical advice.</p></div>
-    <div class="sheet-f noprint"><button class="btn ghost" data-act="printPage">Print or save as PDF</button></div>`,
+    <div class="sheet-f noprint"><button class="btn ghost" data-act="printPage">Print or save as PDF</button>${none ? '' : `<button class="btn ghost" style="width:auto" data-act="shareWeek">Share</button>`}</div>`,
     true,
   );
 };
@@ -370,4 +370,151 @@ A.exportCsv = async ({ what }) => {
   } catch (e) {
     toast('The export did not finish. Try again.');
   }
+};
+
+/* ---------- sharing cards: a streak, a session or a week as a picture to post or send ----------
+   Numbers and words only. A card never carries a photo, a weight or anything else the person did not put on it. */
+const CARD = { w: 1080, h: 1350, green: '#0f3d2e', ember: '#ff6b36', paper: '#ecefea', soft: 'rgba(236,239,234,.66)' };
+async function drawCard({ big, label, lines = [], foot = '' }) {
+  try {
+    if (document.fonts && document.fonts.load)
+      await Promise.all([
+        document.fonts.load('700 200px "Bricolage Grotesque"'),
+        document.fonts.load('600 40px Figtree'),
+      ]);
+  } catch (e) {}
+  const cv = document.createElement('canvas'),
+    c = cv.getContext('2d'),
+    { w, h } = CARD;
+  cv.width = w;
+  cv.height = h;
+  c.fillStyle = CARD.green;
+  c.fillRect(0, 0, w, h);
+  // the mark: an open ring with its ember, top left
+  const m = 96,
+    s = 96 / 24;
+  c.save();
+  c.translate(m, m);
+  c.scale(s, s);
+  c.lineWidth = 3.4;
+  c.lineCap = 'round';
+  c.strokeStyle = CARD.paper;
+  c.stroke(new Path2D('M12 4.2a7.8 7.8 0 1 0 7.8 7.8'));
+  c.fillStyle = CARD.ember;
+  c.beginPath();
+  c.arc(18.1, 5.9, 2.5, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+  c.fillStyle = CARD.paper;
+  c.font = '700 60px "Bricolage Grotesque", system-ui, sans-serif';
+  c.textBaseline = 'middle';
+  c.fillText('Ember', m + 96 + 24, m + 50);
+  // the number, sized to fit the width
+  c.textBaseline = 'alphabetic';
+  let size = 380;
+  do {
+    c.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+    size -= 20;
+  } while (c.measureText(big).width > w - m * 2 && size > 120);
+  c.fillText(big, m - 8, 660);
+  c.font = '700 64px "Bricolage Grotesque", system-ui, sans-serif';
+  c.fillStyle = CARD.ember;
+  c.fillText(label, m, 760);
+  c.font = '600 44px Figtree, system-ui, sans-serif';
+  c.fillStyle = CARD.paper;
+  const wrap = (text, y) => {
+    let line = '';
+    for (const word of String(text).split(' ')) {
+      if (c.measureText(line + ' ' + word).width > w - m * 2 && line) {
+        c.fillText(line, m, y);
+        y += 62;
+        line = word;
+      } else line = line ? line + ' ' + word : word;
+    }
+    if (line) c.fillText(line, m, y);
+    return y + 74;
+  };
+  let y = 880;
+  lines.slice(0, 5).forEach(l => (y = wrap(l, y)));
+  c.fillStyle = CARD.soft;
+  c.font = '600 36px Figtree, system-ui, sans-serif';
+  c.fillText(foot || longDate(today()), m, h - m);
+  return new Promise(res => cv.toBlob(b => res(b), 'image/png'));
+}
+async function shareCard(card, name) {
+  let blob = null;
+  try {
+    blob = await drawCard(card);
+  } catch (e) {}
+  if (!blob) return toast('The picture could not be made here.');
+  const file = new File([blob], name + '.png', { type: 'image/png' });
+  try {
+    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Saved as ' + file.name + '.');
+}
+A.shareStreak = () => {
+  const st = streak();
+  if (!st.count) return toast('Log today to start a streak worth sharing.');
+  shareCard(
+    {
+      big: String(st.count),
+      label: 'day streak',
+      lines: [
+        'Logged every day for ' + st.count + (st.count === 1 ? ' day.' : ' days.'),
+        'Level ' + levelOf(P.xp) + ' · ' + fmt(P.xp) + ' XP',
+      ],
+    },
+    'ember-streak',
+  );
+};
+A.shareSession = () => {
+  const s = SV;
+  if (!s) return;
+  shareCard(
+    {
+      big: s.dur + ' min',
+      label: s.n,
+      lines: [
+        s.sets + (s.sets === 1 ? ' set' : ' sets') + (s.vol ? ' · ' + fmt(s.vol) + ' kg lifted' : ''),
+        s.prs ? s.prs + (s.prs === 1 ? ' personal record' : ' personal records') : '',
+        ...(s.items || []).slice(0, 3).map(it => it.n),
+      ].filter(Boolean),
+      foot: niceDate(s.d),
+    },
+    'ember-session',
+  );
+};
+A.shareWeek = () => {
+  const r = weekReview();
+  shareCard(
+    {
+      big: r.logged.length + '/7',
+      label: 'days logged',
+      // only what there is to show: nobody shares a nought
+      lines: [
+        [
+          r.sess.length ? r.sess.length + (r.sess.length === 1 ? ' strength session' : ' strength sessions') : '',
+          r.mins ? r.mins + ' active minutes' : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        r.inZone ? r.inZone + (r.inZone === 1 ? ' day' : ' days') + ' in my calorie zone' : '',
+      ].filter(Boolean),
+      foot: longDate(r.start) + ' to ' + longDate(r.end),
+    },
+    'ember-week',
+  );
 };

@@ -919,7 +919,7 @@ function sessSheet(s) {
   openSheet(
     `${sh(s.n)}<div class="sheet-b"><div class="row" style="flex-wrap:wrap"><span class="pill">${niceDate(s.d)}</span><span class="pill">${s.dur} min</span>${s.vol ? `<span class="pill">${fmt(s.vol)} kg lifted</span>` : ''}${s.rpe && s.kind === 'train' ? `<span class="pill">Effort ${s.rpe}/10</span>` : ''}${s.prs ? `<span class="pill gold">${s.prs} record${s.prs === 1 ? '' : 's'}</span>` : ''}</div>
     ${(s.items || []).length ? `<div class="list">${s.items.map(it => `<div class="res" style="cursor:default"><span class="n">${esc(it.n)}</span><span class="k"></span><span class="s" style="white-space:normal">${esc(it.sets.map(x => (x[0] ? x[0] + ' kg × ' : '') + x[1]).join(', '))}</span></div>`).join('')}</div>` : `<p class="small muted">Only the summary was kept for this one.</p>`}
-    ${TR.sess.some(x => x.id === s.id) ? `<button class="link" data-act="sessDel" id="sessDel" style="color:var(--bad);align-self:center">Delete this session</button>` : ''}</div>
+    ${TR.sess.some(x => x.id === s.id) ? `<div class="row" style="gap:18px;justify-content:center"><button class="link" data-act="shareSession">Share this session</button><button class="link" data-act="sessDel" id="sessDel" style="color:var(--bad)">Delete this session</button></div>` : ''}</div>
     ${(s.items || []).length && !WK ? `<div class="sheet-f"><button class="btn" data-act="sessAgain">${ic('play', 'fill')} Do this session again</button></div>` : ''}`,
     true,
   );

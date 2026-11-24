@@ -320,7 +320,7 @@ function viewQuests() {
     <p class="small ${st.atRisk ? '' : 'muted'}" style="margin:10px 0 12px">${st.todayDone ? 'Today is logged. Your streak is safe.' : onBreak() ? esc(breakLine()) : st.atRisk ? 'Log one food today to keep your streak alive.' : 'Log one food today to light your streak.'}</p>
     <div class="between"><span class="row small"><span class="pill ice">${ic('snow')} ${P.fr} of 2</span>Streak freezes</span><button class="btn sm ghost" data-act="buyFreeze" ${P.fr >= 2 || P.gems < 50 ? 'disabled' : ''}>${ic('gem')} 50</button></div>
     <p class="tiny muted" style="margin-top:8px">A freeze covers one missed day automatically.</p>
-    <button class="link" data-act="takeBreak" style="margin-top:10px">${onBreak() ? 'On a break: change or end it' : 'Going away or unwell? Take a break'}</button></section>
+    <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:10px">${st.count ? `<button class="link" data-act="shareStreak">Share my streak</button>` : ''}<button class="link" data-act="takeBreak">${onBreak() ? 'On a break: change or end it' : 'Going away or unwell? Take a break'}</button></div></section>
   <section class="card"><div class="between"><h2>${LEAGUES[P.lg.tier]} league</h2><span class="muted small">${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span></div>
     <div class="ladder">${LEAGUES.map((l, i) => `<i class="${i <= P.lg.tier ? 'on' : ''}" title="${l}"></i>`).join('')}</div>
     <div class="between small" style="margin-bottom:6px"><b>${fmt(P.lg.xp)} XP this week</b><span class="muted tn">${fmt(PROMO)} to move up</span></div>${bar(P.lg.xp, PROMO, 'ember lg')}
