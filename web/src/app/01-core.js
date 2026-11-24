@@ -515,9 +515,10 @@ const levelOf = xp => {
   return l;
 };
 const levelFloor = l => 50 * l * (l - 1);
+/* a day counts towards the streak if something was logged, a freeze covered it, or it fell inside a break */
 const hasDay = k => {
   const h = P.hist[k];
-  return !!h && (h.n > 0 || !!h.z);
+  return (!!h && (h.n > 0 || !!h.z)) || !!breakOn(k);
 };
 function streak() {
   const t = today();
@@ -529,7 +530,7 @@ function streak() {
     count++;
     d = addDays(d, -1);
   }
-  return { count, todayDone, atRisk: !todayDone && count > 0 };
+  return { count, todayDone, atRisk: !todayDone && count > 0 && !breakOn(t) };
 }
 function applyFreezes() {
   const t = today();

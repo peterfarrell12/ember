@@ -109,9 +109,11 @@ function nextUp(d, t, z) {
       const ys = y ? y.e.filter(e => e.m === slot) : [],
         name = MEALS[slot].toLowerCase();
       const title = !d.e.length
-        ? st.count > 0
-          ? 'Log something to keep your ' + st.count + '-day streak'
-          : "Start today's diary"
+        ? onBreak()
+          ? 'You are on a break'
+          : st.count > 0
+            ? 'Log something to keep your ' + st.count + '-day streak'
+            : "Start today's diary"
         : MEALS[slot] + ' is not logged yet';
       if (ys.length)
         return {
@@ -251,6 +253,7 @@ function trackers(d, t, isToday) {
   };
   return `<div class="trks">
     ${tile('drop', 'Water', fmt(d.w), '/ ' + fmt(P.t.w) + ' ml', d.w >= P.t.w ? 'Target reached' : fmt(P.t.w - d.w) + ' ml to go', bar(d.w, P.t.w, 'ice'), `<button class="tkb" data-act="water" data-n="-250" aria-label="Remove 250 ml">${ic('minus')}</button><button class="tkb w" data-act="water" data-n="250">${ic('plus')} 250 ml</button>`, 'waterSheet', true)}
+    ${fastTile(tile)}
     ${tile('cup', 'Caffeine', fmt(tot), '/ ' + CAF_MAX + ' mg', tot ? (atBed > 50 ? 'About ' + atBed + ' mg still active at ' + P.bed : 'About ' + atBed + ' mg left by ' + P.bed) : S.date === today() ? 'None today' : 'None that day', bar(tot, CAF_MAX, tot > CAF_MAX ? 'ember' : 'gold'), `<button class="tkb" data-act="caf" aria-label="All drinks and your caffeine curve">${ic('chart')}</button><button class="tkb w" data-act="cafAdd" data-id="${usualDrink().id}">${ic('plus')}<span class="ell">${esc(usualDrink().s || usualDrink().n)}</span></button>`, 'caf', true)}
     ${tile('pulse', 'Exercise', fmt(t.ex), 'kcal', [mins ? mins + ' min' : '', h.st ? fmt(h.st) + ' steps' : ''].filter(Boolean).join(', ') || (d.x.length ? d.x.length + (d.x.length === 1 ? ' activity' : ' activities') : 'Nothing yet'), '', `<button class="tkb w" data-act="addExercise">${ic('plus')} Add</button>`)}
     ${tile('scale', 'Weight', lw ? lw.kg : '–', 'kg', lw ? (lw.d === today() ? 'Weighed in today' : 'Last ' + niceDate(lw.d)) + (pace != null && Math.abs(pace) >= 0.05 ? ', ' + (pace < 0 ? 'down ' : 'up ') + Math.abs(r1(pace)) + ' kg a week' : '') : 'No weigh-ins yet', '', `<button class="tkb" data-act="tab" data-tab="progress" aria-label="Weight trend">${ic('chart')}</button><button class="tkb w" data-act="addWeight">${ic('plus')} Weigh in</button>`)}
@@ -309,6 +312,7 @@ function viewToday() {
   ${bodyCard(S.date)}
   ${isToday && myUnread() ? msgStrip() : ''}
   ${planStrip(S.date)}
+  ${weekReviewCard()}
   ${nextCard(nextUp(d, t, z))}
   ${againRail(d)}
   ${mealsCard(d)}

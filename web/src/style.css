@@ -4604,3 +4604,34 @@ nav.tabs {
 svg .hit {
   cursor: pointer;
 }
+/* printing a review: only the page asked for, on white, without the app around it */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable,
+  .printable * {
+    visibility: visible;
+  }
+  .printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: visible !important;
+    max-height: none !important;
+    background: #fff;
+    color: #000;
+  }
+  .sheet,
+  .scrim {
+    position: static !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .noprint {
+    display: none !important;
+  }
+}
