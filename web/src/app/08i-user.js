@@ -271,6 +271,18 @@ function viewMore() {
     ${grp('App', [
       row('assistant', 'mic', 'Assistant', 'Talk or type to log, ask and plan'),
       row(
+        'reminders',
+        'alert',
+        'Reminders',
+        !canRemind()
+          ? 'In the phone app'
+          : P.rem && (P.rem.log.on || P.rem.train.on)
+            ? [P.rem.log.on ? 'Log nudge at ' + P.rem.log.time : '', P.rem.train.on ? 'before sessions' : '']
+                .filter(Boolean)
+                .join(', ')
+            : 'Off',
+      ),
+      row(
         'openData',
         'db',
         'Your data',

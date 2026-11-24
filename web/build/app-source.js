@@ -23,6 +23,7 @@ export const MODULES = [
   'product-server.js',
   'errors.js',
   'native.js',
+  'reminders.js',
 ];
 
 export const numbered = dir =>

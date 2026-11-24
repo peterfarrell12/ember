@@ -11,6 +11,7 @@ import * as m8 from './scanner.js';
 import * as m9 from './product-server.js';
 import * as m10 from './errors.js';
 import * as m11 from './native.js';
+import * as m12 from './reminders.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -73,4 +74,8 @@ declare global {
   const NATIVE_SIGNIN_URL: typeof m11.NATIVE_SIGNIN_URL;
   const tokensFrom: typeof m11.tokensFrom;
   const nativeStart: typeof m11.nativeStart;
+  const reminderPlan: typeof m12.reminderPlan;
+  const canRemind: typeof m12.canRemind;
+  const askToRemind: typeof m12.askToRemind;
+  const syncReminders: typeof m12.syncReminders;
 }

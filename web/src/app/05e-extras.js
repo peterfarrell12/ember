@@ -518,3 +518,81 @@ A.shareWeek = () => {
     'ember-week',
   );
 };
+
+/* ---------- reminders, in the phone app: a nudge if nothing is logged, and a heads-up before a session ----------
+   Scheduled on the phone (see reminders.js), a week ahead, and redone whenever something changes. */
+const remState = () => P.rem || (P.rem = { log: { on: false, time: '20:00' }, train: { on: false, lead: 30 } });
+function remInput() {
+  const tk = today(),
+    r = remState();
+  return {
+    log: r.log,
+    train: r.train,
+    streak: streak().count,
+    days: Array.from({ length: 7 }, (_, i) => {
+      const k = addDays(tk, i),
+        it = planFor(k).find(x => x.type === 'train' && x.plan);
+      return {
+        date: k,
+        logged: !!(P.hist[k] && P.hist[k].n > 0),
+        onBreak: !!breakOn(k),
+        session: it ? { name: it.t, time: it.tm || '', minutes: it.min || 0 } : null,
+      };
+    }),
+  };
+}
+let remTimer = 0;
+function remSync() {
+  if (!canRemind() || !S.ready || !P || !P.onboarded) return;
+  clearTimeout(remTimer);
+  remTimer = setTimeout(() => {
+    const r = remState();
+    syncReminders(r.log.on || r.train.on ? reminderPlan(remInput()) : []);
+  }, 800);
+}
+A.reminders = () => {
+  const r = remState();
+  if (!canRemind())
+    return openSheet(
+      `${sh('Reminders')}<div class="sheet-b"><p>Reminders work in the Ember phone app. A website can only remind you while it is open, which is exactly when you do not need it.</p><p class="small muted">Until you have the app, the calendar can put your training plan into your phone's own calendar, with alerts.</p><button class="btn sm" data-act="cal" style="align-self:flex-start">${ic('cal')} Open the calendar</button></div>`,
+    );
+  openSheet(
+    `${sh('Reminders')}<div class="sheet-b">
+    <div class="card stack"><div class="between"><b>Nudge me if I have not logged</b><button class="btn sm ${r.log.on ? '' : 'ghost'}" data-act="remToggle" data-k="log" aria-pressed="${r.log.on}">${r.log.on ? 'On' : 'Off'}</button></div>
+      <label class="f">At<input class="inp" type="time" value="${r.log.time}" data-on="remTime"></label>
+      <p class="tiny muted">Only on days with nothing logged. Never during a break.</p></div>
+    <div class="card stack"><div class="between"><b>Remind me before a planned session</b><button class="btn sm ${r.train.on ? '' : 'ghost'}" data-act="remToggle" data-k="train" aria-pressed="${r.train.on}">${r.train.on ? 'On' : 'Off'}</button></div>
+      <div class="f">How long before${segHtml(
+        'remLead',
+        [
+          ['15', '15 min'],
+          ['30', '30 min'],
+          ['60', '1 hour'],
+        ],
+        String(r.train.lead),
+      )}</div>
+      <p class="tiny muted">Uses the usual time on your calendar. Sessions with no time set are announced at 08:00.</p></div>
+    <p class="tiny muted">Reminders are set on this phone, a week ahead, each time you open Ember. Nothing is sent from a server.</p></div>`,
+  );
+  SEG.remLead = v => {
+    r.train.lead = +v;
+    saveProfile();
+    remSync();
+  };
+};
+A.remToggle = async ({ k }) => {
+  const r = remState();
+  if (!r[k].on && !(await askToRemind()))
+    return toast("Notifications are switched off for Ember in your phone's settings. Turn them on there first.");
+  r[k].on = !r[k].on;
+  saveProfile();
+  remSync();
+  closeSheet();
+  A.reminders();
+};
+I.remTime = el => {
+  if (!/^\d\d:\d\d$/.test(el.value)) return;
+  remState().log.time = el.value;
+  saveProfile();
+  remSync();
+};

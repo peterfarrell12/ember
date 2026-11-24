@@ -167,6 +167,7 @@ function render() {
   if (!S.ready) return;
   renderChrome();
   asFab();
+  remSync();
   const st = streak();
   const cs = $('#chipStreak');
   cs.classList.toggle('off', !st.todayDone);
