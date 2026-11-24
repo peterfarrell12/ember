@@ -26,9 +26,13 @@ A.signIn = () => {
 const mustSignIn = () => Store.mode === 'local' && authConfigured() && !LS.get('ember:device-only');
 function signInGate() {
   document.body.classList.add('gate');
-  $('#main').innerHTML =
-    `<div class="boot"><div class="card stack" style="width:min(340px,100%);text-align:left;color:var(--ink);font-weight:400"><h2>Sign in to Ember</h2>
-    <div class="stack" id="siBody"><p class="small">Enter your email and we will send you a link. No password needed.</p>
+  const invited = !!LS.get('ember:join'); // arrived by a squad's invite link: it is offered once they are in
+  const point = (icon, text) => `<li>${ic(icon)}<span>${text}</span></li>`;
+  $('#main').innerHTML = `<div class="gate-wrap"><div class="gate-pitch"><h1>Say what you ate. Ember does the rest.</h1>
+    <ul>${point('mic', 'Log a meal by talking, a photo, a barcode or a search, with Irish and UK foods and portions.')}${point('dumbbell', 'Follow a training programme and log your sets.')}${point('flame', 'Keep a streak going with quests, and a weekly board with your friends.')}</ul>
+    <p class="small muted">Free to use. No adverts and no trackers.</p></div>
+    <div class="card stack gate-card"><h2>${invited ? 'Sign in to join the squad' : 'Sign in to Ember'}</h2>
+    <div class="stack" id="siBody"><p class="small">${invited ? 'You have been invited to a squad. ' : ''}Enter your email and we will send you a link. No password needed.</p>
     <label class="f">Email<input class="inp" id="siEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label>${consentHtml()}</div>
     <div id="siFoot"><button class="btn ember" data-act="signInGo" id="siGo">Email me a link</button></div></div></div>`;
   if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');
