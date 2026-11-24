@@ -24,6 +24,7 @@ export const MODULES = [
   'errors.js',
   'native.js',
   'reminders.js',
+  'squads.js',
 ];
 
 export const numbered = dir =>

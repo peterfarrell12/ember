@@ -734,6 +734,7 @@ function commitDay(d, opts = {}) {
   saveProfile();
   publishStatus();
   publishSquad();
+  sqPublishSoon();
   if (!opts.quiet) render();
   flushCele();
 }

@@ -66,3 +66,9 @@ jobs:
           cd supabase
           npm install --no-save playwright
           npm run test:e2e
+      - name: Squads in a real browser (start one, join from the invite, the board, a challenge, leaving)
+        run: |
+          (cd web && npm ci)
+          cd supabase
+          npm install --no-save playwright
+          npm run test:squads

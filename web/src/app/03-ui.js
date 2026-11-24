@@ -175,6 +175,7 @@ function render() {
   renderChrome();
   asFab();
   remSync();
+  setTimeout(sqOfferInvite, 0);
   const st = streak();
   const cs = $('#chipStreak');
   cs.classList.toggle('off', !st.todayDone);
@@ -322,7 +323,7 @@ function viewQuests() {
           ? 'Earn ' + fmt(STAY - P.lg.xp) + ' XP more to stay in ' + LEAGUES[P.lg.tier] + '.'
           : fmt(PROMO - P.lg.xp) + ' XP this week moves you up to ' + LEAGUES[1] + '.';
   return `
-  ${squadCard()}
+  ${squadCard()}${squadsCard()}
   <section class="card"><div class="lvl"><div class="badge">${lv}</div><div class="stack" style="gap:6px"><div class="between"><h2>Level ${lv}</h2><span class="muted small tn">${fmt(P.xp - f0)} / ${fmt(f1 - f0)} XP</span></div>${bar(P.xp - f0, f1 - f0, 'gold lg')}<span class="muted tiny">${fmt(P.xp)} XP earned in total</span></div></div></section>
   <section class="card"><div class="between"><div class="streak-big"><svg class="ic fill fl ${st.todayDone ? '' : 'off'}"><use href="#i-flame"/></svg><div><div class="num">${st.count}</div><span class="muted small">day streak · best ${Math.max(P.best, st.count)}</span></div></div></div>
     <p class="small ${st.atRisk ? '' : 'muted'}" style="margin:10px 0 12px">${st.todayDone ? 'Today is logged. Your streak is safe.' : onBreak() ? esc(breakLine()) : st.atRisk ? 'Log one food today to keep your streak alive.' : 'Log one food today to light your streak.'}</p>

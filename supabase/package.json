@@ -7,7 +7,8 @@
     "stop": "supabase stop",
     "test": "node tests/policy.test.mjs",
     "test:e2e": "node tests/account.e2e.mjs",
-    "test:unit": "node --test tests/ai-handler.test.mjs tests/product-handler.test.mjs"
+    "test:unit": "node --test tests/ai-handler.test.mjs tests/product-handler.test.mjs",
+    "test:squads": "node tests/squads.e2e.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.119.2",

@@ -12,6 +12,7 @@ import * as m9 from './product-server.js';
 import * as m10 from './errors.js';
 import * as m11 from './native.js';
 import * as m12 from './reminders.js';
+import * as m13 from './squads.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -78,4 +79,5 @@ declare global {
   const canRemind: typeof m12.canRemind;
   const askToRemind: typeof m12.askToRemind;
   const syncReminders: typeof m12.syncReminders;
+  const squadsApi: typeof m13.squadsApi;
 }

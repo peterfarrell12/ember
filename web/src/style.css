@@ -4645,3 +4645,51 @@ svg .hit {
     display: none !important;
   }
 }
+/* ---- squads ---- */
+.sqlist {
+  display: flex;
+  flex-direction: column;
+}
+.sqrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  min-width: 0;
+}
+.sqrow:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+.sqrow .grow {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sqrow b {
+  font-size: 15.5px;
+}
+.sqrow small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.sqrow > svg {
+  color: var(--muted);
+  flex: none;
+}
+.sq-ch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.sq-code {
+  font-size: 30px;
+  letter-spacing: 0.14em;
+}
