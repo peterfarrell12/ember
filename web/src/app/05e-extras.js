@@ -596,3 +596,215 @@ I.remTime = el => {
   saveProfile();
   remSync();
 };
+
+/* ---------- a week of meals, planned by Claude to your own targets (one request per plan) ---------- */
+const MP_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+let MPV = { day: 0, shop: false };
+A.mealPlan = () => {
+  MPV = { day: wdOf(today()), shop: false };
+  openSheet(`${sh('Meal plan')}<div class="sheet-b" id="mpBody"></div>`, true);
+  renderMealPlan();
+};
+function renderMealPlan() {
+  const el = $('#mpBody');
+  if (!el) return;
+  const mp = P.mp;
+  if (!AI.sample)
+    return void (el.innerHTML = `<p class="empty">The meal plan is written by Claude, which is not available in this view. Sign in to use it.</p>`);
+  if (!mp || !mp.days || mp.days.length !== 7) {
+    el.innerHTML = `<p class="muted small">A week of breakfasts, lunches and dinners sized to your ${fmt(P.t.k)} kcal and ${P.t.p} g protein, with a shopping list. Everyday Irish and UK food.</p>
+      <label class="f">Anything it should know?<textarea class="inp" id="mpLikes" rows="3" maxlength="300" placeholder="No fish. Vegetarian on weekdays. Quick dinners, I get home at seven.">${esc((mp && mp.likes) || '')}</textarea></label>
+      <div class="f">Each day${segHtml(
+        'mpMeals',
+        [
+          ['3', 'Three meals'],
+          ['4', 'Three meals and a snack'],
+        ],
+        '4',
+      )}</div>
+      <button class="btn ember" data-act="mealPlanGo" data-n="4" id="mpGo">${ic('spark')} Plan my week</button>
+      <p class="tiny muted">Uses one of today's ${AI_DAILY} AI requests. Every figure in a plan is Claude's estimate; when you log a meal from it, the foods are matched to the database as usual.</p>`;
+    SEG.mpMeals = v => ($('#mpGo').dataset.n = v);
+    return;
+  }
+  const d = mp.days[MPV.day] || mp.days[0];
+  el.innerHTML = `<div class="between"><span class="row small muted" style="gap:6px">${srcBadge('AI')} planned ${niceDate(mp.d)}</span><button class="link" data-act="mealPlanAgain">Plan again</button></div>
+    ${segHtml(
+      'mpDay',
+      MP_DAYS.map((n, i) => [String(i), n]),
+      String(MPV.day),
+    )}
+    <div class="between small"><b>${fmt(d.kcal)} kcal</b><span class="muted">${r0(d.p)} g protein · target ${fmt(P.t.k)} and ${P.t.p} g</span></div>
+    <div class="card" style="padding:4px 14px">${d.meals
+      .map(
+        (m, i) =>
+          `<div class="mp-meal"><div class="grow"><div class="tiny muted" style="font-weight:800;text-transform:uppercase;letter-spacing:.04em">${MEALS[m.m] || 'Meal'}</div><b>${esc(m.name)}</b><p class="small muted">${esc(m.what)}</p><span class="small tn">${fmt(m.kcal)} kcal · ${r0(m.p)} g protein</span></div><button class="btn sm ghost" data-act="mealPlanLog" data-i="${i}">Log</button></div>`,
+      )
+      .join('')}</div>
+    <button class="btn ghost" data-act="mealPlanShop">${ic('book')} ${MPV.shop ? 'Hide the shopping list' : 'Shopping list for the week'}</button>
+    ${MPV.shop ? `<div class="card stack"><ul class="mp-shop">${(mp.shop || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul><button class="btn sm" data-act="mealPlanCopy" style="align-self:flex-start">${ic('copy')} Copy the list</button></div>` : ''}
+    <p class="tiny muted">A suggestion to cook from, not a prescription. Every figure here is an estimate.</p>`;
+  SEG.mpDay = v => {
+    MPV.day = +v;
+    renderMealPlan();
+  };
+}
+const AI_DAILY = 40; // the free daily allowance, as set on the server (supabase/functions/ai/handler.js)
+A.mealPlanGo = async ({ n }) => {
+  const likes = ($('#mpLikes').value || '').trim().slice(0, 300),
+    el = $('#mpBody');
+  el.innerHTML = `<div class="busy"><div class="spinner"></div>Planning seven days to your targets. This takes up to half a minute.</div>`;
+  try {
+    const usual = P.rec
+      .slice()
+      .sort((a, b) => (b.ct || 0) - (a.ct || 0))
+      .slice(0, 12)
+      .map(r => r.n)
+      .join(', ');
+    const r = await AI.sample.json(
+      [
+        'meal_plan',
+        {
+          kcal: P.t.k,
+          protein: P.t.p,
+          meals: n === '3' ? 'breakfast, lunch and dinner' : 'breakfast, lunch, dinner and one snack',
+          likes,
+          usual,
+        },
+      ],
+      { cache: false },
+    );
+    const days = ((r && r.days) || []).slice(0, 7).map((d, i) => ({
+      day: MP_DAYS[i],
+      kcal: r0(num(d.kcal)),
+      p: r0(num(d.p)),
+      meals: (d.meals || []).slice(0, 6).map(m => ({
+        m: MEALS[m.m] ? m.m : 's',
+        name: String(m.name || 'Meal').slice(0, 60),
+        what: String(m.what || m.name || '').slice(0, 240),
+        kcal: r0(num(m.kcal)),
+        p: r0(num(m.p)),
+      })),
+    }));
+    if (days.length !== 7 || days.some(d => !d.meals.length)) throw { code: 'invalid_json' };
+    P.mp = { d: today(), likes, days, shop: ((r && r.shop) || []).slice(0, 40).map(x => String(x).slice(0, 80)) };
+    saveProfile();
+  } catch (e) {
+    toast(aiError(e));
+  }
+  renderMealPlan();
+};
+A.mealPlanAgain = () => {
+  P.mp = { likes: (P.mp && P.mp.likes) || '' };
+  renderMealPlan();
+};
+A.mealPlanShop = () => {
+  MPV.shop = !MPV.shop;
+  renderMealPlan();
+};
+A.mealPlanCopy = async () => {
+  try {
+    await navigator.clipboard.writeText((P.mp.shop || []).join('\n'));
+    toast('Shopping list copied.');
+  } catch (e) {
+    toast('Copying is blocked in this view.');
+  }
+};
+/* logging a planned meal: its foods are worked out and matched like any described meal, then shown to check */
+A.mealPlanLog = async ({ i }, el) => {
+  const m = P.mp && P.mp.days[MPV.day] && P.mp.days[MPV.day].meals[+i];
+  if (!m) return;
+  el.disabled = true;
+  el.textContent = 'Working…';
+  try {
+    await ensureDB();
+    const items = await matchAll(await aiParseText(m.what));
+    if (!items.length) throw { code: 'none' };
+    openReview(items, { meal: m.m });
+  } catch (e) {
+    toast(e && e.code === 'none' ? 'That meal could not be worked out. Log it by search instead.' : aiError(e));
+  }
+  el.disabled = false;
+  el.textContent = 'Log';
+};
+
+/* ---------- a short note for the day, from the diary (one small request a day, only if switched on) ---------- */
+const noteState = () => P.note || (P.note = { auto: false, tone: 'gentle', d: '', t: '' });
+let noteBusy = false;
+async function noteGet() {
+  const n = noteState();
+  if (noteBusy || !AI.sample) return;
+  noteBusy = true;
+  try {
+    const r = await AI.sample(
+      ['daily_note', { tone: n.tone === 'straight' ? 'straight' : 'gentle', context: coachContext() }],
+      {
+        cache: false,
+      },
+    );
+    const t = String((r && r.text) || '')
+      .trim()
+      .slice(0, 500);
+    if (t) {
+      n.d = today();
+      n.t = t;
+      saveProfile();
+    }
+  } catch (e) {
+    n.err = aiError(e);
+  }
+  noteBusy = false;
+  if (!sheets.length) render();
+  else if ($('#noteBody')) renderNote();
+}
+/* On Today: the note if there is one for today; fetched once a day when the person has asked for that. */
+function noteCard() {
+  const n = P.note;
+  if (!n || S.date !== today() || !AI.sample) return '';
+  if (n.d === today() && n.t)
+    return `<button class="pstrip note" data-act="dailyNote">${ic('pen')}<span class="grow"><b>Today's note</b><small style="white-space:normal">${esc(n.t)}</small></span></button>`;
+  if (n.auto && !noteBusy && n.tried !== today() && (P.hist[addDays(today(), -1)] || {}).n > 0) {
+    n.tried = today(); // once a day, and only when there was a yesterday to talk about
+    noteGet();
+  }
+  return '';
+}
+A.dailyNote = () => {
+  openSheet(`${sh('Daily note')}<div class="sheet-b" id="noteBody"></div>`);
+  renderNote();
+};
+function renderNote() {
+  const el = $('#noteBody'),
+    n = noteState();
+  if (!el) return;
+  if (!AI.sample)
+    return void (el.innerHTML = `<p class="empty">The daily note is written by Claude, which is not available in this view.</p>`);
+  el.innerHTML = `<p class="muted small">Two or three sentences each morning, written by Claude from your own diary: what happened yesterday and the one thing worth doing today.</p>
+    ${n.d === today() && n.t ? `<div class="card"><p>${esc(n.t)}</p></div>` : noteBusy ? `<div class="busy"><div class="spinner"></div>Writing today's note</div>` : `<button class="btn" data-act="noteNow">${ic('pen')} Write today's note</button>`}
+    ${n.err && !(n.d === today() && n.t) ? `<p class="small muted">${esc(n.err)}</p>` : ''}
+    <div class="f">Tone${segHtml(
+      'noteTone',
+      [
+        ['gentle', 'Gentle'],
+        ['straight', 'Straight'],
+      ],
+      n.tone,
+    )}</div>
+    <div class="between"><span class="grow"><b>Write one each morning</b><p class="tiny muted">When you open Ember. Uses one of your ${AI_DAILY} daily AI requests.</p></span><button class="btn sm ${n.auto ? '' : 'ghost'}" data-act="noteAuto" aria-pressed="${n.auto}">${n.auto ? 'On' : 'Off'}</button></div>
+    <p class="tiny muted">General guidance from your own numbers, not medical advice.</p>`;
+  SEG.noteTone = v => {
+    n.tone = v;
+    saveProfile();
+  };
+}
+A.noteNow = () => {
+  delete noteState().err;
+  noteGet();
+  renderNote();
+};
+A.noteAuto = () => {
+  const n = noteState();
+  n.auto = !n.auto;
+  saveProfile();
+  renderNote();
+};

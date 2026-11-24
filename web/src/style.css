@@ -4693,3 +4693,29 @@ svg .hit {
   font-size: 30px;
   letter-spacing: 0.14em;
 }
+/* ---- meal plan ---- */
+.mp-meal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.mp-meal:first-child {
+  border-top: 0;
+}
+.mp-meal .grow {
+  min-width: 0;
+}
+.mp-meal p {
+  margin: 2px 0 4px;
+}
+.mp-shop {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.pstrip.note small {
+  line-height: 1.45;
+}

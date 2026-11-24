@@ -213,6 +213,25 @@ Reply with only JSON: {"text": the message}
 Client: ${v.name}. Goal: ${v.p1}. Sessions in the last 7 days: ${v.p2} of ${v.p3} planned on "${v.p4}". Food logged ${v.p5} of 7 days, averaging ${v.p6} kcal against ${v.p7}. Weight trend ${v.p8} kg. Recovery score ${v.p9}. Flags: ${v.p10}.
 Recent messages, oldest first:\n${v.p11}`,
   },
+  // New in the web app: a week of meals to the person's own targets, with a shopping list.
+  meal_plan: {
+    tier: 'default',
+    json: true,
+    vars: ['kcal', 'protein', 'meals', 'likes', 'usual'],
+    build: v =>
+      `You plan a week of meals for someone in Ireland who tracks their food in an app called Ember. Use everyday food from Irish and UK supermarkets, metric amounts, and dishes that are realistic to cook on a weeknight; reuse leftovers and ingredients across the week where it is sensible. No medical advice and no supplements.
+Target: about ${v.kcal} kcal and at least ${v.protein} g of protein a day. Each day's meals: ${v.meals}.
+What they want or avoid: ${v.likes || 'nothing in particular'}.
+Foods they log often, to keep it familiar: ${v.usual || 'not known'}.
+Reply with only JSON, no other text: {"days": [exactly 7 objects, Monday first: {"day": "Mon", "meals": [{"m": "b" for breakfast, "l" lunch, "d" dinner or "s" snack, "name": short dish name, "what": the foods and amounts as a person would say them, for example "2 eggs scrambled, 2 slices wholemeal toast, 10 g butter", "kcal": number, "p": grams of protein}], "kcal": the day's total, "p": the day's protein}], "shop": [up to 30 strings: the week's shopping list with amounts, for example "Chicken breast, 1 kg"]}. Every figure is your estimate.`,
+  },
+  // New in the web app: two or three sentences for the day, from what the diary shows.
+  daily_note: {
+    tier: 'quick',
+    vars: ['tone', 'context'],
+    build: v =>
+      `${COACH_RULES}\nWrite today's short note for this person: two or three sentences, under 60 words, plain text only. Start from what actually happened yesterday and this week, using the numbers given, then say the one thing most worth doing today. Tone asked for: ${v.tone} ("gentle" means warm and encouraging without gushing; "straight" means brief and direct, no cushioning).\n\n${v.context}`,
+  },
   assistant_turn: {
     tier: 'default',
     json: true,

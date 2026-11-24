@@ -313,6 +313,7 @@ function viewToday() {
   ${isToday && myUnread() ? msgStrip() : ''}
   ${planStrip(S.date)}
   ${weekReviewCard()}
+  ${noteCard()}
   ${nextCard(nextUp(d, t, z))}
   ${againRail(d)}
   ${mealsCard(d)}
