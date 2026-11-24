@@ -13,6 +13,8 @@ import * as m10 from './errors.js';
 import * as m11 from './native.js';
 import * as m12 from './reminders.js';
 import * as m13 from './squads.js';
+import * as m14 from './importer.js';
+import * as m15 from './roadmap.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -81,4 +83,12 @@ declare global {
   const askToRemind: typeof m12.askToRemind;
   const syncReminders: typeof m12.syncReminders;
   const squadsApi: typeof m13.squadsApi;
+  const parseCsv: typeof m14.parseCsv;
+  const dateReader: typeof m14.dateReader;
+  const cellNum: typeof m14.cellNum;
+  const mealOf: typeof m14.mealOf;
+  const readDiary: typeof m14.readDiary;
+  const mergeDiaries: typeof m14.mergeDiaries;
+  const csvFilesInZip: typeof m14.csvFilesInZip;
+  const roadmapApi: typeof m15.roadmapApi;
 }

@@ -1,4 +1,5 @@
-// Squads in a real browser against the LOCAL Supabase: one person starts a squad, a second joins from the
+// Squads, voting on what to build next and importing a diary, in a real browser against the LOCAL Supabase:
+// for squads, one person starts a squad, a second joins from the
 // invite link, both appear on the week's board with what they have earned, the owner sets a challenge, and
 // the second person leaves.
 //   cd supabase && npm run start && npm run test:squads
@@ -216,6 +217,147 @@ try {
       /1 member,/.test(document.querySelector("#sqBody2").innerText),
     );
     assert.doesNotMatch(await text(a, "#sqBody2"), /Bee/);
+  });
+  // ---- what to build next: a vote is counted once, shown to everyone as a total, and can be taken back
+  const openYou = async (pg, act) => {
+    while (await pg.locator(".sheet").count()) {
+      await pg.keyboard.press("Escape");
+      await pg.waitForTimeout(250);
+    }
+    await pg.click("#chipYou");
+    await pg.click(`[data-act="${act}"]`);
+  };
+  await step(
+    "a vote on what to build next shows as a total to someone else, and can be taken back",
+    async () => {
+      await openYou(a, "roadmap");
+      await a.click('[data-act="roadmapVote"][data-id="widgets"]');
+      await a.waitForSelector(
+        '[data-act="roadmapVote"][data-id="widgets"][aria-pressed="true"]',
+      );
+      await openYou(b, "roadmap");
+      await b.waitForSelector('[data-act="roadmapVote"][data-id="widgets"]');
+      const theirs = b.locator('[data-act="roadmapVote"][data-id="widgets"]');
+      assert.equal(await theirs.getAttribute("aria-pressed"), "false");
+      assert.match(await theirs.getAttribute("aria-label"), /, 1 vote$/);
+      if (process.env.SHOTS) {
+        await b.waitForTimeout(800); // let the sheet finish sliding in
+        await b.screenshot({ path: process.env.SHOTS + "/roadmap.png" });
+      }
+      assert.match(
+        await text(b, "#rmBody"),
+        /^Home and lock screen widgets/,
+        "the most wanted is first",
+      );
+      await a.click('[data-act="roadmapVote"][data-id="widgets"]');
+      await a.waitForSelector(
+        '[data-act="roadmapVote"][data-id="widgets"][aria-pressed="false"]',
+      );
+      await a.waitForTimeout(600);
+      assert.equal(
+        (await admin.from("roadmap_votes").select("item_id")).data.length,
+        0,
+      );
+    },
+  );
+  await step("a suggestion reaches the owner and nobody else", async () => {
+    await a.fill("#rmNote", "A widget for the lock screen");
+    await a.click('[data-act="roadmapSend"]');
+    await a.waitForFunction(
+      () => document.querySelector("#rmNote").value === "",
+    );
+    const notes = (await admin.from("roadmap_notes").select("user_id, body"))
+      .data;
+    assert.deepEqual(notes, [
+      { user_id: people[0], body: "A widget for the lock screen" },
+    ]);
+  });
+  // ---- a diary from another app: days arrive in the account marked Imported, earn nothing, and come out again
+  await step(
+    "a diary exported from another app is brought into the account, without touching the streak or XP",
+    async () => {
+      const day = (n) => {
+        const d = new Date();
+        d.setDate(d.getDate() - n);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      };
+      const rows = [
+        "Day,Group,Food Name,Amount,Energy (kcal),Carbs (g),Fat (g),Protein (g)",
+      ];
+      for (let n = 5; n >= 0; n--)
+        rows.push(
+          `${day(n)},Breakfast,Porridge,250 g,280,48,5,10`,
+          `${day(n)},Dinner,"Chicken, rice",1 plate,640,70,14,52`,
+        );
+      const xp = await b.innerText(".phero .small").catch(() => "");
+      await openYou(b, "importDiary");
+      await b.setInputFiles("#fileDiary", {
+        name: "servings.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(rows.join("\n")),
+      });
+      await b.waitForSelector("#dyGo");
+      // today already has the banana logged in Ember, so it is left alone: five days come in, not six
+      assert.match(
+        await text(b, "#dyOut"),
+        /Cronometer diary.*6 days.*1 of those days already has food logged.*Bring 5 days in/,
+      );
+      await b.click("#dyGo");
+      await b.waitForSelector("#dyOut .banner");
+      assert.match(await text(b, "#dyOut"), /5 days and 10 entries brought in/);
+      const stored = async () =>
+        (
+          await admin
+            .from("user_docs")
+            .select("id, data")
+            .eq("user_id", people[1])
+            .eq("kind", "days")
+        ).data;
+      let days = [];
+      for (let i = 0; i < 40; i++) {
+        days = await stored();
+        if (days.length === 6) break;
+        await b.waitForTimeout(250);
+      }
+      assert.equal(days.length, 6, "five imported days and today");
+      const old = days.find((d) => d.id === day(3));
+      assert.deepEqual(
+        old.data.e.map((e) => [e.n, e.k, e.src, e.m]),
+        [
+          ["Porridge", 280, "IM", "b"],
+          ["Chicken, rice", 640, "IM", "d"],
+        ],
+      );
+      assert.equal(
+        days.find((d) => d.id === day(0)).data.e.every((e) => e.src !== "IM"),
+        true,
+        "today is untouched",
+      );
+      await b.keyboard.press("Escape");
+      await b.waitForTimeout(300);
+      assert.match(
+        await text(b, ".pstats"),
+        /^1 \| day streak \| 6 \| days logged/,
+      );
+      if (xp) assert.equal(await b.innerText(".phero .small"), xp);
+    },
+  );
+  await step("the imported days can be taken out again", async () => {
+    await openYou(b, "importDiary");
+    await b.click('[data-act="diaryUnimport"]');
+    let left = [];
+    for (let i = 0; i < 40; i++) {
+      left = (
+        await admin
+          .from("user_docs")
+          .select("id")
+          .eq("user_id", people[1])
+          .eq("kind", "days")
+      ).data;
+      if (left.length === 1) break;
+      await b.waitForTimeout(250);
+    }
+    assert.equal(left.length, 1, "only today is left");
   });
   await step("no page errors", async () => assert.deepEqual(errs, []));
 } finally {

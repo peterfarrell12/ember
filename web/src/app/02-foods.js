@@ -66,6 +66,11 @@ const SRC = {
   WB: ['Web', 'e', "From the maker's or a shop's website, found by a web search. Check it against the pack"],
   DR: ['Standard', 'l', 'Worked out from standard values for milk and sugar'],
   Q: ['Quick add', '', 'Entered by hand'],
+  IM: [
+    'Imported',
+    '',
+    "Brought in from another app, with the figures that app recorded. Not checked against Ember's food data",
+  ],
 };
 /* For figures found on the web: a link to the page they came from, named by its site. Only http(s) addresses. */
 const webSource = food => {

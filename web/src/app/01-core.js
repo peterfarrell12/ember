@@ -518,13 +518,13 @@ const levelFloor = l => 50 * l * (l - 1);
 /* a day counts towards the streak if something was logged, a freeze covered it, or it fell inside a break */
 const hasDay = k => {
   const h = P.hist[k];
-  return (!!h && (h.n > 0 || !!h.z)) || !!breakOn(k);
+  return (!!h && ((h.n > 0 && !h.im) || !!h.z)) || !!breakOn(k); // a day imported from another app is history, not a day on the streak
 };
 function streak() {
   const t = today();
   let d = t,
     count = 0;
-  const todayDone = !!(P.hist[t] && P.hist[t].n > 0);
+  const todayDone = !!(P.hist[t] && P.hist[t].n > 0 && !P.hist[t].im);
   if (!hasDay(t)) d = addDays(t, -1);
   while (hasDay(d)) {
     count++;
@@ -711,6 +711,7 @@ function setHist(d) {
     cf: (d.cf || []).reduce((s, c) => s + c.mg, 0),
     m3: ['b', 'l', 'd'].every(m => d.e.some(e => e.m === m)) ? 1 : 0,
     ...(prev.z ? { z: 1 } : {}),
+    ...(d.e.length && d.e.every(e => e.src === 'IM') ? { im: 1 } : {}), // nothing but entries brought in from another app
     ...(prev.st != null ? { st: prev.st } : {}),
     ...(prev.ab != null ? { ab: prev.ab } : {}),
     ...(prev.bk != null ? { bk: prev.bk } : {}),

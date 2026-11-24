@@ -4719,3 +4719,64 @@ svg .hit {
 .pstrip.note small {
   line-height: 1.45;
 }
+
+/* ---------- what to build next ---------- */
+.rm-list {
+  padding: 2px 14px;
+}
+.rm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rm-row:last-child {
+  border-bottom: 0;
+}
+.rm-row b {
+  font-weight: 650;
+}
+.rm-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.rm-row.done b {
+  color: var(--muted);
+}
+.rm-vote {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 52px;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 14px;
+}
+.rm-vote .ic {
+  width: 16px;
+  height: 16px;
+}
+.rm-vote.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.rm-n {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 650;
+}

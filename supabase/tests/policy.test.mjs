@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseBackend } from "../../web/src/app/backend-supabase.js";
 import { squadsApi } from "../../web/src/app/squads.js";
+import { roadmapApi } from "../../web/src/app/roadmap.js";
 
 const env = Object.fromEntries(
   execFileSync("npx", ["supabase", "status", "-o", "env"], { encoding: "utf8" })
@@ -102,14 +103,12 @@ try {
   await check(
     "a second account cannot write a row in the first account`s name",
     async () => {
-      const { error } = await b.client
-        .from("user_docs")
-        .insert({
-          user_id: a.id,
-          kind: "days",
-          id: "2026-11-20",
-          data: { hacked: true },
-        });
+      const { error } = await b.client.from("user_docs").insert({
+        user_id: a.id,
+        kind: "days",
+        id: "2026-11-20",
+        data: { hacked: true },
+      });
       assert.ok(error, "the insert should be refused");
       const { error: e2 } = await b.client
         .from("user_docs")
@@ -161,15 +160,13 @@ try {
     },
   );
   await check("the database, not the client, sets updated_at", async () => {
-    await a.client
-      .from("user_docs")
-      .upsert({
-        user_id: a.id,
-        kind: "meta",
-        id: "t",
-        data: {},
-        updated_at: "2001-01-01T00:00:00Z",
-      });
+    await a.client.from("user_docs").upsert({
+      user_id: a.id,
+      kind: "meta",
+      id: "t",
+      data: {},
+      updated_at: "2001-01-01T00:00:00Z",
+    });
     const { data } = await a.client
       .from("user_docs")
       .select("updated_at")
@@ -596,6 +593,108 @@ try {
       (e) => e.code === "too_many_owned",
     );
   });
+  // ---- what to build next: one vote each, totals only, the list is the owner`s, suggestions are private
+  const ra = roadmapApi(a.client),
+    rb = roadmapApi(b.client);
+  await check(
+    "anyone signed in sees the list with totals; a visitor sees nothing",
+    async () => {
+      const board = await ra.board();
+      assert.ok(board.length >= 5);
+      assert.ok(board.every((i) => i.votes === 0 && i.mine === false));
+      assert.deepEqual(Object.keys(board[0]).sort(), [
+        "about",
+        "id",
+        "mine",
+        "status",
+        "title",
+        "votes",
+      ]);
+      assert.ok((await visitor.rpc("roadmap_board")).error);
+      assert.ok((await visitor.from("roadmap_votes").select("item_id")).error);
+    },
+  );
+  await check(
+    "a vote counts once however often it is cast, and can be taken back",
+    async () => {
+      await ra.vote("widgets");
+      await ra.vote("widgets");
+      await rb.vote("widgets");
+      await rb.vote("watch");
+      const seen = Object.fromEntries(
+        (await ra.board()).map((i) => [i.id, [i.votes, i.mine]]),
+      );
+      assert.deepEqual(seen.widgets, [2, true]);
+      assert.deepEqual(seen.watch, [1, false]);
+      assert.equal((await ra.board())[0].id, "widgets", "most wanted first");
+      await rb.unvote("widgets");
+      assert.equal((await ra.board()).find((i) => i.id === "widgets").votes, 1);
+    },
+  );
+  await check(
+    "nobody can see who voted, vote as someone else, or take back another person`s vote",
+    async () => {
+      const mine = (await a.client.from("roadmap_votes").select("user_id"))
+        .data;
+      assert.ok(mine.length && mine.every((v) => v.user_id === a.id));
+      assert.ok(
+        (
+          await a.client
+            .from("roadmap_votes")
+            .insert({ item_id: "siri", user_id: b.id })
+        ).error,
+      );
+      await a.client.from("roadmap_votes").delete().eq("item_id", "watch");
+      assert.equal((await rb.board()).find((i) => i.id === "watch").votes, 1);
+    },
+  );
+  await check(
+    "the list itself cannot be read directly, added to or changed by a member",
+    async () => {
+      assert.ok((await a.client.from("roadmap_items").select("id")).error);
+      assert.ok(
+        (
+          await a.client
+            .from("roadmap_items")
+            .insert({ id: "mine", title: "My own idea" })
+        ).error,
+      );
+      assert.ok(
+        (
+          await a.client
+            .from("roadmap_items")
+            .update({ title: "Changed" })
+            .eq("id", "watch")
+        ).error,
+      );
+      await assert.rejects(ra.vote("no-such-item"));
+    },
+  );
+  await check(
+    "a suggestion is private to its writer, and three a day is the limit",
+    async () => {
+      await ra.suggest("  A barcode scanner for the fridge  ");
+      assert.deepEqual(
+        (await a.client.from("roadmap_notes").select("body")).data,
+        [{ body: "A barcode scanner for the fridge" }],
+      );
+      assert.deepEqual(
+        (await b.client.from("roadmap_notes").select("body")).data,
+        [],
+      );
+      assert.ok(
+        (await a.client.from("roadmap_notes").insert({ body: "direct insert" }))
+          .error,
+      );
+      await assert.rejects(ra.suggest("x"));
+      await ra.suggest("Second");
+      await ra.suggest("Third");
+      await assert.rejects(
+        ra.suggest("Fourth"),
+        (e) => e.code === "too_many_notes",
+      );
+    },
+  );
   await check(
     "deleting the owner`s account takes their squads with it",
     async () => {
