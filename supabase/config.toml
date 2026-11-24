@@ -435,3 +435,6 @@ verify_jwt = false
 
 [functions.product]
 verify_jwt = false
+
+[functions.recipe]
+verify_jwt = false

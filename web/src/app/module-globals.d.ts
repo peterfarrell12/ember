@@ -15,6 +15,7 @@ import * as m12 from './reminders.js';
 import * as m13 from './squads.js';
 import * as m14 from './importer.js';
 import * as m15 from './roadmap.js';
+import * as m16 from './recipe-server.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -62,6 +63,7 @@ declare global {
   const sendSignInLink: typeof m4.sendSignInLink;
   const aiAccess: typeof m4.aiAccess;
   const productAccess: typeof m4.productAccess;
+  const recipeAccess: typeof m4.recipeAccess;
   const signInFromLink: typeof m4.signInFromLink;
   const signOut: typeof m4.signOut;
   const TASKS: typeof m5.TASKS;
@@ -91,4 +93,5 @@ declare global {
   const mergeDiaries: typeof m14.mergeDiaries;
   const csvFilesInZip: typeof m14.csvFilesInZip;
   const roadmapApi: typeof m15.roadmapApi;
+  const readRecipe: typeof m16.readRecipe;
 }

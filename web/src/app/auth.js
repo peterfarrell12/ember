@@ -56,6 +56,9 @@ export const aiAccess = {
 /** How the app reaches the `product` server function (barcode lookup). */
 export const productAccess = { ...aiAccess, url: SUPABASE_URL + '/functions/v1/product' };
 
+/** How the app reaches the `recipe` server function (read a recipe from a web page). */
+export const recipeAccess = { ...aiAccess, url: SUPABASE_URL + '/functions/v1/recipe' };
+
 /**
  * Finish signing in from a link that opened the phone app. Returns true when the person is now signed in,
  * false when the link was a sign-in link that failed, and null when the link was something else.

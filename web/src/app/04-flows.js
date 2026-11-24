@@ -909,7 +909,7 @@ A.fdGo = async () => {
 let SAY = null;
 A.say = () => openSay();
 function openSay(ctx = {}) {
-  SAY = { onDone: ctx.onDone || null, seed: ADD && ADD.q ? ADD.q : '', meal: ADD ? ADD.meal : mealNow() };
+  SAY = { onDone: ctx.onDone || null, seed: ctx.seed || (ADD && ADD.q ? ADD.q : ''), meal: ADD ? ADD.meal : mealNow() };
   openSheet(
     `${sh(ctx.title || 'Describe what you ate')}<div class="sheet-b" id="sayBody">
     <textarea class="inp" id="sayText" placeholder="Two scrambled eggs on buttered toast and a flat white" autocapitalize="sentences">${esc(SAY.seed)}</textarea>
@@ -1285,7 +1285,7 @@ A.newRecipe = () => {
 A.openRecipes = () => {
   const rs = Object.values(S.recipes);
   openSheet(
-    `${sh('Recipes and saved meals')}<div class="sheet-b"><button class="btn" data-act="newRecipe">${ic('plus')} New recipe</button>
+    `${sh('Recipes and saved meals')}<div class="sheet-b"><button class="btn" data-act="newRecipe">${ic('plus')} New recipe</button>${recipeLinkOn() ? `<button class="btn ghost" data-act="newRecipeLink">${ic('link')} Recipe from a link</button>` : ''}
     ${
       rs.length
         ? `<div class="list">${rs
@@ -1320,7 +1320,7 @@ function renderRecipe() {
     <label class="f">Servings it makes<input class="inp" id="reSv" inputmode="decimal" value="${RE.sv}" data-on="reSv"></label>
     <div class="card"><div class="between"><h2>Ingredients</h2><span class="muted small tn">${fmt(t.g)} g in total</span></div>
       ${RE.items.map((it, i) => `<div class="entry" style="grid-template-columns:1fr auto auto;align-items:center"><span class="n">${esc(it.n)}</span><span class="k">${fmt(it.k)}</span><button class="icon-btn" data-act="reDel" data-i="${i}" aria-label="Remove ${esc(it.n)}">${ic('x')}</button><span class="s">${srcBadge(it.src)}${esc(it.g + ' g')}</span></div>`).join('') || '<p class="empty">No ingredients yet.</p>'}
-      <button class="addline" data-act="reAdd">${ic('plus')} Add an ingredient</button><button class="addline" data-act="reSay" style="border-top:0;margin-top:0">${ic('mic')} Describe the ingredients</button></div>
+      <button class="addline" data-act="reAdd">${ic('plus')} Add an ingredient</button><button class="addline" data-act="reSay" style="border-top:0;margin-top:0">${ic('mic')} Describe the ingredients</button>${recipeLinkOn() ? `<button class="addline" data-act="reLink" style="border-top:0;margin-top:0">${ic('link')} Import from a link</button>` : ''}${recipeFromLine(RE)}</div>
     <div class="card"><h2>Per serving</h2><div class="row" style="align-items:baseline;gap:8px;margin-top:8px"><span class="num bigk" id="rePerK">${fmt(t.k / sv)}</span><span class="muted">kcal</span></div><div class="grid3 small" style="margin-top:8px" id="rePer"><span><b>${r1(t.p / sv)} g</b> protein</span><span><b>${r1(t.c / sv)} g</b> carbs</span><span><b>${r1(t.f / sv)} g</b> fat</span></div></div>${RE.how ? `<div class="card"><h2>Method</h2><div class="cook">${esc(RE.how)}</div></div>` : ''}`;
 }
 I.reName = el => (RE.n = el.value);

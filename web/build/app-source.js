@@ -27,6 +27,7 @@ export const MODULES = [
   'squads.js',
   'importer.js',
   'roadmap.js',
+  'recipe-server.js',
 ];
 
 export const numbered = dir =>

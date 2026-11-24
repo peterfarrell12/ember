@@ -51,7 +51,7 @@ jobs:
           # Tell the project they are already applied, so they are not run a second time. Harmless to repeat.
           npx supabase migration repair --status applied 20261119120000 20261119150000 --remote --password "$SUPABASE_DB_PASSWORD" --yes
           npx supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
-      - name: Deploy the server functions (ai, product)
+      - name: Deploy the server functions (ai, product, recipe)
         if: steps.ready.outputs.go == 'yes'
         working-directory: supabase
-        run: npx supabase functions deploy ai product --use-api --yes
+        run: npx supabase functions deploy ai product recipe --use-api --yes
