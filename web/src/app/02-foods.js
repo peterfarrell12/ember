@@ -99,8 +99,27 @@ function genFood(i) {
     na: r[8],
     ports: r[9],
     src: r[10],
+    ...(r[12] ? { mi: r[12] } : {}), // vitamins and minerals per 100 g, UK tables only (see MICROS)
   };
 }
+/* The vitamins and minerals carried for UK foods, in the order they are stored, with the daily reference
+   values printed on UK and Irish labels (EU nutrient reference values). */
+const MICROS = [
+  ['Potassium', 'mg', 2000],
+  ['Calcium', 'mg', 800],
+  ['Magnesium', 'mg', 375],
+  ['Iron', 'mg', 14],
+  ['Zinc', 'mg', 10],
+  ['Iodine', 'µg', 150],
+  ['Selenium', 'µg', 55],
+  ['Vitamin A', 'µg', 800],
+  ['Vitamin D', 'µg', 5],
+  ['Vitamin E', 'mg', 12],
+  ['Vitamin B12', 'µg', 2.5],
+  ['Folate', 'µg', 200],
+  ['Vitamin C', 'mg', 80],
+];
+const scaleMicros = (mi, m) => mi.map(v => (v == null ? null : Math.round(v * m * 100) / 100));
 /* A product label whose energy cannot be squared with its own protein, carbohydrate and fat: kJ typed as kcal,
    a decimal point lost. Such a product is left out of search results; scanning its barcode still finds it.
    Drinks with alcohol are exempt: alcohol carries energy the macros do not show. */
@@ -708,6 +727,7 @@ function portion(food, grams) {
     sf: r1((food.sf || 0) * m),
     na: r0((food.na || 0) * m),
     src: food.src,
+    ...(food.mi ? { mi: scaleMicros(food.mi, m) } : {}),
     ...(food.id && /^[cr]/.test(food.id) ? { fid: food.id } : {}),
     ...(food.ports && food.ports.length ? { ports: food.ports.slice(0, 6) } : {}),
     ...(food.nog ? { nog: true } : {}),
@@ -740,6 +760,7 @@ function remember(food, qty, unit, meal, sv) {
     ...(food.code ? { code: food.code } : {}),
     ...(food.id && /^[cr]/.test(food.id) ? { id: food.id } : {}),
     ...(food.nog ? { nog: true } : {}),
+    ...(food.mi ? { mi: food.mi } : {}),
     ...(old && old.fav ? { fav: 1 } : {}),
   };
   // the sixty most recent foods are kept; a favourite is never one of those dropped

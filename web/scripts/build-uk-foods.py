@@ -8,8 +8,10 @@ Contains public sector information licensed under the Open Government Licence v3
     pip install openpyxl
     python3 web/scripts/build-uk-foods.py path/to/McCance_Widdowsons_Composition_of_Foods_Integrated_Dataset_2021..xlsx
 
-Each row: [name, kcal, protein, carbohydrate, fat, fibre, sugars, saturates, sodium mg, portions, 'M', food code]
-per 100 g, the same shape as the generic list with the dataset's food code added. A figure the dataset does
+Each row: [name, kcal, protein, carbohydrate, fat, fibre, sugars, saturates, sodium mg, portions, 'M', food code,
+vitamins and minerals] per 100 g, the same shape as the generic list with the dataset's food code added. The
+last field is thirteen figures in the order of MICROS below (potassium to vitamin C), each null where the
+dataset gives none. A figure the dataset does
 not give is null (the app shows "not listed"); a trace is 0. The dataset has no portion sizes, so the
 everyday measures below are added by name: a rasher, a slice, a medium potato. They are typical weights,
 there so that nobody has to weigh a slice of toast; every food can still be entered in grams.
@@ -118,6 +120,24 @@ PORTIONS = [
 ]
 
 
+# (sheet, column) for each vitamin and mineral carried, in the order the app expects (MICROS in 02-foods.js)
+MICROS = [
+    ('1.4 Inorganics', 8),   # potassium, mg
+    ('1.4 Inorganics', 9),   # calcium, mg
+    ('1.4 Inorganics', 10),  # magnesium, mg
+    ('1.4 Inorganics', 12),  # iron, mg
+    ('1.4 Inorganics', 14),  # zinc, mg
+    ('1.4 Inorganics', 18),  # iodine, micrograms
+    ('1.4 Inorganics', 17),  # selenium, micrograms
+    ('1.5 Vitamins', 9),     # vitamin A as retinol equivalent, micrograms
+    ('1.5 Vitamins', 10),    # vitamin D, micrograms
+    ('1.5 Vitamins', 11),    # vitamin E, mg
+    ('1.5 Vitamins', 19),    # vitamin B12, micrograms
+    ('1.5 Vitamins', 20),    # folate, micrograms
+    ('1.5 Vitamins', 23),    # vitamin C, mg
+]
+
+
 def val(v, none_ok=False):
     """A cell as a number: 'Tr' (trace) is 0; 'N' (not known) and blanks are None."""
     if v is None:
@@ -143,10 +163,14 @@ def portions(name):
 
 def main(src, out):
     wb = openpyxl.load_workbook(src, read_only=True, data_only=True)
-    sodium = {}
+    sodium, micro = {}, {}
     for r in wb['1.4 Inorganics'].iter_rows(values_only=True, min_row=4):
         if r[0]:
             sodium[str(r[0]).strip()] = val(r[7])
+    for sheet in sorted({s for s, _ in MICROS}):
+        for r in wb[sheet].iter_rows(values_only=True, min_row=4):
+            if r[0]:
+                micro.setdefault(str(r[0]).strip(), {})[sheet] = r
     rows, seen = [], set()
     for r in wb['1.3 Proximates'].iter_rows(values_only=True, min_row=4):
         code, name = r[0], r[1]
@@ -163,8 +187,9 @@ def main(src, out):
         if fibre is None:
             fibre = val(r[24])
         na = sodium.get(code)
+        mi = [val(micro.get(code, {}).get(sheet, [None] * 30)[col]) for sheet, col in MICROS]
         rows.append([name, round(kcal), p, c, f, fibre, val(r[16]), val(r[27]), None if na is None else round(na),
-                     portions(name), 'M', code])
+                     portions(name), 'M', code, mi])
     rows.sort(key=lambda r: r[0].lower())
     with open(out, 'w', encoding='utf-8') as fh:
         json.dump(rows, fh, ensure_ascii=False, separators=(',', ':'))

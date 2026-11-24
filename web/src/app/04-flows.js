@@ -310,6 +310,7 @@ function scaled(e, g) {
     su: r1((e.su || 0) * m),
     sf: r1((e.sf || 0) * m),
     na: r0((e.na || 0) * m),
+    ...(e.mi ? { mi: scaleMicros(e.mi, m) } : {}),
     u: r1(g) + ' g',
   };
 }
@@ -722,9 +723,24 @@ A.dayNut = () => {
     `${sh(S.date === today() ? "Today's nutrition" : 'Nutrition, ' + niceDate(S.date))}<div class="sheet-b">
     <div class="card"><div class="row" style="align-items:baseline;gap:8px;margin-bottom:12px"><span class="num bigk">${fmt(t.k)}</span><span class="muted">kcal from ${t.n} ${t.n === 1 ? 'food' : 'foods'}</span></div>
     <div class="nut">${row('Protein', r0(t.p), 'g', P.t.p)}${row('Carbohydrate', r0(t.c), 'g', P.t.c)}${row('of which sugars', r0(t.su), 'g', 90, 1, 1)}${row('Fat', r0(t.f), 'g', P.t.f)}${row('of which saturates', r0(t.sf), 'g', 20, 1, 1)}${row('Fibre', r0(t.fi), 'g', 30)}${row('Salt', r1(salt), 'g', 6, 0, 1)}</div></div>
+    ${microCard(d)}
     <p class="tiny muted">Protein, carbohydrate and fat are set against your own targets. Sugars, saturates and salt are set against the reference intakes for an average adult printed on food labels; fibre against the 30 g a day advised for adults. General guidance, not medical advice.${gaps ? ` ${gaps} of the ${t.n} foods ${gaps === 1 ? 'does' : 'do'} not list sugars, saturates or salt, so those totals may be higher.` : ''}</p></div>`,
   );
 };
+/* Vitamins and minerals for a day: added up from the foods that list them. Only the UK food tables do, so the
+   card says how many of the day's foods it could count, and the totals are a floor, not the whole picture. */
+function microCard(d) {
+  const withMi = d.e.filter(e => e.mi);
+  if (!withMi.length)
+    return d.e.length
+      ? `<p class="small muted">Vitamins and minerals are shown for foods from the UK food tables (marked UK). None of the foods logged here is one of those.</p>`
+      : '';
+  const tot = MICROS.map((_, i) => withMi.reduce((s, e) => s + (e.mi[i] || 0), 0)),
+    nice = v => (v >= 100 ? fmt(v) : v >= 10 ? r0(v) : r1(v));
+  return `<div class="card"><div class="between" style="margin-bottom:10px"><h2>Vitamins and minerals</h2><span class="muted small">% of daily reference</span></div>
+    <div class="nut">${MICROS.map(([n, u, ref], i) => `<span>${n}</span><b>${nice(tot[i])} ${u}<small class="muted"> ${r0((tot[i] / +ref) * 100)}%</small></b>`).join('')}</div>
+    <p class="tiny muted" style="margin-top:10px">Counted from ${withMi.length} of the ${d.e.length} ${d.e.length === 1 ? 'food' : 'foods'} logged: only foods from the UK food tables list these, so the real totals are at least this much. Reference values are those printed on food labels for an average adult.</p></div>`;
+}
 /* ---------- water: any amount, not only 250 ml ---------- */
 A.waterSheet = () => {
   const d = day(),
