@@ -227,6 +227,16 @@ try {
     await pg.click("#chipYou");
     await pg.click(`[data-act="${act}"]`);
   };
+  /** Wait until the server holds this many votes. */
+  const votes = async (n) => {
+    let seen = -1;
+    for (const end = Date.now() + 8000; Date.now() < end; ) {
+      seen = (await admin.from("roadmap_votes").select("item_id")).data.length;
+      if (seen === n) return;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    assert.equal(seen, n, "votes on the server");
+  };
   await step(
     "a vote on what to build next shows as a total to someone else, and can be taken back",
     async () => {
@@ -235,6 +245,7 @@ try {
       await a.waitForSelector(
         '[data-act="roadmapVote"][data-id="widgets"][aria-pressed="true"]',
       );
+      await votes(1); // the button changes at once; the vote reaches the server a moment later
       await openYou(b, "roadmap");
       await b.waitForSelector('[data-act="roadmapVote"][data-id="widgets"]');
       const theirs = b.locator('[data-act="roadmapVote"][data-id="widgets"]');
@@ -253,11 +264,7 @@ try {
       await a.waitForSelector(
         '[data-act="roadmapVote"][data-id="widgets"][aria-pressed="false"]',
       );
-      await a.waitForTimeout(600);
-      assert.equal(
-        (await admin.from("roadmap_votes").select("item_id")).data.length,
-        0,
-      );
+      await votes(0);
     },
   );
   await step("a suggestion reaches the owner and nobody else", async () => {

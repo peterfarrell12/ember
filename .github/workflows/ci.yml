@@ -24,11 +24,7 @@ jobs:
         working-directory: web
         run: |
           npm ci
-          npm run format:check
-          npm run lint
-          git diff --exit-code src/app/module-globals.d.ts
-          npm run typecheck
-          npm run test:unit
+          npm run check
           npm test -- --jobs 2
           npm install --no-save playwright
           npm run test:scanner

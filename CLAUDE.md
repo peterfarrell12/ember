@@ -50,6 +50,7 @@ npm run format       # Prettier
 npm run test:voice   # the voice panel in a browser, with scripted speech
 npm run test:scanner # the live barcode scanner with a simulated camera
 npm run test:unit    # the modules on their own, in Node
+npm run check        # format, lint, types and unit tests in one go: what CI runs first. Run it before every commit
 ```
 
 The phone apps are the web build inside a Capacitor shell (`web/android`, `web/ios`, app id `ie.ember.app`). `npm run native:sync` in `web/` rebuilds and copies the web app in; `web/src/app/native.js` holds what differs inside the app. The "Android test build" workflow produces an installable debug app. iPhone builds need a Mac with Xcode.

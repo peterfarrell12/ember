@@ -10,6 +10,7 @@
     "test": "vite build && APP_DIR=\"$PWD/dist\" ../prototype/run-tests.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && git diff --exit-code src/app/module-globals.d.ts && npm run typecheck && npm run test:unit",
     "lint": "node build/join.js && eslint .",
     "typecheck": "tsc -p .",
     "test:unit": "node --test \"test/*.test.mjs\"",

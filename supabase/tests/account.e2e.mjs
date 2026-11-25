@@ -257,7 +257,12 @@ try {
       assert.ok(mine.ok, 'the picture loads');
       const files = (await admin.storage.from('photos').list(uid)).data;
       assert.equal(files.length, 1);
-      const rec = (await rows()).find(x => x.kind === 'photos');
+      // the picture shows as soon as the file is stored; its record is saved a moment later, so wait for it
+      let rec;
+      await until(
+        'the photo record on the server',
+        async () => !!(rec = (await rows()).find(x => x.kind === 'photos')),
+      );
       assert.ok(
         rec && rec.data.aid.startsWith(uid + '/') && !rec.data.src,
         'the record points at the file and holds no image data',
