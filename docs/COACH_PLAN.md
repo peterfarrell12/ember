@@ -72,6 +72,22 @@ Each step ends with something a real coach and a real client can use. Each has d
 
 Steps 1 to 3 need no outside accounts and no money. Step 4's notifications need the Apple and Google developer accounts. Step 7 needs a Stripe account.
 
+## Where it stands (25 November 2026)
+
+| Step | State |
+|---|---|
+| 1. Two real accounts | Done. Invite by link or code, sharing by area, pause and end, "see their app" read-only. Tested with two browsers against a local database |
+| 2. The coach desk | Done: clients who need a look first, private notes, the two-pane desktop layout, a drafted message for a flagged client. Not done: tags |
+| 3. Assigning work | Done: programmes, targets (both offered, accepted or declined), daily tasks, rehab plans. Not done: quests set by a coach, exercise videos |
+| 4. Messages | Working through the link, with AI drafts. A message can take up to about 20 seconds to appear. Not done: voice notes, attachments, phone notifications (these need the Apple and Google accounts) |
+| 5. Check-ins | Done: questions on a schedule, figures filled in from the diary, Claude's summary and draft reply, the coach's reply back |
+| 6. Programmes for many | Done: a programme and a pinned note for a squad. Group challenges and boards were already there |
+| 7. Payments | Not started. Needs a Stripe account and the owner's decisions on price and fees |
+| 8. The business side | Done: a coach's page and applications. Not done: automatic onboarding steps, team seats, income figures |
+| 9. The coach's brand | Done in small: the coach's name and colour in the client's header. Not done: logo, a fully branded app |
+
+Also not done: sharing a progress photo with a coach on real accounts (hidden until it is built on private storage), and the legal wording for sharing with a coach, which needs advice.
+
 ## What has to be decided, and by whom
 
 These are the owner's. Recommendations are given where there is one.

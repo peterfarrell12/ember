@@ -239,14 +239,22 @@ A.coAddGo = () => {
 /* ---------- the client workspace ---------- */
 let CC = null,
   CT = 'over';
+/* a wide screen in coach view: the list stays on the left and whatever is opened shows on the right */
+const deskWide = () => document.body.classList.contains('desk') && matchMedia('(min-width: 1000px)').matches;
 A.coClient = ({ id }) => {
   if (CC !== id) CT = 'over';
+  if (deskWide()) closeAll(); // one client at a time in the right-hand pane
   CC = id;
   openSheet(
     `<div class="sheet-h"><h3 id="ccName"></h3><button class="icon-btn" data-act="close" aria-label="Close">${ic('x')}</button></div><div class="sheet-b" id="ccBody"></div>`,
     true,
   );
   renderClient();
+};
+/* from a flagged client: open the conversation with a message already drafted, for the coach to edit and send */
+A.coBriefDraft = () => {
+  A.chat({ id: CC });
+  setTimeout(() => $('#chT') && A.chatDraft(), 150);
 };
 A.ccTab = ({ t }) => {
   CT = t;
@@ -299,7 +307,7 @@ function renderClient() {
           : ((c.kind === 'live' && c.view && c.view.profile.wts) || rec.wts || [])
               .slice(-12)
               .map(w => ({ d: w.d, v: w.kg }));
-    body = `${cgClientNote(c)}${cgClientCheckins(c)}${al.length ? `<div class="banner" style="background:var(--ember-soft)">${ic('alert')}<span>${esc(al.join('. '))}.</span></div>` : ''}
+    body = `${cgClientNote(c)}${cgClientCheckins(c)}${al.length ? `<div class="banner" style="background:var(--ember-soft)">${ic('alert')}<span>${esc(al.join('. '))}.</span></div>${c.kind !== 'me' && AI.sample ? `<button class="btn sm ghost" data-act="coBriefDraft" style="align-self:flex-start">${ic('spark')} Draft a message about this</button>` : ''}` : ''}
       <div class="stat4"><div class="stat"><div class="num">${a == null ? 'n/a' : a + '%'}</div><span>${st.plan7 ? st.sess7 + ' of ' + st.plan7 + ' sessions in 7 days' : 'No sessions planned'}</span></div><div class="stat"><div class="num">${st.ready == null ? 'n/a' : st.ready}</div><span>Recovery score</span></div>
         <div class="stat"><div class="num">${st.kg == null ? 'n/a' : st.kg + ' kg'}</div><span>${sg(st.kg30) || 'Weight'}</span></div><div class="stat"><div class="num">${st.kcalAvg ? fmt(st.kcalAvg) : 'n/a'}</div><span>${st.kcalAvg ? 'kcal a day against ' + fmt(st.kcalT || 0) + (st.protAvg ? ', protein ' + st.protAvg + ' of ' + (st.protT || 0) + ' g' : '') : 'No food data this week'}</span></div></div>
       <section class="card stack"><div class="between"><h2>Weight</h2>${own ? `<button class="btn sm ghost" data-act="coWeigh">${ic('plus')} Weigh-in</button>` : ''}</div>${miniLine(wts, 'Weight over time') || `<p class="small muted">${wts.length ? 'One weigh-in so far: ' + wts[0].v + ' kg.' : 'No weigh-ins yet.'}</p>`}</section>

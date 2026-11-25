@@ -4851,3 +4851,63 @@ svg .hit {
   padding: 0 8px;
   text-align: center;
 }
+
+/* ---------- coach and gym views on a wide screen: the list on the left, what is opened on the right ----------
+   The same screens as on a phone, laid out for a desk. body.desk is set while one of those views is showing. */
+@media (min-width: 1000px) {
+  body.desk #app {
+    max-width: 1240px;
+    display: grid;
+    grid-template-columns: 430px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border-inline: 1px solid var(--line);
+  }
+  body.desk header.top {
+    grid-column: 1 / -1;
+  }
+  body.desk #main {
+    grid-column: 1;
+    grid-row: 2;
+    border-right: 1px solid var(--line);
+  }
+  body.desk nav.tabs {
+    grid-column: 1;
+    grid-row: 3;
+    border-right: 1px solid var(--line);
+  }
+  body.desk #app::after {
+    content: 'Choose a client on the left to open them here.';
+    grid-column: 2;
+    grid-row: 2 / 4;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  body.desk .scrim {
+    left: 431px;
+    top: 57px;
+    background: var(--bg);
+    align-items: stretch;
+    justify-content: center;
+    animation: none;
+  }
+  body.desk .scrim .sheet {
+    max-height: none;
+    height: 100%;
+    max-width: 760px;
+    border-radius: 0;
+    animation: none;
+  }
+  body.desk .asfab {
+    right: auto;
+    left: 356px;
+  }
+  body.desk .toasts {
+    left: 0;
+    right: auto;
+    width: 430px;
+  }
+}

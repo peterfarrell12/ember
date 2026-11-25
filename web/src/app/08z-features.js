@@ -27,6 +27,7 @@ const FEATURE_ACTIONS = {
     'cpPlanSave',
     'cpPlanDel',
     'cgInvite',
+    'coBriefDraft',
     'cgCkForm',
     'cgCkFormSave',
     'cgCheckin',

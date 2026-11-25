@@ -444,6 +444,7 @@ function renderChrome() {
   $('#chipYou').classList.toggle('hide', co);
   $('#chipCal').classList.toggle('hide', co);
   $('#brandTag').classList.toggle('hide', !co);
+  document.body.classList.toggle('desk', co); // on a wide screen the coach and gym views use two panes (style.css)
   const m = $('#chipMode');
   m.classList.toggle('hide', Store.owner === false || !co);
   {
