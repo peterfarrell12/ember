@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseBackend } from "../../web/src/app/backend-supabase.js";
 import { squadsApi } from "../../web/src/app/squads.js";
 import { roadmapApi } from "../../web/src/app/roadmap.js";
+import { coachingApi } from "../../web/src/app/coaching.js";
 
 const env = Object.fromEntries(
   execFileSync("npx", ["supabase", "status", "-o", "env"], { encoding: "utf8" })
@@ -693,6 +694,197 @@ try {
         ra.suggest("Fourth"),
         (e) => e.code === "too_many_notes",
       );
+    },
+  );
+  // ---- coaching: a coach sees only what a client's app sent, only while the link is active; a third person nothing
+  const ca = coachingApi(a.client, a.id), // A is the coach
+    cb = coachingApi(b.client, b.id); // B is the client
+  let invite, linkId;
+  await check(
+    "an invitation has a code; the person invited can see who it is from; a coach cannot accept their own",
+    async () => {
+      invite = await ca.invite("Coach A", "Bee");
+      assert.match(invite.code, /^[A-HJ-NP-Z2-9]{8}$/);
+      assert.deepEqual(await cb.inviteInfo(invite.code.toLowerCase()), {
+        coach_name: "Coach A",
+        own: false,
+      });
+      await assert.rejects(
+        ca.accept(invite.code, "Me", {}),
+        (e) => e.code === "own_invite",
+      );
+      await assert.rejects(
+        cb.inviteInfo("ZZZZZZZZ"),
+        (e) => e.code === "not_found",
+      );
+      assert.equal((await cb.links()).coach, null, "not a client until accepted");
+    },
+  );
+  await check(
+    "accepting links the two accounts with what the client chose to share, and only one coach at a time",
+    async () => {
+      linkId = await cb.accept(invite.code, "Bee", {
+        food: true,
+        training: true,
+        weight: false,
+        photos: true, // not an area: ignored
+      });
+      const mine = (await cb.links()).coach;
+      assert.equal(mine.status, "active");
+      assert.deepEqual(mine.share, {
+        food: true,
+        training: true,
+        weight: false,
+        recovery: false,
+      });
+      assert.equal((await ca.links()).clients[0].client_name, "Bee");
+      await assert.rejects(
+        cb.accept(invite.code, "Bee", {}),
+        (e) => e.code === "not_found",
+        "a code works once",
+      );
+      const other = await coachingApi(visitor, "x")
+        .invite("Nobody", "")
+        .catch((e) => e);
+      assert.ok(other && other.code, "a visitor cannot make an invitation");
+    },
+  );
+  await check(
+    "the coach reads what the client`s app sent and nothing else of the client`s",
+    async () => {
+      await b.store.set("days", "2026-11-25", { e: [{ n: "Secret supper" }] });
+      await cb.publish({ name: "Bee", st: { streak: 4 }, ev: [] });
+      const seen = await ca.statuses();
+      assert.deepEqual(seen[linkId].data, {
+        name: "Bee",
+        st: { streak: 4 },
+        ev: [],
+      });
+      assert.deepEqual(
+        (await a.client.from("user_docs").select("id").eq("user_id", b.id))
+          .data,
+        [],
+        "the diary itself stays closed to the coach",
+      );
+      await assert.rejects(
+        ca.publish({ st: {} }),
+        (e) => e.code === "no_coach",
+        "a coach cannot write a client`s status",
+      );
+      assert.ok(
+        (
+          await a.client
+            .from("coach_status")
+            .update({ data: { st: { streak: 99 } } })
+            .eq("link_id", linkId)
+        ).error,
+      );
+    },
+  );
+  await check(
+    "what the coach sets reaches the client; the client cannot set it, and nobody writes the tables directly",
+    async () => {
+      await ca.assign(linkId, "t", { k: 2100, p: 140 });
+      await ca.assign(linkId, "msg", { t: "Good week" });
+      const got = await cb.assigned(linkId);
+      assert.equal(got.t.k, 2100);
+      assert.equal(got.msg.t, "Good week");
+      assert.ok(got.t.v > 0 && got.msg.v >= got.t.v);
+      await assert.rejects(
+        cb.assign(linkId, "t", { k: 9999 }),
+        (e) => e.code === "not_found",
+      );
+      await assert.rejects(
+        ca.assign(linkId, "bad part!", {}),
+        (e) => e.code === "not_allowed",
+      );
+      for (const table of ["coach_links", "coach_assign", "coach_status"])
+        assert.ok(
+          (await b.client.from(table).delete().eq("link_id", linkId)).error ||
+            (await b.client.from(table).delete().eq("id", linkId)).error,
+          table,
+        );
+    },
+  );
+  await check(
+    "messages pass between the two, sent only as yourself",
+    async () => {
+      await ca.send(linkId, "How did the session go?");
+      await cb.send(linkId, "Well, thanks");
+      const forB = await cb.messages(linkId);
+      assert.deepEqual(
+        forB.map((m) => [m.body, m.mine]),
+        [
+          ["How did the session go?", false],
+          ["Well, thanks", true],
+        ],
+      );
+      assert.ok(
+        (
+          await b.client
+            .from("coach_messages")
+            .insert({ link_id: linkId, body: "as the coach", sender: a.id })
+        ).error,
+        "the sender cannot be set by hand",
+      );
+      assert.equal((await ca.messages(linkId, forB[0].id)).length, 1);
+    },
+  );
+  await check(
+    "a third person sees no link, status, assignment or message, and cannot post into the conversation",
+    async () => {
+      const c = await person("coach-c");
+      const cc = coachingApi(c.client, c.id);
+      assert.deepEqual(await cc.links(), { clients: [], coach: null });
+      assert.deepEqual(await cc.statuses(), {});
+      assert.equal(await cc.assigned(linkId), null);
+      assert.deepEqual(await cc.messages(linkId), []);
+      await assert.rejects(cc.send(linkId, "hello"));
+      await assert.rejects(cc.end(linkId), (e) => e.code === "not_found");
+      await assert.rejects(
+        cc.assign(linkId, "t", {}),
+        (e) => e.code === "not_found",
+      );
+      await admin.auth.admin.deleteUser(c.id);
+    },
+  );
+  await check(
+    "changing what is shared, or pausing, takes away what the coach could see at once",
+    async () => {
+      await cb.setShare(linkId, { food: true });
+      assert.deepEqual(await ca.statuses(), {}, "the old copy is gone");
+      await cb.publish({ st: { streak: 5 } });
+      assert.equal((await ca.statuses())[linkId].data.st.streak, 5);
+      await cb.pause(linkId);
+      assert.deepEqual(await ca.statuses(), {});
+      await assert.rejects(
+        cb.publish({ st: {} }),
+        (e) => e.code === "no_coach",
+        "nothing is sent while paused",
+      );
+      await assert.rejects(ca.send(linkId, "Still there?"));
+      await assert.rejects(
+        ca.setShare(linkId, { food: true, weight: true }),
+        (e) => e.code === "not_allowed",
+        "a coach cannot widen what is shared",
+      );
+      await cb.resume(linkId);
+      await cb.publish({ st: { streak: 6 } });
+      assert.equal((await ca.statuses())[linkId].data.st.streak, 6);
+    },
+  );
+  await check(
+    "either can end it; after that the coach sees nothing and nothing more can be set",
+    async () => {
+      await cb.end(linkId);
+      assert.deepEqual(await ca.statuses(), {});
+      assert.deepEqual((await ca.links()).clients, []);
+      assert.equal((await cb.links()).coach, null);
+      await assert.rejects(ca.assign(linkId, "t", { k: 1 }));
+      const again = await ca.invite("Coach A", "Bee");
+      await cb.accept(again.code, "Bee", { training: true });
+      await ca.end((await ca.links()).clients[0].id);
+      assert.equal((await cb.links()).coach, null, "the coach can end it too");
     },
   );
   await check(
