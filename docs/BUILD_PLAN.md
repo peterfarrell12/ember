@@ -94,6 +94,8 @@ Make the prototype a normal project without changing what it does.
 
 Real second accounts. Invitations, client list, assignments, messaging, shared photos, check-ins. Tables and policies per `docs/DATA_MODEL.md`. Coach subscriptions through Stripe.
 
+The full plan, in nine steps, is in `docs/COACH_PLAN.md`.
+
 ## Phase 8: gym
 
 Classes, capacity, bookings, waitlists, memberships, register, member app view, Stripe payments and payouts. This is the product meant to compete with gym management software and deserves its own plan when it starts.
