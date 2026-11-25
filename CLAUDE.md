@@ -57,7 +57,7 @@ The phone apps are the web build inside a Capacitor shell (`web/android`, `web/i
 
 `prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
 
-Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.
+Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. People sign in with an email and a password, or with an emailed link; a password can be set, changed or reset by email (owner's decision, November 2026). The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.
 
 The web app has moved on from the prototype in places the owner asked for (the audit and "make it 10x better", November 2026): the talk button opens a voice panel over the current screen instead of the chat; the everyday food list leads with the UK government's food tables (`web/data/foods-uk.json`, see `web/data/README.md`; the Open Government Licence line on the Data and sources sheet must stay); American measures are not offered. Each such difference is a reviewed baseline in `prototype/test/golden/web/`.
 

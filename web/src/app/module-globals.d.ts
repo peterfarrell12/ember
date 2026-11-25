@@ -62,6 +62,11 @@ declare global {
   const supabaseClient: typeof m4.supabaseClient;
   const signedInUser: typeof m4.signedInUser;
   const sendSignInLink: typeof m4.sendSignInLink;
+  const recoveryLink: typeof m4.recoveryLink;
+  const signInWithPassword: typeof m4.signInWithPassword;
+  const createAccount: typeof m4.createAccount;
+  const sendPasswordReset: typeof m4.sendPasswordReset;
+  const setPassword: typeof m4.setPassword;
   const aiAccess: typeof m4.aiAccess;
   const productAccess: typeof m4.productAccess;
   const recipeAccess: typeof m4.recipeAccess;

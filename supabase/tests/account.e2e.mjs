@@ -119,10 +119,22 @@ try {
   await step('before sign-in there is only the sign-in screen', async () => {
     await a.goto(APP);
     await a.waitForSelector('#siEmail');
-    assert.match(await a.innerText('#main'), /Sign in to Ember[\s\S]*No password needed[\s\S]*Email me a link/);
+    // a device that has never signed in is offered a new account first, with the other ways in one tap away
+    assert.match(
+      await a.innerText('#main'),
+      /Create your account[\s\S]*Email[\s\S]*Password[\s\S]*At least 8 characters[\s\S]*Create account[\s\S]*Already have an account\? Sign in[\s\S]*Use an emailed link instead/,
+    );
     assert.equal(await a.locator('#tgBody').count(), 0, 'no setup before sign-in');
     for (const sel of ['nav.tabs', '#chipYou', '#chipCal', '#sync'])
       assert.equal(await a.isVisible(sel), false, sel + ' is hidden');
+    await a.click('[data-act="siMode"][data-mode="in"]');
+    assert.match(
+      await a.innerText('#main'),
+      /Sign in to Ember[\s\S]*Sign in with your email and password[\s\S]*Forgot your password\?[\s\S]*Email me a link instead[\s\S]*New here\? Create an account/,
+    );
+    assert.equal(await a.locator('.agree').count(), 0, 'signing in to an account that exists asks for no new consent');
+    await a.click('[data-act="siMode"][data-mode="link"]');
+    assert.match(await a.innerText('#main'), /Sign in with a link[\s\S]*No password needed[\s\S]*Email me a link/);
     await a.click('[data-act="signInGo"]');
     assert.equal(await a.locator('#siEmail').count(), 1, 'an empty email is not accepted');
     // the consent tick: required before a link is sent, with the policy pages one tap away
@@ -369,6 +381,104 @@ try {
     assert.equal(await c.isVisible('nav.tabs'), false);
     const r = (await admin.from('user_docs').select('kind').eq('user_id', extra[0])).data;
     assert.ok(r.length >= 2, 'the rows are still there');
+  });
+  // ---- an email and a password
+  const d = await (await browser.newContext(phone)).newPage();
+  d.on('pageerror', e => errs.push('password: ' + String(e)));
+  const mail = `pw-${Date.now()}@example.test`;
+  const signOutOf = async pg => {
+    await closeSheets(pg);
+    await pg.click('#chipYou');
+    await pg.click('[data-act="openData"]');
+    await pg.click('[data-act="signOut"]');
+    await pg.waitForSelector('#siEmail');
+    if (!(await pg.locator('#siPass').count()) || (await pg.locator('.agree').count()))
+      await pg.click('[data-act="siMode"][data-mode="in"]');
+  };
+  const signInWith = async (pg, password) => {
+    await pg.fill('#siEmail', mail);
+    await pg.fill('#siPass', password);
+    await pg.click('#siGo');
+  };
+  const account = async () => (await admin.auth.admin.listUsers({ perPage: 1000 })).data.users.find(u => u.email === mail);
+  await step(
+    'an account is created with an email and a password: not with a short password, not without the tick',
+    async () => {
+      await d.goto(APP);
+      await d.waitForSelector('#siPass');
+      await d.fill('#siEmail', mail);
+      await d.fill('#siPass', 'short');
+      await d.check('#siAgree');
+      await d.click('#siGo');
+      await d.waitForTimeout(400);
+      assert.equal(await account(), undefined, 'a short password creates nothing');
+      await d.fill('#siPass', 'first-password-1');
+      await d.uncheck('#siAgree');
+      await d.click('#siGo');
+      await d.waitForTimeout(400);
+      assert.equal(await account(), undefined, 'nothing is created without the tick');
+      await d.check('#siAgree');
+      await d.click('#siGo');
+      await setUp(d);
+      const user = await account();
+      assert.ok(user, 'the account exists');
+      extra.push(user.id);
+      await until('the consent on the account', async () =>
+        (await admin.from('user_docs').select('id').eq('user_id', user.id).eq('kind', 'meta')).data.some(r => r.id === 'consent'),
+      );
+    },
+  );
+  await step('signing in again needs the right password, and a wrong one says so without saying which part', async () => {
+    await signOutOf(d);
+    await signInWith(d, 'not-the-password');
+    await d.waitForSelector('#siMsg .banner');
+    assert.match(await d.innerText('#siMsg'), /That email and password do not match/);
+    assert.equal(await d.isVisible('nav.tabs'), false);
+    await signInWith(d, 'first-password-1');
+    await ready(d);
+    assert.equal(await d.isVisible('nav.tabs'), true);
+    assert.equal(await d.locator('#tgBody').count(), 0, 'an account that is already set up goes straight in');
+  });
+  await step('a signed-in person changes their password, and the old one stops working', async () => {
+    await closeSheets(d);
+    await d.click('#chipYou');
+    await d.click('[data-act="openData"]');
+    await d.click('[data-act="setPassword"]');
+    await d.fill('#npPass', 'short');
+    await d.click('#npGo');
+    await d.waitForTimeout(300);
+    assert.equal(await d.locator('#npPass').count(), 1, 'a short password is not taken');
+    await d.fill('#npPass', 'second-password-2');
+    await d.click('#npGo');
+    await d.waitForFunction(() => !document.querySelector('#npPass'));
+    await signOutOf(d);
+    await signInWith(d, 'first-password-1');
+    await d.waitForSelector('#siMsg .banner');
+    await signInWith(d, 'second-password-2');
+    await ready(d);
+  });
+  await step('a reset link signs the person in and asks for a new password, which then works', async () => {
+    await signOutOf(d);
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: mail,
+      options: { redirectTo: APP },
+    });
+    if (error) throw error;
+    await d.goto(data.properties.action_link);
+    await d.waitForSelector('#npPass', { timeout: 20000 });
+    assert.match(await d.innerText('.sheet >> nth=-1'), /Choose a new password[\s\S]*You are signed in from the link we sent/);
+    await d.fill('#npPass', 'third-password-3');
+    await d.click('#npGo');
+    await d.waitForFunction(() => !document.querySelector('#npPass'));
+    await d.reload();
+    await ready(d);
+    assert.equal(await d.locator('#npPass').count(), 0, 'it is asked once, not on every visit');
+    await signOutOf(d);
+    await signInWith(d, 'second-password-2');
+    await d.waitForSelector('#siMsg .banner');
+    await signInWith(d, 'third-password-3');
+    await ready(d);
   });
   await step('no page errors', async () => assert.deepEqual(errs, []));
 } finally {

@@ -1,4 +1,4 @@
-// Accounts: email sign-in with a link (no password), through Supabase Auth.
+// Accounts, through Supabase Auth: an email and a password, or a sign-in link sent by email.
 // The Supabase library is only fetched when it is first needed, so it costs nothing until then.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { isNative, tokensFrom, NATIVE_SIGNIN_URL } from './native.js';
@@ -36,11 +36,60 @@ export async function sendSignInLink(email) {
     email,
     // in the phone app the link must come back to the app, not open a browser tab
     options: {
-      emailRedirectTo: isNative() ? NATIVE_SIGNIN_URL : location.origin + location.pathname,
+      emailRedirectTo: emailLanding(),
       shouldCreateUser: true,
     },
   });
   if (error) throw error;
+}
+
+/** The link that opened this page is a password reset link. Read before the library tidies the address. */
+export const recoveryLink = /[#&?]type=recovery\b/.test(location.hash + location.search);
+
+/* What went wrong, as a short code the screens turn into words. Supabase names most of them itself. */
+const authError = error => {
+  const status = error && error.status;
+  return {
+    code:
+      (error && error.code) ||
+      (status === 429 ? 'over_request_rate_limit' : !status || status >= 500 ? 'unreachable' : 'failed'),
+    message: String((error && error.message) || ''),
+  };
+};
+/* where a link in an email should land: back in the phone app, or on this page */
+const emailLanding = () => (isNative() ? NATIVE_SIGNIN_URL : location.origin + location.pathname);
+
+/** Sign in with an email and a password. Rejects with { code }, for example 'invalid_credentials'. */
+export async function signInWithPassword(email, password) {
+  const c = await supabaseClient();
+  const { error } = await c.auth.signInWithPassword({ email, password });
+  if (error) throw authError(error);
+}
+
+/**
+ * Create an account with an email and a password. Returns 'signed_in', or 'confirm' when the address has to
+ * be confirmed from an email first. An address that already has an account also gives 'confirm': the server
+ * does not say whether an address is known, and neither does the app.
+ */
+export async function createAccount(email, password) {
+  const c = await supabaseClient();
+  const { data, error } = await c.auth.signUp({ email, password, options: { emailRedirectTo: emailLanding() } });
+  if (error) throw authError(error);
+  return data && data.session ? 'signed_in' : 'confirm';
+}
+
+/** Email a link that lets the person choose a new password. */
+export async function sendPasswordReset(email) {
+  const c = await supabaseClient();
+  const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: emailLanding() });
+  if (error) throw authError(error);
+}
+
+/** Set or change the signed-in person's password. */
+export async function setPassword(password) {
+  const c = await supabaseClient();
+  const { error } = await c.auth.updateUser({ password });
+  if (error) throw authError(error);
 }
 
 /** How the app reaches the `ai` server function: its address, the public key, and the signed-in person's session token. */

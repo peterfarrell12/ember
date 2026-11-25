@@ -4824,3 +4824,30 @@ svg .hit {
 .gate-card {
   text-align: left;
 }
+
+/* ---------- sign-in form: password box with its Show button, and the other ways in ---------- */
+.pwrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pwrow .inp {
+  flex: 1;
+  min-width: 0;
+}
+.pwrow .link {
+  flex: none;
+  min-height: 44px;
+  padding: 0 4px;
+}
+.si-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.si-links .link {
+  min-height: 40px;
+  padding: 0 8px;
+  text-align: center;
+}
