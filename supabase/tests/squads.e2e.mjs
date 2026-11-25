@@ -252,7 +252,7 @@ try {
       assert.equal(await theirs.getAttribute("aria-pressed"), "false");
       assert.match(await theirs.getAttribute("aria-label"), /, 1 vote$/);
       if (process.env.SHOTS) {
-        await b.waitForTimeout(800); // let the sheet finish sliding in
+        await b.waitForTimeout(3600); // let the sheet finish sliding in and the last toast go
         await b.screenshot({ path: process.env.SHOTS + "/roadmap.png" });
       }
       assert.match(
