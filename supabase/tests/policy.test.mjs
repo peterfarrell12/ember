@@ -717,7 +717,11 @@ try {
         cb.inviteInfo("ZZZZZZZZ"),
         (e) => e.code === "not_found",
       );
-      assert.equal((await cb.links()).coach, null, "not a client until accepted");
+      assert.equal(
+        (await cb.links()).coach,
+        null,
+        "not a client until accepted",
+      );
     },
   );
   await check(
@@ -874,16 +878,171 @@ try {
     },
   );
   await check(
+    "a check-in goes from client to coach and the reply back; nobody else can read or answer it",
+    async () => {
+      const id = await cb.checkinSend(
+        "2026-11-23",
+        [{ q: "How was the week?", a: "Good" }],
+        { sess: 3 },
+      );
+      await cb.checkinSend(
+        "2026-11-23",
+        [{ q: "How was the week?", a: "Better than good" }],
+        { sess: 4 },
+      );
+      const forCoach = await ca.checkins(linkId);
+      assert.equal(forCoach.length, 1, "one a week: sending again replaces it");
+      assert.equal(forCoach[0].answers[0].a, "Better than good");
+      await assert.rejects(
+        ca.checkinSend("2026-11-23", [], {}),
+        (e) => e.code === "no_coach",
+        "a coach cannot write a client`s check-in",
+      );
+      await assert.rejects(
+        cb.checkinReply(id, "Well done me"),
+        (e) => e.code === "not_found",
+        "a client cannot write the coach`s reply",
+      );
+      await ca.checkinReply(id, "  Strong week. Keep the protein up.  ");
+      assert.equal(
+        (await cb.checkins(linkId))[0].feedback,
+        "Strong week. Keep the protein up.",
+      );
+      await assert.rejects(
+        cb.checkinSend("2026-11-23", [], {}),
+        (e) => e.code === "already_answered",
+      );
+      assert.ok(
+        (
+          await b.client
+            .from("coach_checkins")
+            .update({ feedback: "edited" })
+            .eq("id", id)
+        ).error,
+      );
+      const c = await person("checkin-c");
+      assert.deepEqual(await coachingApi(c.client, c.id).checkins(linkId), []);
+      await admin.auth.admin.deleteUser(c.id);
+    },
+  );
+  await check(
+    "a coach`s page is read by its address, applied to once, and only the coach answers; accepting makes an invitation",
+    async () => {
+      await ca.savePage({
+        slug: "coach-a",
+        name: "Coach A",
+        about: "Strength for field sports",
+        offers: "Online coaching",
+        brand: "#0f3d2e",
+      });
+      const c = await person("apply-c");
+      const cc = coachingApi(c.client, c.id);
+      const page = await cc.page("Coach-A");
+      assert.deepEqual(page, {
+        slug: "coach-a",
+        name: "Coach A",
+        about: "Strength for field sports",
+        offers: "Online coaching",
+        open: true,
+        own: false,
+        applied: null,
+      });
+      assert.equal(await cc.page("nobody-here"), null);
+      assert.deepEqual(
+        (await c.client.from("coach_pages").select("slug")).data,
+        [],
+        "pages are not listable",
+      );
+      await assert.rejects(
+        cc.savePage({ slug: "coach-a", name: "Impostor" }),
+        (e) => e.code === "taken",
+      );
+      await assert.rejects(
+        ca.apply("coach-a", "Me", ""),
+        (e) => e.code === "own_page",
+      );
+      await cc.apply("coach-a", "Cee", "I play hurling");
+      await cc.apply("coach-a", "Cee", "I play hurling and football");
+      const inbox = (await ca.applications()).inbox;
+      assert.equal(inbox.length, 1);
+      assert.equal(inbox[0].note, "I play hurling and football");
+      assert.deepEqual(
+        (await cb.applications()).inbox,
+        [],
+        "B sees none of it",
+      );
+      await assert.rejects(
+        cc.answerApplication(inbox[0].id, true),
+        (e) => e.code === "not_found",
+        "an applicant cannot accept themselves",
+      );
+      assert.ok(
+        (
+          await c.client
+            .from("coach_applications")
+            .update({ status: "accepted" })
+            .eq("id", inbox[0].id)
+        ).error,
+      );
+      await ca.answerApplication(inbox[0].id, true);
+      const mine = (await cc.applications()).mine[0];
+      assert.equal(mine.status, "accepted");
+      assert.match(mine.code, /^[A-HJ-NP-Z2-9]{8}$/);
+      assert.equal((await cc.inviteInfo(mine.code)).coach_name, "Coach A");
+      assert.equal((await cc.page("coach-a")).applied, "accepted");
+      await ca.savePage({ slug: "coach-a", name: "Coach A", open: false });
+      const d = await person("apply-d");
+      await assert.rejects(
+        coachingApi(d.client, d.id).apply("coach-a", "Dee", ""),
+        (e) => e.code === "closed",
+      );
+      await admin.auth.admin.deleteUser(c.id);
+      await admin.auth.admin.deleteUser(d.id);
+    },
+  );
+  await check(
+    "a squad`s owner can offer a programme and pin a note; members read them and cannot change them",
+    async () => {
+      const mineA = await sa.mine();
+      const sq = mineA[0];
+      await sa.edit(sq.id, {
+        programme: {
+          n: "Six weeks to Christmas",
+          days: [{ n: "A", items: [] }],
+        },
+        note: "Session one is Monday.",
+      });
+      await sb.join(sq.code, "Bee");
+      const seen = (await sb.mine()).find((x) => x.id === sq.id);
+      assert.equal(seen.programme.n, "Six weeks to Christmas");
+      assert.equal(seen.note, "Session one is Monday.");
+      await b.client
+        .from("squads")
+        .update({ note: "Changed by a member" })
+        .eq("id", sq.id);
+      assert.equal(
+        (await sa.mine()).find((x) => x.id === sq.id).note,
+        "Session one is Monday.",
+      );
+      await sb.leave(sq.id);
+    },
+  );
+  await check(
     "either can end it; after that the coach sees nothing and nothing more can be set",
     async () => {
       await cb.end(linkId);
       assert.deepEqual(await ca.statuses(), {});
-      assert.deepEqual((await ca.links()).clients, []);
+      assert.deepEqual(
+        (await ca.links()).clients.filter((l) => l.id === linkId),
+        [],
+      );
       assert.equal((await cb.links()).coach, null);
       await assert.rejects(ca.assign(linkId, "t", { k: 1 }));
       const again = await ca.invite("Coach A", "Bee");
       await cb.accept(again.code, "Bee", { training: true });
-      await ca.end((await ca.links()).clients[0].id);
+      await ca.end(
+        (await ca.links()).clients.find((l) => l.client_id === b.id).id,
+      );
       assert.equal((await cb.links()).coach, null, "the coach can end it too");
     },
   );

@@ -104,12 +104,15 @@ const firstJson = text => {
   }
 };
 
+/** Features whose tasks the server refuses. The coach side is on (web/src/app/features.js); gym is not. */
+export const FEATURES_OFF = new Set(['gym']);
+
 /** Check a request body and turn it into the task and the content to send. Returns { error } or { task, messages }. */
 export function readRequest(body) {
   if (!body || typeof body !== 'object') return { error: fail(400, 'bad_request', 'Expected a JSON object.') };
   const task = Object.hasOwn(TASKS, body.task) ? TASKS[body.task] : null;
-  // coach tasks are switched off with the coach feature
-  if (!task || task.feature) return { error: fail(400, 'bad_request', 'Unknown task.') };
+  // a task that belongs to a feature that is switched off is refused, as if it did not exist
+  if (!task || FEATURES_OFF.has(task.feature)) return { error: fail(400, 'bad_request', 'Unknown task.') };
   const given = body.vars && typeof body.vars === 'object' && !Array.isArray(body.vars) ? body.vars : {};
   const vars = {};
   let total = 0;

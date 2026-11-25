@@ -137,10 +137,17 @@ test('over-long values are refused', async () => {
   assert.equal(claude.calls.length, 0);
 });
 
-test('coach tasks are off while the coach feature is off', async () => {
+test('coach tasks run now that the coach feature is on; a task for a feature that is off is refused', async () => {
   const { handle } = setup();
   const vars = Object.fromEntries(TASKS.chat_draft.vars.map(n => [n, 'x']));
-  assert.equal((await ask(handle, { task: 'chat_draft', vars })).status, 400);
+  assert.equal((await ask(handle, { task: 'chat_draft', vars })).status, 200);
+  assert.equal(readRequest({ task: 'chat_draft', vars }).error, undefined);
+  TASKS.gym_only_for_this_test = { ...TASKS.chat_draft, feature: 'gym' };
+  try {
+    assert.equal((await ask(handle, { task: 'gym_only_for_this_test', vars })).status, 400);
+  } finally {
+    delete TASKS.gym_only_for_this_test;
+  }
 });
 
 test('each call`s cost is recorded against the person and the day', async () => {
@@ -223,7 +230,6 @@ test('every task builds from exactly the values it declares', () => {
   for (const [name, t] of Object.entries(TASKS)) {
     const vars = Object.fromEntries(t.vars.map(n => [n, '<' + n + '>']));
     const r = readRequest({ task: name, vars });
-    if (t.feature) continue;
     assert.ok(!r.error, name);
     const text = r.messages.map(m => (typeof m.content === 'string' ? m.content : '')).join('\n');
     for (const n of t.vars) assert.ok(text.includes('<' + n + '>'), `${name} uses ${n}`);

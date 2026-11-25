@@ -213,6 +213,20 @@ Reply with only JSON: {"text": the message}
 Client: ${v.name}. Goal: ${v.p1}. Sessions in the last 7 days: ${v.p2} of ${v.p3} planned on "${v.p4}". Food logged ${v.p5} of 7 days, averaging ${v.p6} kcal against ${v.p7}. Weight trend ${v.p8} kg. Recovery score ${v.p9}. Flags: ${v.p10}.
 Recent messages, oldest first:\n${v.p11}`,
   },
+  // New in the web app: a coach's reading of a client's weekly check-in, with a reply the coach edits before sending.
+  checkin_read: {
+    tier: 'default',
+    json: true,
+    feature: 'coach',
+    vars: ['name', 'figures', 'answers', 'last'],
+    build: v =>
+      `You help a coach read a client's weekly check-in. Work only from what is given; where a figure is missing the client has chosen not to share it, so do not guess it or comment on its absence. No medical advice, no diagnosis, no emoji, no markdown.
+Reply with only JSON: {"summary": two or three short sentences for the coach on how the week went and the one thing that most needs attention, "reply": a draft reply from the coach to the client in three to five sentences, specific to the figures and their answers, warm but direct, with one clear focus for next week, addressing them by first name}
+Client: ${v.name}.
+The week's figures from their diary: ${v.figures}.
+Their answers:\n${v.answers}
+The coach's reply to the previous check-in, for continuity: ${v.last || 'none'}`,
+  },
   // New in the web app: a week of meals to the person's own targets, with a shopping list.
   meal_plan: {
     tier: 'default',

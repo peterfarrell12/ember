@@ -340,6 +340,130 @@ try {
     await closeSheets(a);
   });
   await step(
+    "a weekly check-in: the coach sets questions, the client's figures fill in, and the reply comes back",
+    async () => {
+      await openClient(a);
+      await a.click('[data-act="ccTab"][data-t="plan"]');
+      await a.click('[data-act="cgCkForm"]');
+      await a.fill("#ckQs", "How was the week?\nWhat got in the way?");
+      await a.selectOption("#ckWd", "0");
+      await a.click('[data-act="cgCkFormSave"]');
+      await until("the questions on the server", async () => {
+        const { data } = await admin.from("coach_assign").select("data");
+        return !!(data[0].data.checkin && data[0].data.checkin.qs.length === 2);
+      });
+      await closeSheets(a);
+      await b.goto(APP + "#today");
+      await b.reload();
+      await b.waitForSelector('[data-act="cgCheckin"]', { timeout: 20000 });
+      await b.click('[data-act="cgCheckin"]');
+      const form = await text(b, ".sheet >> nth=-1");
+      assert.match(
+        form,
+        /Check-in for Coach Ann[\s\S]*Food logged \| 1 of 7 days[\s\S]*How was the week\?[\s\S]*What got in the way\?/,
+      );
+      assert.doesNotMatch(
+        form,
+        /Weight \||Recovery today/,
+        "figures from areas that are not shared stay out",
+      );
+      await b.fill("#ckA0", "Good, three sessions done");
+      await b.click("#ckGo");
+      await until(
+        "the check-in on the server",
+        async () =>
+          (await admin.from("coach_checkins").select("id")).data.length === 1,
+      );
+      assert.equal(
+        await b.locator('[data-act="cgCheckin"]').count(),
+        0,
+        "asked once a week",
+      );
+      await openClient(a);
+      await a.waitForSelector('[data-act="cgCkOpen"]', { timeout: 15000 });
+      await a.click('[data-act="cgCkOpen"]');
+      const got = await text(a, ".sheet >> nth=-1");
+      assert.match(
+        got,
+        /Their week, from their diary[\s\S]*Food logged[\s\S]*Good, three sessions done/,
+      );
+      await a.fill("#ckReply", "Strong week. Same again.");
+      await a.click("#ckSend");
+      await until("the reply on the server", async () => {
+        const { data } = await admin.from("coach_checkins").select("feedback");
+        return data[0].feedback === "Strong week. Same again.";
+      });
+      await closeSheets(a);
+      await b.reload();
+      await b.waitForSelector('[data-act="cgCkRead"]', { timeout: 20000 });
+      assert.match(
+        await text(b, "#main"),
+        /A reply to your check-in \| Strong week\. Same again\./,
+      );
+      assert.match(await b.innerText("#brandTag"), /with Coach Ann/);
+    },
+  );
+  await step(
+    "a coach's page: someone applies from the link, the coach accepts, and they are asked what to share",
+    async () => {
+      await a.click('[data-act="cgPage"]');
+      assert.equal(await a.inputValue("#pgName"), "Coach Ann");
+      await a.fill("#pgSlug", "coach-ann");
+      await a.fill("#pgAbout", "Strength for field sports.");
+      await a.click("#pgGo");
+      await until(
+        "the page on the server",
+        async () =>
+          (await admin.from("coach_pages").select("slug")).data.length === 1,
+      );
+      const c = await person("cee");
+      await c.goto(APP + "#c=coach-ann");
+      await c.waitForSelector("#apName", { timeout: 15000 });
+      assert.match(
+        await text(c, ".sheet >> nth=-1"),
+        /Coach Ann[\s\S]*Strength for field sports\.[\s\S]*Ember has not checked their qualifications/,
+      );
+      await c.fill("#apName", "Cee");
+      await c.fill("#apNote", "I play hurling");
+      await c.click("#apGo");
+      await until(
+        "the application on the server",
+        async () =>
+          (await admin.from("coach_applications").select("id")).data.length ===
+          1,
+      );
+      await a.reload();
+      await a.waitForSelector('[data-act="cgAppYes"]', { timeout: 20000 });
+      assert.match(
+        await text(a, "#main"),
+        /Applications \| Cee[\s\S]*I play hurling/,
+      );
+      await a.click('[data-act="cgAppYes"]');
+      await until("the application to be accepted", async () => {
+        const { data } = await admin
+          .from("coach_applications")
+          .select("status");
+        return data[0].status === "accepted";
+      });
+      await c.reload();
+      await c.waitForSelector("#cjBody .banner", { timeout: 25000 });
+      assert.match(await text(c, "#cjBody"), /Coach Ann has invited you/);
+      await c.click('[data-act="cgShare"][data-area="training"]');
+      await c.click("#cjGo");
+      await c.waitForFunction(() => !document.querySelector("#cjBody"));
+      await until(
+        "two clients linked",
+        async () =>
+          (
+            await admin
+              .from("coach_links")
+              .select("status")
+              .eq("status", "active")
+          ).data.length === 2,
+      );
+    },
+  );
+  await step(
     "the client can see exactly what the coach sees, and pausing takes it away at once",
     async () => {
       await closeSheets(b);
@@ -356,13 +480,21 @@ try {
       await b.keyboard.press("Escape");
       await b.waitForTimeout(300);
       await b.click('[data-act="cgPause"]');
-      await until(
-        "the copy to be gone",
-        async () =>
-          (await admin.from("coach_status").select("link_id")).data.length ===
-          0,
+      await until("the copy to be gone", async () =>
+        (
+          await admin
+            .from("coach_links")
+            .select("status, coach_status(link_id)")
+            .eq("client_id", people[1])
+            .neq("status", "ended")
+        ).data.every((l) => l.status === "paused" && !l.coach_status),
       );
-      await openClient(a);
+      await a.reload();
+      await a.waitForSelector('[data-act="coClient"][data-id^="u:"]', {
+        timeout: 20000,
+      });
+      await a.click('[data-act="coClient"][data-id^="u:"]:has-text("Bee")');
+      await a.waitForSelector("#ccBody");
       assert.match(await text(a, "#ccBody"), /Bee has paused sharing/);
       assert.doesNotMatch(await text(a, "#ccBody"), /kcal a day against/);
       await closeSheets(a);
@@ -376,11 +508,13 @@ try {
       await b.click('[data-act="myCoach"]');
       await b.click('[data-act="cgEnd"]');
       await b.click('[data-act="cgEndGo"]');
-      await until(
-        "the link to end",
-        async () =>
-          (await admin.from("coach_links").select("status")).data[0].status ===
-          "ended",
+      await until("the link to end", async () =>
+        (
+          await admin
+            .from("coach_links")
+            .select("status")
+            .eq("client_id", people[1])
+        ).data.every((l) => l.status === "ended"),
       );
       await b.waitForFunction(() => !document.querySelector(".sheet"));
       await b.click("#chipYou").catch(() => {});
@@ -389,8 +523,17 @@ try {
       await a.waitForSelector('[data-act="cgInvite"]', { timeout: 20000 });
       await a.waitForTimeout(2500);
       assert.equal(
-        await a.locator('[data-act="coClient"][data-id^="u:"]').count(),
+        await a
+          .locator('[data-act="coClient"][data-id^="u:"]:has-text("Bee")')
+          .count(),
         0,
+      );
+      assert.equal(
+        await a
+          .locator('[data-act="coClient"][data-id^="u:"]:has-text("Cee")')
+          .count(),
+        1,
+        "the other client is still there",
       );
     },
   );

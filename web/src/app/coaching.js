@@ -114,6 +114,10 @@ const REASONS = [
   'no_coach',
   'too_large',
   'not_allowed',
+  'already_answered',
+  'own_page',
+  'closed',
+  'too_many',
   'ended',
   'not_signed_in',
 ];
@@ -191,5 +195,62 @@ export function coachingApi(client, userId) {
       const { error } = await client.from('coach_messages').insert({ link_id: linkId, body });
       if (error) fail(error);
     },
+    /* ----- check-ins ----- */
+    /** Client: send this week's check-in. Returns its id. */
+    checkinSend: (week, answers, figures) =>
+      rpc('coach_checkin_send', { p_week: week, p_answers: answers, p_figures: figures }),
+    /** Coach: reply to a check-in. */
+    checkinReply: (id, feedback) => rpc('coach_checkin_reply', { p_id: id, p_feedback: feedback }),
+    /** The check-ins on a link, newest first. */
+    async checkins(linkId, limit = 12) {
+      const { data, error } = await client
+        .from('coach_checkins')
+        .select('id, week, answers, figures, feedback, created_at, feedback_at')
+        .eq('link_id', linkId)
+        .order('week', { ascending: false })
+        .limit(limit);
+      if (error) fail(error);
+      return data;
+    },
+    /* ----- a coach's page and applications ----- */
+    /** The coach's own page, or null. */
+    async myPage() {
+      const { data, error } = await client.from('coach_pages').select('*').eq('coach_id', userId).maybeSingle();
+      if (error) fail(error);
+      return data;
+    },
+    /** Create or change the coach's own page. Rejects with code 'taken' when the address is in use. */
+    async savePage(page) {
+      const row = {
+        coach_id: userId,
+        slug: String(page.slug || '').toLowerCase(),
+        name: page.name,
+        about: page.about || '',
+        offers: page.offers || '',
+        open: page.open !== false,
+        brand: page.brand || null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await client.from('coach_pages').upsert(row, { onConflict: 'coach_id' });
+      if (error)
+        throw {
+          code: error.code === '23505' ? 'taken' : error.code === '23514' ? 'bad_page' : 'failed',
+          message: error.message,
+        };
+    },
+    /** A coach's page by its address: { slug, name, about, offers, open, own, applied } or null. */
+    page: slug => rpc('coach_page', { p_slug: slug }),
+    apply: (slug, name, note) => rpc('coach_apply', { p_slug: slug, p_name: name, p_note: note || '' }),
+    /** Applications: those sent to this coach (`inbox`) and those this person has made (`mine`). */
+    async applications() {
+      const { data, error } = await client
+        .from('coach_applications')
+        .select('id, coach_id, user_id, name, note, status, code, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) fail(error);
+      return { inbox: data.filter(a => a.coach_id === userId), mine: data.filter(a => a.user_id === userId) };
+    },
+    answerApplication: (id, accept) => rpc('coach_application_answer', { p_id: id, p_accept: !!accept }),
   };
 }

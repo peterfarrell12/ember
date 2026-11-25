@@ -27,7 +27,7 @@ export function squadsApi(client, userId) {
     async mine() {
       const { data, error } = await client
         .from('squads')
-        .select('id, code, name, owner, challenge')
+        .select('id, code, name, owner, challenge, programme, note')
         .order('created_at');
       if (error) fail(error);
       return data.map(s => ({ ...s, owned: s.owner === userId }));

@@ -161,7 +161,11 @@ function renderSquad2() {
   if (title) title.textContent = s.name;
   const b = SQ.boards[s.id],
     ch = s.challenge && s.challenge.goal > 0 ? s.challenge : null;
-  el.innerHTML = `${
+  el.innerHTML = `${s.note ? `<div class="banner">${ic('flag')}<span>${esc(s.note)}</span></div>` : ''}${
+    s.programme && s.programme.days
+      ? `<section class="card stack"><div><div class="tiny muted">This squad's programme</div><h2>${esc(s.programme.n)}</h2></div><p class="small muted">${s.programme.days.length} day${s.programme.days.length === 1 ? '' : 's'} a week${s.programme.weeks ? ' for ' + s.programme.weeks + ' weeks' : ''}. Using it replaces the programme you are on now; your past sessions stay.</p>${(P.prog && P.prog.id) === 'squad' && S.progs.squad && S.progs.squad.n === s.programme.n ? `<span class="pill good" style="align-self:flex-start">You are on it</span>` : `<button class="btn sm" data-act="squadUseProg" style="align-self:flex-start">Use this programme</button>`}</section>`
+      : ''
+  }${
     ch && b
       ? `<section class="card stack"><div class="between"><h2>${esc(ch.name || 'Sessions this week')}</h2><span class="muted small">this week</span></div><div class="row" style="align-items:baseline;gap:8px"><span class="num" style="font-size:36px;line-height:1">${b.sessions}</span><span class="muted">of ${ch.goal} sessions</span></div>${bar(b.sessions, ch.goal, b.sessions >= ch.goal ? 'good lg' : 'ember lg')}<p class="tiny muted">Every finished training session by anyone in the squad counts.</p></section>`
       : ''
@@ -184,6 +188,13 @@ function renderSquad2() {
       s.owned
         ? `<section class="card stack"><h2>Run the squad</h2><label class="f">Name<input class="inp" id="sqEdName" value="${esc(s.name)}" maxlength="40"></label>
       <div class="grid3" style="grid-template-columns:2fr 1fr"><label class="f">Team challenge<input class="inp" id="sqEdCh" value="${esc(ch ? ch.name || '' : '')}" maxlength="40" placeholder="Sessions this week"></label><label class="f">Sessions<input class="inp" id="sqEdGoal" inputmode="numeric" value="${ch ? ch.goal : ''}" placeholder="20"></label></div>
+      <label class="f">A programme for everyone<select class="inp" id="sqEdProg"><option value="">None</option>${s.programme ? `<option value="keep" selected>${esc(s.programme.n)} (current)</option>` : ''}${Object.values(
+        S.progs,
+      )
+        .filter(p => p.id !== 'squad' && p.id !== 'demo')
+        .map(p => `<option value="p:${esc(p.id)}">${esc(p.n)} (yours)</option>`)
+        .join('')}${TEMPLATES.map(t => `<option value="t:${t.id}">${esc(t.n)}</option>`).join('')}</select></label>
+      <label class="f">A note pinned to the top<input class="inp" id="sqEdNote" value="${esc(s.note || '')}" maxlength="400" placeholder="Session one is Monday"></label>
       <button class="btn sm" data-act="squadSave" style="align-self:flex-start">Save</button>
       <div class="row" style="gap:8px"><input class="inp" id="sqRm" placeholder="A name to take off the board" maxlength="24" autocomplete="off"><button class="btn sm ghost" data-act="squadRemove">Remove</button></div>
       <button class="link" data-act="squadDelete" style="color:var(--bad);align-self:flex-start">Delete this squad</button></section>`
@@ -212,15 +223,38 @@ A.squadSave = async () => {
     goal = clamp(r0(num($('#sqEdGoal').value)), 0, 100000),
     chName = ($('#sqEdCh').value || '').trim().slice(0, 40);
   if (name.length < 2) return toast('The squad needs a name.');
+  const pick = $('#sqEdProg').value,
+    src = pick.startsWith('p:')
+      ? S.progs[pick.slice(2)]
+      : pick.startsWith('t:')
+        ? TEMPLATES.find(t => t.id === pick.slice(2))
+        : null,
+    programme = src ? { n: src.n, about: src.about || '', weeks: src.weeks || 0, days: clone(src.days) } : undefined,
+    note = ($('#sqEdNote').value || '').trim().slice(0, 400);
   try {
     await (
       await sqApi()
-    ).edit(SQV, { name, challenge: goal > 0 ? { name: chName || 'Sessions this week', goal } : null });
+    ).edit(SQV, {
+      name,
+      challenge: goal > 0 ? { name: chName || 'Sessions this week', goal } : null,
+      note: note || null,
+      ...(pick === 'keep' ? {} : { programme: programme || null }),
+    });
     toast('Saved');
     sqLoad(true);
   } catch (e) {
     toast(sqWhy(e));
   }
+};
+/* a member takes up the squad's programme: it becomes theirs to follow, like any other */
+A.squadUseProg = () => {
+  const s = (SQ.list || []).find(x => x.id === SQV);
+  if (!s || !s.programme || !s.programme.days) return;
+  saveProg({ ...clone(s.programme), id: 'squad', src: 'squad' });
+  P.prog = { id: 'squad', at: 0, n: 0, started: today() };
+  saveProfile();
+  renderSquad2();
+  toast('Programme set. It is on the Train tab.', 'good');
 };
 A.squadRemove = async () => {
   const name = ($('#sqRm').value || '').trim();

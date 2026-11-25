@@ -177,6 +177,7 @@ function render() {
   remSync();
   setTimeout(sqOfferInvite, 0);
   setTimeout(cgOfferInvite, 0);
+  setTimeout(cgOfferPage, 0);
   const st = streak();
   const cs = $('#chipStreak');
   cs.classList.toggle('off', !st.todayDone);

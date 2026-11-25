@@ -207,6 +207,39 @@ try {
       );
     },
   );
+  await step(
+    "the owner offers the squad a programme and pins a note; a member takes the programme up",
+    async () => {
+      await a.selectOption("#sqEdProg", "t:t-full3");
+      await a.fill("#sqEdNote", "Session one is Monday.");
+      await a.click('[data-act="squadSave"]');
+      await a.waitForFunction(() =>
+        /This squad.s programme/.test(
+          document.querySelector("#sqBody2").innerText,
+        ),
+      );
+      await b.keyboard.press("Escape");
+      await b.click('[data-act="squadOpen"]');
+      await b.waitForFunction(() =>
+        /Session one is Monday\./.test(
+          document.querySelector("#sqBody2").innerText,
+        ),
+      );
+      assert.match(
+        await text(b, "#sqBody2"),
+        /This squad's programme \| Full body, 3 days/,
+      );
+      await b.click('[data-act="squadUseProg"]');
+      await b.waitForFunction(() =>
+        /You are on it/.test(document.querySelector("#sqBody2").innerText),
+      );
+      await b.keyboard.press("Escape");
+      await b.click('[data-act="tab"][data-tab="train"]');
+      assert.match(await text(b, "#main"), /Full body, 3 days/);
+      await b.click('[data-act="tab"][data-tab="quests"]');
+      await b.click('[data-act="squadOpen"]');
+    },
+  );
   await step("a member can leave, and is off the board at once", async () => {
     await b.click('[data-act="squadLeave"]');
     await b.click('[data-act="squadLeave"]');
