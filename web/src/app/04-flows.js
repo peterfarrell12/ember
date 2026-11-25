@@ -2001,6 +2001,7 @@ A.retryBoot = () => {
 };
 async function refresh() {
   if (!S.ready || document.hidden || DEMO) return;
+  cgLoad(); // links with a coach or clients: what they sent, what was set (at most every 20 seconds)
   if (today() !== lastDay) {
     const was = lastDay;
     lastDay = today();

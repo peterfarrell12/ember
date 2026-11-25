@@ -131,6 +131,7 @@ A.previewOff = () => {
   S.days = o.days;
   TR = o.TR;
   S.date = o.date;
+  if (o.as) return cgLeaveLens(o);
   delete S.progs.demo;
   S.tab = 'you';
   render();
@@ -138,9 +139,11 @@ A.previewOff = () => {
   toast('Back to your own data');
 };
 const demoBanner = () =>
-  DEMO
-    ? `<div class="banner demo">${ic('spark')}<span><b>Preview with sample data.</b> A wearable connected, a session done and a full week planned. Nothing here is saved.</span><button class="btn sm" data-act="previewOff">Exit</button></div>`
-    : '';
+  DEMO && DEMO.as
+    ? `<div class="banner demo">${ic('search')}<span><b>${esc(DEMO.as)}'s app.</b> A read-only copy of what they share with you. Nothing you tap here is saved or sent.</span><button class="btn sm" data-act="previewOff">Back</button></div>`
+    : DEMO
+      ? `<div class="banner demo">${ic('spark')}<span><b>Preview with sample data.</b> A wearable connected, a session done and a full week planned. Nothing here is saved.</span><button class="btn sm" data-act="previewOff">Exit</button></div>`
+      : '';
 
 /* ---------- Train on a day with nothing planned, or once the session is done: what to do today, not tomorrow's session ---------- */
 function restSuggest(tk, did) {
@@ -267,7 +270,7 @@ function viewMore() {
     ${grp('Your plan', [row('openTargets', 'target', 'Targets and profile', fmt(P.t.k) + ' kcal, ' + P.t.p + ' g protein'), row('cal', 'cal', 'Calendar and schedule', 'Training days, matches and what you did'), row('photos', 'camera', 'Progress photos', 'Private, with before and after'), row('weekReview', 'chart', 'Last week in review', 'Averages, trend and whether your target still fits'), row(P.fast && P.fast.on ? 'fastSheet' : 'fastOn', 'clock', 'Fasting timer', P.fast && P.fast.on ? (P.fast.start ? 'Fasting now' : P.fast.goal + ' hour fasts, on Today') : 'Off. Turn on to time your fasts'), row('takeBreak', 'snow', 'Take a break', onBreak() ? breakLine() : 'Hold your streak while you are away or unwell')])}
     ${grp('Food', [row('openRecipes', 'book', 'Recipes and saved meals', nr ? nr + ' saved' : 'Build one once, log it in a tap'), row('openFoods', 'fork', 'My foods', nf ? nf + ' saved' : 'Add foods from a label'), row('importDiary', 'upload', 'Bring your diary from another app', P.imp ? fmt(P.imp.days) + ' days brought in ' + niceDate(P.imp.at) : 'MyFitnessPal, Cronometer, Lose It! and others'), row('ideas', 'spark', 'What can I eat?', 'Dishes sized to what you have left'), row('mealPlan', 'book', 'Meal plan for the week', P.mp && P.mp.days ? 'Planned ' + niceDate(P.mp.d) + ', with a shopping list' : 'Seven days to your targets, with a shopping list'), row('dailyNote', 'pen', 'Daily note', P.note && P.note.auto ? 'On, ' + (P.note.tone === 'straight' ? 'straight' : 'gentle') : 'A few lines each morning from your diary')])}
     ${grp('Body and devices', [row('openConnections', AI.mcp ? 'link' : 'upload', AI.mcp ? 'Connect a wearable' : 'Import from a wearable', P.ad ? 'Synced ' + niceDate(P.ad.at.slice(0, 10)) : AI.mcp ? 'WHOOP, Garmin, Apple Health, Strava' : 'Files from Apple Health, Garmin, Strava, WHOOP'), row('preview', 'spark', DEMO ? 'Exit the preview' : 'Preview with sample data', DEMO ? 'Back to your own data' : 'See Ember with a wearable, a workout and a full week')])}
-    ${FEATURES.coach || FEATURES.gym ? grp('People', [FEATURES.coach ? row('chat', 'chat', 'Messages with your coach', un ? un + ' unread' : 'Ask about your plan') : '', FEATURES.coach && own ? row('catalogue', 'search', 'Find a coach', 'Checked profiles, plans and reviews') : '', FEATURES.gym ? row('gym', 'home', 'My gym', 'Book classes, one-to-ones and spaces') : '']) : ''}
+    ${FEATURES.coach || FEATURES.gym ? grp('People', [FEATURES.coach && coachingOn() ? cgYouRow(row) : '', FEATURES.coach && (!coachingOn() || hasCoach()) ? row('chat', 'chat', 'Messages with your coach', un ? un + ' unread' : 'Ask about your plan') : '', FEATURES.community && own ? row('catalogue', 'search', 'Find a coach', 'Checked profiles, plans and reviews') : '', FEATURES.gym ? row('gym', 'home', 'My gym', 'Book classes, one-to-ones and spaces') : '']) : ''}
     ${grp('App', [
       row('assistant', 'mic', 'Assistant', 'Talk or type to log, ask and plan'),
       row(

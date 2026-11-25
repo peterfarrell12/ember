@@ -68,3 +68,4 @@ jobs:
           cd supabase
           npm install --no-save playwright
           npm run test:squads
+          npm run test:coach

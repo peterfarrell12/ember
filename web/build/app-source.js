@@ -29,6 +29,7 @@ export const MODULES = [
   'roadmap.js',
   'recipe-server.js',
   'native-dictation.js',
+  'coaching.js',
 ];
 
 export const numbered = dir =>

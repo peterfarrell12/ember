@@ -62,7 +62,7 @@ function kudosFor(m) {
 const challenge = () =>
   (Store.owner === false ? COACHPUB && COACHPUB.ch : CO.challenge) || { n: 'Squad sessions this week', goal: 12 };
 async function publishSquad(force) {
-  if (!FEATURES.coach) return;
+  if (!FEATURES.community) return;
   if (DEMO || Store.mode !== 'cloud' || (!force && Date.now() - lastSq < 60000)) return;
   lastSq = Date.now();
   const wk = weekKey(),
@@ -84,7 +84,7 @@ async function publishSquad(force) {
   } catch (e) {}
 }
 async function loadCommunity() {
-  if (!FEATURES.coach) return;
+  if (!FEATURES.community) return;
   if (Store.mode !== 'cloud') return;
   try {
     const [sq, rv, cp] = await Promise.all([
@@ -103,7 +103,7 @@ async function loadCommunity() {
   } catch (e) {}
 }
 function squadCard() {
-  if (!FEATURES.coach) return '';
+  if (!FEATURES.community) return '';
   const ms = squadMembers(),
     ch = challenge(),
     done = ms.reduce((s, m) => s + m.sess7, 0),
@@ -298,7 +298,7 @@ A.coProfileSave = () => {
 };
 /* The client's side: see who is coaching you, and review them once they have set you a plan. */
 function coachCardForClient() {
-  if (!FEATURES.coach) return '';
+  if (!FEATURES.community) return '';
   if (Store.owner !== false || !COACHPUB || !COACHPUB.name) return '';
   const can = P.asg && Object.keys(P.asg).length > 0,
     mine = REVIEWS.find(r => r.id === Store.uid);

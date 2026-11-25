@@ -74,6 +74,9 @@ const claudeBackend = base => ({
     return this.ref(kind, id).delete();
   },
 });
+/* True while a coach is looking at a client's app (08l-coaching.js): nothing is read from the account and,
+   because the sample-preview switch is on at the same time, nothing is saved to it either. */
+let LENS = false;
 const Store = {
   mode: 'boot',
   db: null,
@@ -184,6 +187,7 @@ const Store = {
    * @returns {Promise<any>}
    */
   async get(kind, id) {
+    if (LENS) return null;
     const w = this.durable && (LS.get(this.outboxKey()) || {})[kind + '/' + (id || '')];
     if (w) return w.del ? null : clone(w.data); // a write still on its way is newer than what the server has
     if (!this.durable) return this.backend.get(kind, id);
@@ -247,6 +251,7 @@ const Store = {
    * @returns {Promise<any[]>}
    */
   async list(kind) {
+    if (LENS) return [];
     if (!this.durable) return this.backend.list(kind);
     let docs;
     try {

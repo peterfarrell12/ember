@@ -28,7 +28,7 @@ const sqShares = `<p class="tiny muted">A squad sees the name you give here, you
 
 /* Load my squads and their boards, putting my own figures up first. At most once a minute unless asked. */
 async function sqLoad(force) {
-  if (!squadsOn() || SQ.busy || (!force && SQ.list && Date.now() - SQ.at < 60000)) return;
+  if (DEMO || !squadsOn() || SQ.busy || (!force && SQ.list && Date.now() - SQ.at < 60000)) return;
   SQ.busy = true;
   try {
     const api = await sqApi();
@@ -48,6 +48,7 @@ async function sqLoad(force) {
 /* after something is logged or a session finished: put the new figures on the boards, but not on every tap */
 let sqTimer = 0;
 function sqPublishSoon() {
+  if (DEMO) return; // a preview, or a client's app being looked at: not this person's own figures
   if (!squadsOn() || !SQ.list || !SQ.list.length) return;
   clearTimeout(sqTimer);
   sqTimer = setTimeout(async () => {

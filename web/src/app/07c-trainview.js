@@ -151,7 +151,7 @@ function viewTrain() {
       )}</div></section>`
     : '';
   const find =
-    FEATURES.coach && Store.owner !== false
+    FEATURES.community && Store.owner !== false
       ? `<div class="two"><button class="act" data-act="catalogue">${ic('search')}<span>Find a coach<small>Checked profiles and reviews</small></span></button><button class="act" data-act="squad">${ic('users')}<span>Squad<small>Board, wins, challenge</small></span></button></div>`
       : '';
   return `${cm}${trainWeek(tk, p)}${trainHero(tk, p)}

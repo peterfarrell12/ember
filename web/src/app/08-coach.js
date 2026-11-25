@@ -389,6 +389,15 @@ function clientList() {
       goal: d.goal || '',
       st: d.st || {},
       ev: d.ev || [],
+      ...(d._link
+        ? {
+            link: d._link,
+            paused: d._status === 'paused',
+            share: d.share || null,
+            view: d.view || null,
+            resp: d.resp || {},
+          }
+        : {}),
       msgs: c.msgs || [],
       notes: c.notes || [],
     });
@@ -487,7 +496,7 @@ function coClients() {
   const tc = trustChecks(coachProfile());
   return `<div class="between"><h2 class="sec-h" style="font-size:22px">Clients</h2><button class="btn sm ghost" data-act="coAdd">${ic('plus')} Add</button></div>
   ${WK ? `<section class="card stack" style="border-color:var(--ember)"><div class="between"><b>${esc(WK.name)}${WK.client && CO.clients[WK.client] ? ' with ' + esc(CO.clients[WK.client].name) : ''}</b><span class="pill gold">In progress</span></div><div class="two"><button class="btn sm ember" data-act="wkResume">Resume</button><button class="btn sm ghost" data-act="wkDiscard">Discard</button></div></section>` : ''}
-  <div class="two"><button class="act" data-act="coProfile">${ic('shield')}<span>Your profile<small>${tc.filter(t => t[1]).length} of ${tc.length} trust checks</small></span></button><button class="act" data-act="catalogue">${ic('search')}<span>Coach catalogue<small>How clients find you</small></span></button></div>
+  <div class="two"><button class="act" data-act="coProfile">${ic('shield')}<span>Your profile<small>${tc.filter(t => t[1]).length} of ${tc.length} trust checks</small></span></button>${FEATURES.community ? `<button class="act" data-act="catalogue">${ic('search')}<span>Coach catalogue<small>How clients find you</small></span></button>` : `<button class="act" data-act="cgInvite">${ic('link')}<span>Invite a client<small>They choose what you see</small></span></button>`}</div>${cgInvitesCard()}
   <div class="grid3"><div class="stat"><div class="num">${cs.length}</div><span>Clients</span></div><div class="stat"><div class="num">${ad.length ? r0(ad.reduce((a, b) => a + b, 0) / ad.length) + '%' : 'n/a'}</div><span>Sessions done</span></div><div class="stat"><div class="num">${flagged.length}</div><span>Need a look</span></div></div>
   ${flagged.length ? `<section class="card"><h2>Needs a look</h2>${flagged.map(({ c, al }) => `<button class="entry" data-act="coClient" data-id="${c.id}"><span class="n">${esc(c.name)}</span><span class="k">${ic('chev-r')}</span><span class="s" style="white-space:normal;color:var(--bad)">${esc(al.join(' · '))}</span></button>`).join('')}</section>` : ''}
   <section class="card" style="padding:4px 14px">${withAl.map(row).join('')}</section>
@@ -514,6 +523,7 @@ A.coDemoOn = () => {
 };
 const recOf = id => CO.clients[id] || (CO.clients[id] = { id, kind: 'live', msgs: [], notes: [] });
 async function pushAssign(uid, part, val) {
+  if (coachingOn()) return cgAssign(uid, part, val);
   try {
     const ref = Store.db.doc('assign/' + uid);
     const cur = await ref.get();
@@ -789,6 +799,7 @@ function coFeed() {
 let lastPub = 0;
 async function publishStatus() {
   if (!FEATURES.coach) return;
+  if (coachingOn()) return cgPublish();
   if (DEMO || Store.mode !== 'cloud' || Store.owner !== false || Date.now() - lastPub < 60000) return;
   lastPub = Date.now();
   try {
@@ -805,6 +816,7 @@ async function publishStatus() {
 }
 async function loadLive() {
   if (!FEATURES.coach) return;
+  if (coachingOn()) return cgLoad(true);
   if (Store.mode !== 'cloud' || Store.owner === false) return;
   try {
     const qs = await withTimeout(Store.db.collection('clients').limit(200).get());
@@ -819,15 +831,23 @@ async function loadLive() {
 /* A client's app picks up what their coach assigned. */
 async function pullAssign() {
   if (!FEATURES.coach) return;
+  if (coachingOn()) return cgLoad();
   if (Store.mode !== 'cloud' || Store.owner !== false) return;
   try {
     const s = await withTimeout(Store.db.doc('assign/' + Store.uid).get());
     if (!s.exists) return;
-    const a = clone(s.data()),
-      seen = P.asg || (P.asg = {});
+    applyAssign(clone(s.data()));
+  } catch (e) {}
+}
+/* Apply what a coach has set. `offer` (real accounts): a programme or new targets are put to the person as
+   an offer they accept or decline, not applied behind their back. */
+function applyAssign(a, offer) {
+  {
+    const seen = P.asg || (P.asg = {});
     let ch = false;
     const fresh = k => a[k] && a[k].v > (seen[k] || 0);
-    if (fresh('prog') && a.prog.p) {
+    if (offer && cgOffers(a, seen)) ch = true;
+    if (!offer && fresh('prog') && a.prog.p) {
       const p = { ...a.prog.p, id: 'coach', src: 'coach' };
       saveProg(p);
       P.prog = { id: 'coach', at: 0, n: 0, started: today() };
@@ -849,7 +869,7 @@ async function pullAssign() {
       seen.tasks = a.tasks.v;
       ch = true;
     }
-    if (fresh('t')) {
+    if (!offer && fresh('t')) {
       P.t.k = a.t.k;
       if (a.t.p) P.t.p = a.t.p;
       seen.t = a.t.v;
@@ -878,7 +898,7 @@ async function pullAssign() {
       render();
       toast('Your coach updated your plan');
     }
-  } catch (e) {}
+  }
 }
 A.coachMsgOk = () => {
   P.coachMsg = null;

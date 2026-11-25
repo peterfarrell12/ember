@@ -51,7 +51,7 @@ A.chat = ({ id } = {}) => {
   const own = c && (c.kind === 'manual' || c.kind === 'sample');
   CH = { side: coach ? 'coach' : 'me', cid: id || '', as: 'c' };
   const sub = !coach
-    ? Store.owner !== false
+    ? (coachingOn() ? !hasCoach() : Store.owner !== false)
       ? 'This thread is with yourself in coach view. Switch views to answer as the coach.'
       : 'Your coach sees replies the next time they open Ember.'
     : c.kind === 'live'

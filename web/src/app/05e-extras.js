@@ -543,6 +543,7 @@ function remInput() {
 }
 let remTimer = 0;
 function remSync() {
+  if (DEMO) return;
   if (!canRemind() || !S.ready || !P || !P.onboarded) return;
   clearTimeout(remTimer);
   remTimer = setTimeout(() => {

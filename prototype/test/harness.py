@@ -15,11 +15,13 @@ TODAY = NOW.date()
 # mulberry32: a small seeded generator, so ids and sample data are the same on every run
 SEEDED_RANDOM = """(() => { let a = 0x9e3779b9; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();"""
 
-# Coach and gym are switched off in the web app until their phase (FEATURES in web/src/app/01-core.js).
-# These tests are about those screens, so they switch them on. Every other test runs as a new user would see the app.
-# The prototype has no such switch and ignores the key.
+# The web app has switches for its larger features (FEATURES in web/src/app/features.js), and each test pins the
+# set it was written for. The tests about the coach and gym screens switch those on, with the prototype's sample
+# catalogue and reviews. Every other test was written before the coach side was switched on and pins it off.
+# Coaching between real accounts is tested in supabase/tests/coach.e2e.mjs. The prototype ignores the key.
 FEATURE_TESTS = {'t7', 't8', 't9', 't10', 't15', 't16', 't18'}
-FEATURES_ON = """try { localStorage.setItem('ember:features', JSON.stringify({ coach: true, gym: true })); } catch (e) {}"""
+FEATURES_ON = """try { localStorage.setItem('ember:features', JSON.stringify({ coach: true, gym: true, community: true })); } catch (e) {}"""
+FEATURES_OFF = """try { localStorage.setItem('ember:features', JSON.stringify({ coach: false, gym: false })); } catch (e) {}"""
 
 # The web app asks everyone to sign in before using it. These tests are about the app itself, not accounts,
 # so they ask for the device-only mode instead (accounts are covered by supabase/tests/account.e2e.mjs).
@@ -34,8 +36,8 @@ async def new_context(self, *args, **kwargs):
     await ctx.clock.install(time=NOW)
     await ctx.add_init_script(SEEDED_RANDOM)
     await ctx.add_init_script(DEVICE_ONLY)
-    if os.path.splitext(os.path.basename(sys.argv[0]))[0] in FEATURE_TESTS:
-        await ctx.add_init_script(FEATURES_ON)
+    on = os.path.splitext(os.path.basename(sys.argv[0]))[0] in FEATURE_TESTS
+    await ctx.add_init_script(FEATURES_ON if on else FEATURES_OFF)
     return ctx
 
 
