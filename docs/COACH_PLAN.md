@@ -83,7 +83,7 @@ Steps 1 to 3 need no outside accounts and no money. Step 4's notifications need 
 | 5. Check-ins | Done: questions on a schedule, figures filled in from the diary, Claude's summary and draft reply, the coach's reply back |
 | 6. Programmes for many | Done: a programme and a pinned note for a squad. Group challenges and boards were already there |
 | 7. Payments | Not started. Needs a Stripe account and the owner's decisions on price and fees |
-| 8. The business side | Done: a coach's page and applications. Not done: automatic onboarding steps, team seats, income figures |
+| 8. The business side | Done: a coach's page and applications; a welcome message and the weekly check-in sent to each new client by itself. Not done: team seats, income figures |
 | 9. The coach's brand | Done in small: the coach's name and colour in the client's header. Not done: logo, a fully branded app |
 
 Also not done: sharing a progress photo with a coach on real accounts (hidden until it is built on private storage), and the legal wording for sharing with a coach, which needs advice.

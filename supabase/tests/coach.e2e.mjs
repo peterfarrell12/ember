@@ -410,6 +410,8 @@ try {
       assert.equal(await a.inputValue("#pgName"), "Coach Ann");
       await a.fill("#pgSlug", "coach-ann");
       await a.fill("#pgAbout", "Strength for field sports.");
+      await a.fill("#pgHello", "Welcome aboard.");
+      await a.click("#pgCk");
       await a.click("#pgGo");
       await until(
         "the page on the server",
@@ -461,6 +463,25 @@ try {
               .eq("status", "active")
           ).data.length === 2,
       );
+      // the coach's starter goes to the new client once, and not to the client who was already there
+      await a.reload();
+      await until("the welcome for the new client", async () => {
+        const { data } = await admin
+          .from("coach_links")
+          .select("client_id, coach_assign(data)")
+          .eq("status", "active");
+        const of = (id) =>
+          (data.find((l) => l.client_id === id) || {}).coach_assign;
+        const cee = of(people[2]),
+          bee = of(people[1]);
+        return (
+          !!cee &&
+          cee.data.msg &&
+          cee.data.msg.t === "Welcome aboard." &&
+          cee.data.checkin.qs.length === 4 &&
+          !(bee.data.msg && bee.data.msg.t === "Welcome aboard.")
+        );
+      });
     },
   );
   await step(

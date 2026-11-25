@@ -64,6 +64,7 @@ async function cgLoad(force) {
         };
       }
       LIVE = next;
+      await cgWelcome(api, linked);
     } else if (!linked.length) LIVE = {};
     if (coach && coach.status !== 'invited') {
       const set = await api.assigned(coach.id);
@@ -85,6 +86,27 @@ async function cgLoad(force) {
   } catch (e) {}
   CG.busy = false;
   if (mark() !== before && !sheets.length && S.ready) render();
+}
+/* A coach's starter for new clients (set on Your page): a welcome message and the weekly check-in, sent once
+   to each client when they first appear. Nothing is sent to clients who were already linked when it was set. */
+async function cgWelcome(api, linked) {
+  const st = CO.starter;
+  if (!st || !(st.msg || st.ck)) return;
+  CO.welcomed = CO.welcomed || {};
+  let any = false;
+  for (const l of linked) {
+    if (l.status !== 'active' || CO.welcomed[l.id]) continue;
+    try {
+      if (st.msg) await api.assign(l.id, 'msg', { d: today(), t: st.msg });
+      if (st.ck) {
+        await api.assign(l.id, 'checkin', { qs: CK_STARTER, wd: 4 });
+        recOf('u:' + l.client_id).ck = { qs: CK_STARTER, wd: 4 };
+      }
+      CO.welcomed[l.id] = 1;
+      any = true;
+    } catch (e) {}
+  }
+  if (any) saveCO();
 }
 /* the last fortnight of the diary, read once, so the copy sent to a coach can show recent days */
 async function cgRecentDays() {
@@ -790,6 +812,8 @@ A.cgPage = () => {
     <label class="f">What you offer<textarea class="inp" id="pgOffers" rows="3" maxlength="600" placeholder="Online coaching, programmes, in person">${esc(p.offers)}</textarea></label>
     <label class="f">Your colour<input class="inp" id="pgBrand" type="color" value="${esc(p.brand || '#0f3d2e')}" style="height:48px;padding:6px"><small class="muted">Shown beside your name in your clients' apps.</small></label>
     <button class="chk" id="pgOpen" data-act="cgPageOpen" aria-pressed="${p.open ? 'true' : 'false'}"><span class="tb"></span><span>Taking applications</span></button>
+    <div class="card stack"><h2>For each new client</h2><label class="f">A welcome message<textarea class="inp" id="pgHello" rows="3" maxlength="600" placeholder="Welcome. Here is how we will work together.">${esc((CO.starter || {}).msg || '')}</textarea></label>
+    <button class="chk" id="pgCk" data-act="cgPageOpen" aria-pressed="${(CO.starter || {}).ck ? 'true' : 'false'}"><span class="tb"></span><span>Start them on the weekly check-in</span></button><p class="tiny muted">Sent once, when someone first becomes your client. Clients you already have are not sent it.</p></div>
     ${CG.page ? `<button class="btn ghost" data-act="cgPageCopy">${ic('copy')} Copy your link</button>` : ''}</div>
     <div class="sheet-f"><button class="btn" data-act="cgPageSave" id="pgGo">Save</button></div>`,
     true,
@@ -815,6 +839,15 @@ A.cgPageSave = async () => {
     const api = await cgApi();
     await api.savePage(page);
     CG.page = await api.myPage();
+    const hello = ($('#pgHello').value || '').trim().slice(0, 600),
+      ck = $('#pgCk').getAttribute('aria-pressed') === 'true';
+    if (!CO.starter) {
+      // first time: the clients already here are not new
+      CO.welcomed = CO.welcomed || {};
+      for (const l of CG.clients) if (l.client_id) CO.welcomed[l.id] = 1;
+    }
+    CO.starter = { msg: hello, ck };
+    saveCO();
     // the colour and name travel to every client with what the coach sets
     for (const l of CG.clients.filter(x => x.client_id && x.status !== 'invited'))
       await api.assign(l.id, 'brand', { name: page.name, colour: page.brand }).catch(() => {});
