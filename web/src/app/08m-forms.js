@@ -271,7 +271,7 @@ A.cfDelete = () => {
 
 /* ---------- what a coach sets arrives in the client's app ---------- */
 /* Everything set for a client beyond a programme and targets is kept as it came, under P.co, newest wins. */
-const CO_PARTS = ['consult', 'self', 'phases', 'habits', 'supps', 'vault', 'recipes', 'menu', 'steps'];
+const CO_PARTS = ['consult', 'self', 'phases', 'habits', 'supps', 'vault', 'recipes', 'menu', 'steps', 'mealplan'];
 function cgApplyMore(a, seen) {
   let changed = false;
   if (a.checkin && a.checkin.v > (seen.checkin || 0)) {

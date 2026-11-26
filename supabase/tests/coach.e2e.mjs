@@ -1185,6 +1185,57 @@ try {
       await closeSheets(a);
     },
   );
+  await step(
+    "a meal plan typed by the coach: the client sees the days, and logs a meal from it in one tap as an entry made by hand",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      await closeSheets(a);
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="plan"]');
+      await a.click('[data-act="coMeal"]');
+      await a.fill("#cmT", "Dee's days of eating");
+      await a.fill("#cmD0", "Breakfast: Porridge with berries | 350 | 20\nLunch: Chicken wrap | 520 | 38\nDinner: Salmon, potatoes and greens | 640 | 42\nSnack: Greek yoghurt | 150 | 15");
+      await a.fill("#cmD1", "Omelette and toast | 420 | 28\nSoup and a roll | 380");
+      await a.fill("#cmNote", "Swap any dinner for another.");
+      await a.click('[data-act="coMealSave"]');
+      await until("the meal plan on the server", async () => {
+        const { data } = await admin.from("coach_links").select("coach_assign(data)").eq("client_id", people[3]);
+        const mp = data[0].coach_assign && data[0].coach_assign.data.mealplan;
+        return !!(
+          mp &&
+          mp.days.length === 2 &&
+          mp.days[0].items.length === 4 &&
+          mp.days[0].items[3].m === "s" &&
+          mp.days[1].items[0].m === "b" &&
+          mp.days[1].items[1].m === "l" &&
+          mp.days[1].items[1].p === 0
+        );
+      });
+      await a.waitForFunction(() => /Meal plan \| Change \| Dee's days of eating: Training day, 1,660 kcal · Rest day, 800 kcal/.test(document.querySelector("#ccBody").innerText.replace(/\s*\n+\s*/g, " | ")), null, { timeout: 10000 });
+      await closeSheets(a);
+      await closeSheets(d);
+      await d.goto(APP + "#today");
+      await d.reload();
+      await d.waitForSelector("#brandTag[data-act]", { timeout: 20000 });
+      await d.waitForTimeout(2500);
+      await clear(d);
+      await d.click("#brandTag");
+      await d.waitForSelector('[data-act="coMealLog"]', { timeout: 15000 });
+      assert.match(
+        await text(d, "#csBody"),
+        /Dee's days of eating \| Training day \| 1,660 kcal · 115 g protein \| Porridge with berries \| 350 \| Log \| Breakfast · 20 g protein[\s\S]*Rest day \| 800 kcal · 28 g protein[\s\S]*Swap any dinner for another\.[\s\S]*These are Coach Ann's figures, typed by them/i,
+      );
+      await shot(d, "client-meal-plan");
+      await d.click('[data-act="coMealLog"][data-d="0"][data-i="0"]');
+      await until("the meal in the client's own diary, marked as entered by hand", async () => {
+        const day = (await docs(people[3], "days")).pop();
+        return !!(day && day.data.e.some((e) => e.n === "Porridge with berries" && e.k === 350 && e.p === 20 && e.src === "Q" && e.m === "b"));
+      });
+      assert.equal(await d.locator("#csBody").count(), 1, "the Coach space stays open after logging");
+      await clear(d);
+      await closeSheets(d);
+    },
+  );
   await step("no page errors", async () => assert.deepEqual(errs, []));
 } finally {
   await browser.close();

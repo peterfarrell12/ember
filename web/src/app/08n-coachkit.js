@@ -538,7 +538,8 @@ function cgListCards(c) {
     st = rec.steps;
   const evs = (rec.calls || []).filter(e => e.d >= today()),
     resp = c.resp || {};
-  return `${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Calls and events</h2><button class="link" data-act="coEv">Add</button></div>${
+  const mp = rec.mealplan;
+  return `<section class="card stack"><div class="between"><h2>Meal plan</h2><button class="link" data-act="coMeal">${mp ? 'Change' : 'Write'}</button></div><p class="small muted">${mp ? esc(mp.title) + ': ' + mp.days.map(d => esc(d.n) + ', ' + fmt(d.items.reduce((n, x) => n + x.k, 0)) + ' kcal').join(' · ') : 'Write their days of eating here instead of sending a file. They can log each meal in one tap.'}</p></section>${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Calls and events</h2><button class="link" data-act="coEv">Add</button></div>${
     evs.length
       ? evs
           .map(e => {
@@ -570,6 +571,58 @@ A.coListSave = async () => {
   closeSheet();
   renderClient();
   toast(list.length ? LISTS[LK].title + ' sent.' : 'Removed.');
+};
+/* ---------- a meal plan for one client, typed by the coach ---------- */
+const MEAL_WORD = { b: /^break/i, l: /^lunch/i, d: /^(dinner|tea|supper)/i, s: /^snack/i };
+/* "Breakfast: Porridge with berries | 350 | 20" becomes a meal, a name, calories and protein */
+function mealLine(line, i) {
+  const [left, k, p] = line.split('|').map(x => x.trim()),
+    at = left.indexOf(':'),
+    word = at > 0 ? left.slice(0, at).trim() : '',
+    m = Object.keys(MEAL_WORD).find(key => MEAL_WORD[key].test(word)) || ['b', 'l', 'd', 's'][Math.min(i, 3)],
+    n = (at > 0 && Object.values(MEAL_WORD).some(re => re.test(word)) ? left.slice(at + 1) : left).trim().slice(0, 80);
+  return n ? { m, n, k: clamp(r0(num(k)), 0, 5000), p: clamp(r0(num(p)), 0, 400) } : null;
+}
+const mealLineOut = x => `${MEALS[x.m]}: ${x.n} | ${x.k} | ${x.p}`;
+A.coMeal = () => {
+  const c = getClient(CC),
+    mp = (CO.clients[c.id] || {}).mealplan || { title: '', days: [], note: '' },
+    day = i => mp.days[i] || { n: i === 0 ? 'Training day' : i === 1 ? 'Rest day' : '', items: [] };
+  openSheet(
+    `${sh('Meal plan for ' + c.name)}<div class="sheet-b"><label class="f">Title<input class="inp" id="cmT" maxlength="60" value="${esc(mp.title)}" placeholder="Your days of eating"></label>
+    <p class="small muted">One meal on each line: the meal, what it is, calories and protein. For example: Breakfast: Porridge with berries | 350 | 20.</p>
+    ${[0, 1, 2]
+      .map(
+        i =>
+          `<div class="card stack" style="gap:8px"><input class="inp" id="cmN${i}" maxlength="30" value="${esc(day(i).n)}" placeholder="${i === 2 ? 'A third day, optional' : 'Name of this day'}" aria-label="Name of day ${i + 1}"><textarea class="inp" id="cmD${i}" rows="5" maxlength="1500" aria-label="Meals for day ${i + 1}" placeholder="Breakfast: Porridge with berries | 350 | 20">${esc(day(i).items.map(mealLineOut).join('\n'))}</textarea></div>`,
+      )
+      .join('')}
+    <label class="f">A note, optional<textarea class="inp" id="cmNote" rows="2" maxlength="400" placeholder="Swap any dinner for another. Eat out once a week and enjoy it.">${esc(mp.note || '')}</textarea></label>
+    <p class="tiny muted">The figures are yours: they are shown to ${esc(c.name.split(' ')[0])} as your figures, and anything they log from here is marked as entered by hand. Leave every day empty to remove the plan.</p></div>
+    <div class="sheet-f"><button class="btn" data-act="coMealSave">Save and send</button></div>`,
+    true,
+  );
+};
+A.coMealSave = async () => {
+  const c = getClient(CC),
+    days = [0, 1, 2]
+      .map(i => ({
+        n: ($('#cmN' + i).value || '').trim().slice(0, 30) || 'Day ' + (i + 1),
+        items: ($('#cmD' + i).value || '').split('\n').map(mealLine).filter(Boolean).slice(0, 10),
+      }))
+      .filter(d => d.items.length),
+    plan = {
+      title: ($('#cmT').value || '').trim().slice(0, 60) || 'Your meal plan',
+      days,
+      note: ($('#cmNote').value || '').trim().slice(0, 400),
+    };
+  if (!(await pushAssign(c.uid, 'mealplan', days.length ? plan : { days: [] }))) return;
+  if (days.length) recOf(c.id).mealplan = plan;
+  else delete recOf(c.id).mealplan;
+  saveCO();
+  closeSheet();
+  renderClient();
+  toast(days.length ? 'Meal plan sent.' : 'Meal plan removed.');
 };
 A.coEv = () => {
   const c = getClient(CC);
@@ -836,6 +889,21 @@ A.stepsSave = async () => {
   coachSpaceRedraw();
   render(); // Today, behind the sheet, shows the steps too
 };
+/* log one meal from the coach's plan: their figures, so it goes in as an entry made by hand */
+A.coMealLog = async ({ d, i }, el) => {
+  const day = (((P.co || {}).mealplan || {}).days || [])[+d],
+    x = day && day.items[+i];
+  if (!x) return;
+  el.disabled = true;
+  await logEntries(
+    [{ n: x.n, b: '', g: 0, k: x.k, p: x.p, c: 0, f: 0, fi: 0, su: 0, sf: 0, na: 0, src: 'Q', m: x.m, u: '' }],
+    undefined,
+    { keep: true, quiet: true },
+  );
+  render();
+  toast(`Logged to ${MEALS[x.m].toLowerCase()}${S.date === today() ? '' : ' on ' + niceDate(S.date)}.`, 'good');
+  el.disabled = false;
+};
 A.coRecipeKeep = ({ id }) => {
   const r = ((P.co.recipes && P.co.recipes.list) || []).find(x => x.id === id);
   if (!r) return;
@@ -924,6 +992,18 @@ function coachSpaceHtml() {
       `<div class="grp">${esc(co.menu.title || 'Menu of the week')}</div><section class="card" style="padding:4px 14px">${co.menu.meals.map(x => `<div class="entry" style="cursor:default"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k * sv)}</span><span class="s">${MEALS[x.m]} · ${sv === 1 ? '1 serving' : sv + ' servings'} · ${r0(x.p * sv)} g protein${full ? ' ' + srcBadge('AI') : ''}</span></div>`).join('')}</section><p class="tiny muted">${full ? `Sized to your ${fmt(P.t.k)} kcal target by scaling the servings to the nearest quarter, so the figures are estimates.` : `As your coach wrote it: ${fmt(co.menu.total)} kcal in all.`}</p>`,
     );
   }
+  if (co.mealplan && co.mealplan.days && co.mealplan.days.length)
+    out.push(
+      `<div class="grp">${esc(co.mealplan.title || 'Your meal plan')}</div>${co.mealplan.days
+        .map((dy, di) => {
+          const k = dy.items.reduce((n, x) => n + x.k, 0),
+            pr = dy.items.reduce((n, x) => n + x.p, 0);
+          return `<section class="card" style="padding:10px 14px 4px"><div class="between"><h2>${esc(dy.n)}</h2><span class="muted small">${fmt(k)} kcal · ${pr} g protein</span></div>${dy.items.map((x, i) => `<div class="entry" style="cursor:default;grid-template-columns:1fr auto auto;align-items:center"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k)}</span><button class="btn sm ghost" data-act="coMealLog" data-d="${di}" data-i="${i}" aria-label="Log ${esc(x.n)}">Log</button><span class="s">${MEALS[x.m]}${x.p ? ' · ' + x.p + ' g protein' : ''}</span></div>`).join('')}</section>`;
+        })
+        .join(
+          '',
+        )}${co.mealplan.note ? `<p class="small">${esc(co.mealplan.note)}</p>` : ''}<p class="tiny muted">These are ${who}'s figures, typed by them. Your own target is ${fmt(P.t.k)} kcal. A meal you log from here is marked as entered by hand.</p>`,
+    );
   if (co.recipes && co.recipes.list && co.recipes.list.length)
     out.push(
       `<div class="grp">Recipes from ${who}</div><section class="card" style="padding:4px 14px">${co.recipes.list.map(r => `<div class="entry" style="cursor:default;grid-template-columns:1fr auto auto;align-items:center"><span class="n">${esc(r.n)}</span><span class="k">${fmt(r.per.k)}</span>${S.recipes['co' + r.id] ? '<span class="pill good">Saved</span>' : `<button class="btn sm ghost" data-act="coRecipeKeep" data-id="${r.id}">Save</button>`}<span class="s">kcal a serving · ${r.per.p} g protein · makes ${r.sv}</span></div>`).join('')}</section>`,
