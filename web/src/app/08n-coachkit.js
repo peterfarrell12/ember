@@ -19,10 +19,20 @@ async function cgWeeksSend() {
   if (!coached() || DEMO) return;
   CG.wkSent = CG.wkSent || {};
   const p = activeProg(),
-    api = await cgApi();
+    api = await cgApi(),
+    days = await cgRecentDays(),
+    hb = (P.co && P.co.habits) || {},
+    hs = (hb.list || []).map(h => h.id),
+    hbFrom = hb.v ? dkey(new Date(hb.v)) : ''; // only days since the coach set them count
   for (const week of [addDays(ckWeek(), -7), ckWeek()]) {
+    // habits: ticks out of the habits there were to tick on the days of that week so far
+    const dates = Array.from({ length: 7 }, (x, i) => addDays(week, i)).filter(d => d <= today() && d >= hbFrom),
+      habits = {
+        done: dates.reduce((n, d) => n + hs.filter(id => ((days[d] || {}).hb || {})[id]).length, 0),
+        of: hs.length * dates.length,
+      };
     const data = weekSummary(
-        { week, hist: P.hist, wts: P.wts, sess: TR.sess, planned: p ? p.days.length : 0 },
+        { week, hist: P.hist, wts: P.wts, sess: TR.sess, planned: p ? p.days.length : 0, habits },
         l.share,
       ),
       key = JSON.stringify(data);
@@ -175,6 +185,37 @@ const engOf = c => {
     since: link.accepted_at ? dkey(new Date(link.accepted_at)) : '',
   });
 };
+/* on the Clients list: only the two states that ask for a look */
+const engPill = c => {
+  if (!coachingOn() || c.kind !== 'live' || !c.link || c.paused) return '';
+  const e = engOf(c);
+  return e.state === 'Slipping'
+    ? '<span class="pill gold">Slipping</span>'
+    : e.state === 'Behind'
+      ? '<span class="pill bad">Behind</span>'
+      : '';
+};
+/* weight has held for three weeks: what that says about their intake, for the coach to weigh up */
+function cgStallCard(c, weeks) {
+  const ph = (CO.clients[c.id] || {}).phases,
+    now = ph && phaseNow(ph),
+    goalKg = num((String(c.goal || '').match(/([\d.]+) kg/) || [])[1]),
+    kg = c.st && c.st.kg,
+    direction = goalKg && kg ? (goalKg < kg - 0.5 ? 'lose' : goalKg > kg + 0.5 ? 'gain' : '') : '',
+    s = stall({ weeks, thisWeek: ckWeek(), rate: (now && now.rate) || 0, direction });
+  if (!s) return '';
+  return `<section class="card stack" style="border-color:var(--gold)"><div class="between"><h2>Weight has held for three weeks</h2>${srcBadge('AI')}</div>
+    <p class="small">Weekly averages went from ${s.from} kg to ${s.to} kg while they logged about ${fmt(s.kcal)} kcal a day. That makes ${fmt(s.kcal)} roughly what holds their weight steady, if the logging is complete.</p>
+    ${
+      !s.suggest
+        ? `<p class="small muted">Set a rate for the current phase and a goal weight to see what a change would work out to.</p>`
+        : s.suggest < 1200
+          ? `<p class="small">The ${now.rate} kg a week this phase aims for would work out below 1,200 kcal a day, which is lower than Ember will suggest. A slower rate, more activity or a spell at maintenance are the other options.</p>`
+          : `<p class="small">For the ${now.rate} kg a week this phase aims for, that works out at about <b>${fmt(s.suggest)} kcal a day</b>.</p>`
+    }
+    <p class="tiny muted">Worked out from their figures, not measured. Check the logging and how they feel before changing anything; it is your call.</p>
+    <button class="btn sm ghost" data-act="coTargets" style="align-self:flex-start">Open their targets</button></section>`;
+}
 const ENG_TONE = { 'On track': 'good', Slipping: 'gold', Behind: 'bad' };
 function cgClientEngage(c) {
   if (c.kind !== 'live' || !c.link || c.paused) return '';
@@ -200,15 +241,16 @@ function cgClientEngage(c) {
         wt ? (d.weighs ? d.kg + ' kg' : none) : off,
         tr ? d.sess + (d.plan ? ' of ' + d.plan : '') : off,
         d.steps ? fmt(d.steps) : tr || c.share.recovery ? none : off,
+        d.hab ? d.hab.done + ' of ' + d.hab.of : '',
       ]
         .map(x => `<td>${x}</td>`)
         .join('');
     };
-  return `<section class="card stack"><div class="between"><h2>Engagement</h2>${e.score == null ? '<span class="pill">Not enough yet</span>' : `<span class="pill ${ENG_TONE[e.state] || ''}">${e.state}</span>`}</div>
+  return `${cgStallCard(c, weeks)}<section class="card stack"><div class="between"><h2>Engagement</h2>${e.score == null ? '<span class="pill">Not enough yet</span>' : `<span class="pill ${ENG_TONE[e.state] || ''}">${e.state}</span>`}</div>
     ${e.score == null ? `<p class="small muted">Nothing to judge yet: this fills in from what they share and what you have asked for.</p>` : `<div class="row" style="align-items:baseline;gap:8px"><span class="num" style="font-size:38px;line-height:1">${e.score}</span><span class="muted small">out of 100, from what you asked for and they share</span></div>${e.parts.map(p => `<div><div class="between small"><span>${p.label}</span><b class="tn">${p.done} of ${p.of}</b></div><div class="bar ${p.done / p.of >= 0.8 ? 'good' : ''}" style="margin-top:4px"><i style="width:${Math.round((p.done / p.of) * 100)}%"></i></div></div>`).join('')}`}</section>
     ${
       last4.length
-        ? `<section class="card" style="overflow-x:auto"><h2>The last weeks</h2><table class="mini" style="margin-top:8px"><tr><th>Week of</th><th>kcal</th><th>Protein</th><th>Weight</th><th>Sessions</th><th>Steps</th></tr>${last4.map(w => `<tr><td class="muted">${wkDate(w.week)}</td>${wkRow(w.data)}</tr>`).join('')}</table></section>`
+        ? `<section class="card" style="overflow-x:auto"><h2>The last weeks</h2><table class="mini" style="margin-top:8px"><tr><th>Week of</th><th>kcal</th><th>Protein</th><th>Weight</th><th>Sessions</th><th>Steps</th><th>Habits</th></tr>${last4.map(w => `<tr><td class="muted">${wkDate(w.week)}</td>${wkRow(w.data)}</tr>`).join('')}</table></section>`
         : ''
     }
     ${
@@ -434,15 +476,14 @@ A.rmNote = ({ w }) => {
 SEG.pnMs = v => (PHX.ms = v);
 A.rmNoteSave = async () => {
   const c = getClient(CC),
-    rec = recOf(c.id),
-    ph = clone(rec.phases),
+    ph = clone(recOf(c.id).phases),
     cur = (ph.notes || {})[PHX.w] || {};
   ph.notes = {
     ...(ph.notes || {}),
     [PHX.w]: { t: ($('#pnT').value || '').trim().slice(0, 400), ms: PHX.ms === undefined ? cur.ms || '' : PHX.ms },
   };
   if (!(await pushAssign(c.uid, 'phases', ph))) return;
-  rec.phases = ph;
+  recOf(c.id).phases = ph;
   saveCO();
   closeSheet();
   closeSheet();
@@ -495,7 +536,18 @@ function cgListCards(c) {
       return `<section class="card stack"><div class="between"><h2>${LISTS[k].title}</h2><button class="link" data-act="coList" data-k="${k}">${cur && cur.length ? 'Change' : 'Set'}</button></div><p class="small muted">${cur && cur.length ? cur.map(x => esc(x.n)).join(' · ') : LISTS[k].blank}</p></section>`;
     },
     st = rec.steps;
-  return `${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Steps and cardio</h2><button class="link" data-act="coSteps">${st ? 'Change' : 'Set'}</button></div><p class="small muted">${st ? [st.goal ? fmt(st.goal) + ' steps a day' : '', st.cardio].filter(Boolean).map(esc).join(' · ') : 'A daily step target and any cardio you want done.'}</p></section>`;
+  const evs = (rec.calls || []).filter(e => e.d >= today()),
+    resp = c.resp || {};
+  return `${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Calls and events</h2><button class="link" data-act="coEv">Add</button></div>${
+    evs.length
+      ? evs
+          .map(e => {
+            const r = resp['ev' + e.id];
+            return `<div class="between small"><span>${esc(e.t)}, ${shortDate(e.d)}${e.tm ? ' at ' + e.tm : ''}</span><span class="pill ${r ? (r.yes ? 'good' : '') : 'gold'}">${r ? (r.yes ? 'In their calendar' : 'Declined') : 'Offered'}</span></div>`;
+          })
+          .join('')
+      : `<p class="small muted">Suggest a call, a review or an event. It goes into their calendar only if they accept.</p>`
+  }</section><section class="card stack"><div class="between"><h2>Steps and cardio</h2><button class="link" data-act="coSteps">${st ? 'Change' : 'Set'}</button></div><p class="small muted">${st ? [st.goal ? fmt(st.goal) + ' steps a day' : '', st.cardio].filter(Boolean).map(esc).join(' · ') : 'A daily step target and any cardio you want done.'}</p></section>`;
 }
 let LK = '';
 A.coList = ({ k }) => {
@@ -518,6 +570,35 @@ A.coListSave = async () => {
   closeSheet();
   renderClient();
   toast(list.length ? LISTS[LK].title + ' sent.' : 'Removed.');
+};
+A.coEv = () => {
+  const c = getClient(CC);
+  openSheet(
+    `${sh('A call or event for ' + c.name)}<div class="sheet-b"><label class="f">What is it<input class="inp" id="ceT" maxlength="60" value="Call with ${esc(P.coachName || 'your coach')}"></label><label class="f">Date<input class="inp" type="date" id="ceD" value="${addDays(today(), 1)}" min="${today()}"></label><div class="grid2"><label class="f">Time, optional<input class="inp" type="time" id="ceTm"></label><label class="f">Minutes<input class="inp" id="ceMin" inputmode="numeric" value="30"></label></div><p class="tiny muted">They are asked first. It goes into their calendar only if they accept, and you see their answer.</p></div><div class="sheet-f"><button class="btn" data-act="coEvSave">Offer it</button></div>`,
+    true,
+  );
+};
+A.coEvSave = async () => {
+  const c = getClient(CC),
+    d = $('#ceD').value,
+    e = {
+      id: newId(),
+      t: ($('#ceT').value || '').trim().slice(0, 60) || 'Call',
+      d,
+      tm: /^\d\d:\d\d$/.test($('#ceTm').value) ? $('#ceTm').value : '',
+      min: clamp(r0(num($('#ceMin').value)), 0, 600),
+    };
+  if (!/^\d{4}-\d\d-\d\d$/.test(d) || d < today()) return toast('Pick a date from today on.');
+  const list = (recOf(c.id).calls || [])
+    .filter(x => x.d >= today())
+    .concat([e])
+    .slice(-10);
+  if (!(await pushAssign(c.uid, 'ev', { list }))) return;
+  recOf(c.id).calls = list; // looked up again: the coach's records may have been re-read while that was sending
+  saveCO();
+  closeSheet();
+  renderClient();
+  toast('Offered. They will be asked.');
 };
 A.coSteps = () => {
   const c = getClient(CC),
@@ -600,7 +681,7 @@ A.coMenu = () => {
     menu = (CO.menu && CO.menu.meals) || [];
   if (!mine.length) return toast('Add recipes of your own first, under My view, You, Recipes. Then share them here.');
   openSheet(
-    `${sh('Recipes and menu of the week')}<div class="sheet-b"><div class="f">Recipes your clients can see<div class="stack" style="gap:6px;margin-top:6px">${mine.map(r => `<button class="chk" data-act="cgPageOpen" data-rid="${r.id}" aria-pressed="${shared.has(r.id) ? 'true' : 'false'}"><span class="tb"></span><span>${esc(r.n)}<small class="muted" style="display:block;font-weight:400">${fmt(recipeFood(r).per.k)} kcal a serving</small></span></button>`).join('')}</div></div>
+    `${sh('Recipes and menu of the week')}<div class="sheet-b"><div class="f">Recipes your clients can see<div class="stack" style="gap:6px;margin-top:6px">${mine.map(r => `<button class="chk" data-act="cgPageOpen" data-rid="${r.id}" aria-pressed="${shared.has(r.id) ? 'true' : 'false'}"><span class="tb"></span><span>${esc(r.n)}<small class="muted" style="display:block;font-weight:400">${fmt(perServing(r).k)} kcal a serving</small></span></button>`).join('')}</div></div>
     <div class="card stack"><h2>Menu of the week</h2><label class="f">Title<input class="inp" id="mnT" maxlength="60" value="${esc((CO.menu && CO.menu.title) || '')}" placeholder="A day of eating"></label>
     ${Object.entries(MEALS)
       .map(
@@ -614,17 +695,20 @@ A.coMenu = () => {
     true,
   );
 };
-const recipeOut = r => {
-  const f = recipeFood(r);
-  return {
-    id: r.id,
-    n: r.n,
-    sv: r.sv,
-    items: r.items,
-    per: { k: r0(f.per.k), p: r1(f.per.p), c: r1(f.per.c), f: r1(f.per.f) },
-    ...(r.from ? { from: r.from, url: r.url } : {}),
-  };
+/* one serving of a recipe: its ingredients added up and shared out */
+const perServing = r => {
+  const t = recipeTotals(r),
+    n = r.sv || 1;
+  return { k: r0(t.k / n), p: r1(t.p / n), c: r1(t.c / n), f: r1(t.f / n) };
 };
+const recipeOut = r => ({
+  id: r.id,
+  n: r.n,
+  sv: r.sv,
+  items: r.items,
+  per: perServing(r),
+  ...(r.from ? { from: r.from, url: r.url } : {}),
+});
 A.coMenuSave = async () => {
   const picked = $$('.sheet [data-rid][aria-pressed="true"]')
     .map(b => S.recipes[b.dataset.rid])
@@ -633,7 +717,7 @@ A.coMenuSave = async () => {
   const meals = Object.keys(MEALS)
     .map(m => {
       const r = S.recipes[$('#mn' + m).value];
-      return r ? { m, rid: r.id, n: r.n, k: r0(recipeFood(r).per.k), p: r1(recipeFood(r).per.p) } : null;
+      return r ? { m, rid: r.id, n: r.n, k: perServing(r).k, p: perServing(r).p } : null;
     })
     .filter(Boolean);
   // a recipe on the menu is shared too, so a client can open it
@@ -659,10 +743,42 @@ function cgKitCard() {
   if (!coachingOn()) return '';
   const v = ((CO.vault && CO.vault.list) || []).length,
     r = ((CO.recipes && CO.recipes.list) || []).length;
-  return `<div class="grp">For all your clients</div><div class="two"><button class="act" data-act="cfForms">${ic('edit')}<span>Forms<small>Consultation, check-ins</small></span></button><button class="act" data-act="coVault">${ic('book')}<span>Vault<small>${v ? v + ' item' + (v === 1 ? '' : 's') : 'Guides and videos'}</small></span></button></div><button class="act" data-act="coMenu">${ic('fork')}<span>Recipes and menu of the week<small>${r ? r + ' shared with your clients' : 'From your own recipe book'}</small></span></button>`;
+  return `<div class="grp">For all your clients</div><div class="two"><button class="act" data-act="cfForms">${ic('edit')}<span>Forms<small>Consultation, check-ins</small></span></button><button class="act" data-act="coVault">${ic('book')}<span>Vault<small>${v ? v + ' item' + (v === 1 ? '' : 's') : 'Guides and videos'}</small></span></button></div><div class="two"><button class="act" data-act="coMenu">${ic('fork')}<span>Recipes and menu<small>${r ? r + ' shared' : 'From your recipe book'}</small></span></button><button class="act" data-act="coAll">${ic('send')}<span>Message everyone<small>One note to each client</small></span></button></div>`;
 }
 
+/* one message to every client: each gets it in their own conversation, and replies come back there */
+A.coAll = () => {
+  const n = activeLinks().filter(l => l.status === 'active').length;
+  if (!n) return toast('You have no clients sharing with you yet.');
+  openSheet(
+    `${sh('Message everyone')}<div class="sheet-b"><label class="f">Your message<textarea class="inp" id="caT" rows="5" maxlength="2000" autocapitalize="sentences" placeholder="No sessions on the bank holiday Monday. Back as normal on Tuesday."></textarea></label><p class="tiny muted">Goes to ${n} client${n === 1 ? '' : 's'}, each in their own conversation with you. Nobody sees who else received it.</p></div><div class="sheet-f"><button class="btn ember" data-act="coAllGo" id="caGo">Send to ${n}</button></div>`,
+    true,
+  );
+};
+A.coAllGo = async () => {
+  const text = ($('#caT').value || '').trim();
+  if (text.length < 2) return toast('Write the message first.');
+  const go = $('#caGo'),
+    api = await cgApi();
+  go.disabled = true;
+  let sent = 0;
+  for (const l of activeLinks().filter(x => x.status === 'active'))
+    try {
+      await api.send(l.id, text);
+      sent++;
+    } catch (e) {}
+  await cgMsgs();
+  closeSheet();
+  toast(
+    sent
+      ? `Sent to ${sent} client${sent === 1 ? '' : 's'}.`
+      : 'That did not send. Check your connection and try again.',
+  );
+};
+
 /* ================= the client's side: the Coach space ================= */
+/* the daily step target a coach has set, if there is one */
+const stepGoal = () => (coached() && P.co && P.co.steps && P.co.steps.goal) || 0;
 /* the coach's name in the header is a tag made into a button, so the keyboard has to work on it too */
 document.addEventListener('keydown', e => {
   const el = /** @type {HTMLElement} */ (e.target);
@@ -677,7 +793,7 @@ function habitsCard() {
   const d = day(),
     done = d.hb || {},
     wk = Array.from({ length: 7 }, (x, i) => S.days[addDays(ckWeek(), i)]).filter(Boolean);
-  return `<section class="card stack"><div class="between"><h2>Habits</h2><span class="muted small">from ${esc(CG.coach.coach_name)}</span></div>${hs
+  return `<section class="card stack"><div class="between"><h2>Habits</h2><span class="muted small">from ${esc(CG.coach.coach_name)}</span></div><p class="tiny muted" style="margin-top:-6px">Your coach sees how many you tick each week, not which days.</p>${hs
     .map(h => {
       const n = wk.filter(x => (x.hb || {})[h.id]).length;
       return `<button class="chk" data-act="habitTick" data-id="${h.id}" aria-pressed="${done[h.id] ? 'true' : 'false'}"><span class="tb"></span><span>${esc(h.n)}<small class="muted" style="display:block;font-weight:400">${h.why ? esc(h.why) + ' · ' : ''}${n} day${n === 1 ? '' : 's'} this week</small></span></button>`;
@@ -690,6 +806,9 @@ A.habitTick = async ({ id }) => {
   if (d.hb[id]) delete d.hb[id];
   else d.hb[id] = 1;
   commitDay(d);
+  if (CG.recent) CG.recent[d.date] = d;
+  clearTimeout(CG.wkLater);
+  CG.wkLater = setTimeout(cgWeeksSend, 4000); // the week's count, once the ticking has stopped
 };
 A.suppTick = async ({ id }) => {
   const d = await loadDay(today());
@@ -697,7 +816,7 @@ A.suppTick = async ({ id }) => {
   if (d.sp[id]) delete d.sp[id];
   else d.sp[id] = 1;
   commitDay(d, { quiet: true });
-  A.coachSpace();
+  coachSpaceRedraw();
 };
 A.stepsToday = () => {
   const h = P.hist[today()] || {};
@@ -713,8 +832,9 @@ A.stepsSave = async () => {
   saveProfile();
   lastPub = 0;
   publishStatus();
-  closeAll();
-  A.coachSpace();
+  closeSheet();
+  coachSpaceRedraw();
+  render(); // Today, behind the sheet, shows the steps too
 };
 A.coRecipeKeep = ({ id }) => {
   const r = ((P.co.recipes && P.co.recipes.list) || []).find(x => x.id === id);
@@ -729,11 +849,25 @@ A.coRecipeKeep = ({ id }) => {
   S.recipes[mine.id] = mine;
   Store.put('recipes', mine.id, mine);
   toast('Saved to your recipes. Log a serving from the Add sheet.', 'good');
-  A.coachSpace();
+  coachSpaceRedraw();
 };
 A.coachSpace = () => {
   if (!hasCoach()) return A.cgJoin();
   while (sheets.length) closeSheet();
+  openSheet(
+    `${sh('Your coach: ' + CG.coach.coach_name)}<div class="sheet-b" id="csBody">${coachSpaceHtml()}</div>`,
+    true,
+  );
+};
+/* after a tick or a save inside the Coach space: the same sheet, redrawn where it was */
+function coachSpaceRedraw() {
+  const b = $('#csBody');
+  if (!b) return;
+  const at = b.scrollTop;
+  b.innerHTML = coachSpaceHtml();
+  b.scrollTop = at;
+}
+function coachSpaceHtml() {
   const l = CG.coach,
     co = P.co || {},
     who = esc(l.coach_name),
@@ -781,9 +915,13 @@ A.coachSpace = () => {
     );
   }
   if (co.menu && co.menu.meals && co.menu.meals.length) {
-    const f = co.menu.total ? P.t.k / co.menu.total : 1;
+    // a menu that covers a whole day (three meals or more) is sized to the person's own calories, within
+    // sensible bounds; a single meal or two is shown as the coach wrote it
+    const full = co.menu.meals.length >= 3 && co.menu.total > 0,
+      f = full ? clamp(P.t.k / co.menu.total, 0.5, 2) : 1,
+      sv = Math.round(f * 4) / 4;
     out.push(
-      `<div class="grp">${esc(co.menu.title || 'Menu of the week')}</div><section class="card" style="padding:4px 14px">${co.menu.meals.map(x => `<div class="entry" style="cursor:default"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k * f)}</span><span class="s">${MEALS[x.m]} · about ${r1(f)} serving${Math.abs(f - 1) < 0.05 ? '' : 's'} · ${r0(x.p * f)} g protein ${srcBadge('AI')}</span></div>`).join('')}</section><p class="tiny muted">Sized to your ${fmt(P.t.k)} kcal target by scaling the servings, so the figures are estimates.</p>`,
+      `<div class="grp">${esc(co.menu.title || 'Menu of the week')}</div><section class="card" style="padding:4px 14px">${co.menu.meals.map(x => `<div class="entry" style="cursor:default"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k * sv)}</span><span class="s">${MEALS[x.m]} · ${sv === 1 ? '1 serving' : sv + ' servings'} · ${r0(x.p * sv)} g protein${full ? ' ' + srcBadge('AI') : ''}</span></div>`).join('')}</section><p class="tiny muted">${full ? `Sized to your ${fmt(P.t.k)} kcal target by scaling the servings to the nearest quarter, so the figures are estimates.` : `As your coach wrote it: ${fmt(co.menu.total)} kcal in all.`}</p>`,
     );
   }
   if (co.recipes && co.recipes.list && co.recipes.list.length)
@@ -797,5 +935,5 @@ A.coachSpace = () => {
   out.push(
     `<div class="grp">You and ${who}</div><button class="btn ghost" data-act="measSheet">${ic('scale')} Measurements</button><button class="btn ghost" data-act="myCoach">${ic('lock')} What ${who} can see</button>`,
   );
-  openSheet(`${sh('Your coach: ' + l.coach_name)}<div class="sheet-b">${out.join('')}</div>`, true);
-};
+  return out.join('');
+}

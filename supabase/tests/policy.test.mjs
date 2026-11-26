@@ -1072,10 +1072,107 @@ try {
       await sb.leave(sq.id);
     },
   );
+  const shared = b.id + "/shared.jpg",
+    kept = b.id + "/private.jpg";
+  await check(
+    "a photo is shared one at a time: the coach opens that file and no other, and cannot change it",
+    async () => {
+      const st = (who) => who.client.storage.from("photos");
+      for (const p of [shared, kept])
+        assert.equal(
+          (await st(b).upload(p, jpeg, { contentType: "image/jpeg" })).error,
+          null,
+        );
+      assert.ok(
+        (await st(a).createSignedUrl(shared, 60)).error,
+        "nothing shared yet: the coach is refused",
+      );
+      await cb.photoShare(
+        { path: shared, d: "2026-11-20", pose: "front", kg: 80 },
+        true,
+      );
+      assert.deepEqual(
+        (await ca.photos(linkId)).map((p) => [p.path, p.d, p.pose]),
+        [[shared, "2026-11-20", "front"]],
+      );
+      assert.ok((await st(a).createSignedUrl(shared, 60)).data.signedUrl);
+      assert.equal((await st(a).download(shared)).error, null);
+      assert.ok(
+        (await st(a).createSignedUrl(kept, 60)).error,
+        "the photo that was not shared stays private",
+      );
+      assert.deepEqual(
+        (await st(a).list(b.id)).data.map((f) => f.name),
+        ["shared.jpg"],
+        "listing the folder shows the coach only the shared file",
+      );
+      // the coach can look, not touch
+      await st(a).remove([shared]);
+      assert.ok(
+        (await st(a).upload(shared, jpeg, { upsert: true })).error,
+        "replacing it is refused",
+      );
+      assert.equal((await st(b).list(b.id)).data.length, 2, "still there");
+      // only your own files, and only as the client on a link
+      await assert.rejects(
+        cb.photoShare({ path: path, d: "2026-11-20" }, true),
+        (e) => e.code === "not_allowed",
+      );
+      await assert.rejects(
+        cb.photoShare({ path: b.id + "/missing.jpg" }, true),
+        (e) => e.code === "not_found",
+      );
+      await assert.rejects(
+        ca.photoShare({ path: path }, true),
+        (e) => e.code === "no_coach",
+      );
+      assert.ok(
+        (await visitor.storage.from("photos").createSignedUrl(shared, 60))
+          .error,
+        "nobody else gets a link",
+      );
+      assert.ok(
+        (
+          await b.client.from("coach_photos").insert({
+            link_id: linkId,
+            path: kept,
+            d: "2026-11-20",
+          })
+        ).error,
+        "rows are only made through the function",
+      );
+    },
+  );
+  await check(
+    "pausing or unsharing takes a shared photo away at once, and ending removes the record",
+    async () => {
+      const st = (who) => who.client.storage.from("photos");
+      await cb.pause(linkId);
+      assert.deepEqual(await ca.photos(linkId), []);
+      assert.ok((await st(a).createSignedUrl(shared, 60)).error, "paused");
+      await cb.resume(linkId);
+      assert.ok((await st(a).createSignedUrl(shared, 60)).data.signedUrl);
+      await cb.photoShare({ path: shared }, false);
+      assert.ok((await st(a).createSignedUrl(shared, 60)).error, "unshared");
+      assert.deepEqual(await ca.photos(linkId), []);
+      await cb.photoShare({ path: shared, d: "2026-11-20" }, true); // shared again, for the ending below
+    },
+  );
   await check(
     "either can end it; after that the coach sees nothing and nothing more can be set",
     async () => {
       await cb.end(linkId);
+      assert.equal(
+        (await admin.from("coach_photos").select("path")).data.length,
+        0,
+        "ending removes the shared photo records",
+      );
+      assert.ok(
+        (await a.client.storage.from("photos").createSignedUrl(shared, 60))
+          .error,
+        "and the coach can no longer open the file",
+      );
+      await b.client.storage.from("photos").remove([shared, kept]);
       assert.deepEqual(await ca.statuses(), {});
       assert.deepEqual(
         (await ca.links()).clients.filter((l) => l.id === linkId),

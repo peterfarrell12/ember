@@ -41,7 +41,7 @@ const cgList = words =>
 async function cgLoad(force) {
   if (!coachingOn() || CG.busy || DEMO || (!force && Date.now() - CG.at < 20000)) return;
   CG.busy = true;
-  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page, CG.inbox2, P.co]);
+  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page, CG.inbox2, P.co, CG.wk]);
   const before = mark();
   try {
     const api = await cgApi();
@@ -50,7 +50,8 @@ async function cgLoad(force) {
     CG.coach = coach;
     // no coach any more: what the last one set (forms, phases, habits and the rest) goes with them
     if (!coach && (P.co || P.ckForm || P.coachBrand)) {
-      for (const k of ['co', 'ckForm', 'coachBrand', 'asg', 'offer', 'consultSent', 'selfSent', 'ckSent']) delete P[k];
+      for (const k of ['co', 'ckForm', 'coachBrand', 'asg', 'offer', 'evSeen', 'consultSent', 'selfSent', 'ckSent'])
+        delete P[k];
       saveProfile();
     }
     CG.at = Date.now();
@@ -71,6 +72,9 @@ async function cgLoad(force) {
       LIVE = next;
       await cgWelcome(api, linked);
       CG.inbox2 = await api.inbox(200); // every client's form answers, for the inbox and the overdue list
+      const wk = Object.fromEntries(linked.map(l => [l.id, []]));
+      for (const w of await api.weeksAll(addDays(ckWeek(), -84))) if (wk[w.link_id]) wk[w.link_id].push(w);
+      CG.wk = wk; // weekly summaries, for engagement, the last weeks and the roadmap
     } else if (!linked.length) LIVE = {};
     if (coach && coach.status !== 'invited') {
       const set = await api.assigned(coach.id);
@@ -118,7 +122,7 @@ async function cgWelcome(api, linked) {
   for (const l of linked) {
     if (l.status !== 'active' || CO.welcomed[l.id]) continue;
     try {
-      const rec = recOf('u:' + l.client_id),
+      const rec = () => recOf('u:' + l.client_id), // looked up each time: records can be re-read between sends
         pick = async kind => {
           await formsLoad();
           const f = formsOf(kind)[0] || FORM_STARTERS[kind]; // the coach's own form if they have built one
@@ -128,12 +132,12 @@ async function cgWelcome(api, linked) {
       if (st.consult) {
         const form = await pick('consult');
         await api.assign(l.id, 'consult', { form, wd: 0, every: 1 });
-        rec.consult = { ...form, wd: 0, every: 1 };
+        rec().consult = { ...form, wd: 0, every: 1 };
       }
       if (st.ck) {
         const form = await pick('checkin');
         await api.assign(l.id, 'checkin', { form, wd: 4, every: 1 });
-        rec.ck = { ...form, wd: 4, every: 1 };
+        rec().ck = { ...form, wd: 4, every: 1 };
       }
       await cgShareKit(api, l.id);
       CO.welcomed[l.id] = 1;
@@ -211,6 +215,20 @@ function cgOffers(a, seen) {
   }
   return changed;
 }
+/* a set of targets in words: 2,200 kcal a day, 150 g protein, 60 g fat… */
+const tgWords = t =>
+  [
+    fmt(t.k) + ' kcal a day',
+    t.p ? t.p + ' g protein' : '',
+    t.c ? t.c + ' g carbohydrate' : '',
+    t.f ? t.f + ' g fat' : '',
+    t.fi ? t.fi + ' g fibre' : '',
+    t.w ? fmt(t.w) + ' ml water' : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+/* the lowest daily calorie target Ember sets by itself (the same floor the retune uses) */
+const kcalFloor = () => (P.sex === 'f' ? 1200 : 1500);
 function cgOfferCard() {
   if (!hasCoach() || !P.offer) return '';
   const who = esc(CG.coach.coach_name),
@@ -234,13 +252,41 @@ function cgOfferCard() {
       card(
         't',
         'New targets',
-        `${fmt(t.k)} kcal a day${t.p ? ' and ' + t.p + ' g of protein' : ''}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g' : ''}.`,
+        `${tgWords(t)}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g of protein' : ''}.${t.k < kcalFloor() ? ` This is below ${fmt(kcalFloor())} kcal, the lowest daily target Ember sets by itself. Talk it through with your coach before using it, and with a doctor if you have a health condition.` : ''}`,
         'Use these targets',
         'Keep mine',
       ),
     );
+  for (const e of P.offer.ev || [])
+    out.push(
+      `<section class="card stack" style="border-color:var(--ember)"><div><div class="tiny muted">From your coach, ${who}</div><h2>${esc(e.t)}</h2></div><p class="small">${longDate(e.d)}${e.tm ? ' at ' + e.tm : ''}${e.min ? ', ' + e.min + ' minutes' : ''}. Add it to your calendar?</p><div class="two"><button class="btn sm ember" data-act="cgEvYes" data-id="${e.id}">Add to my calendar</button><button class="btn sm ghost" data-act="cgEvNo" data-id="${e.id}">Not for me</button></div></section>`,
+    );
   return out.join('');
 }
+/* a call or an event the coach suggests: added to the calendar only if the client says so */
+function cgEvAnswer(id, yes) {
+  const list = (P.offer && P.offer.ev) || [],
+    e = list.find(x => x.id === id);
+  if (!e) return;
+  if (yes) {
+    const pl = plan();
+    pl.ev = pl.ev
+      .filter(x => x.id !== 'co' + e.id)
+      .concat([{ id: 'co' + e.id, k: 'appt', t: e.t, tm: e.tm, min: e.min, wd: null, d: e.d }]);
+  }
+  P.offer.ev = list.filter(x => x.id !== id);
+  const resp = { ...(P.offerResp || {}), ['ev' + id]: { v: Date.now(), yes: !!yes, d: today() } },
+    evs = Object.keys(resp).filter(k => k.startsWith('ev'));
+  for (const k of evs.slice(0, Math.max(0, evs.length - 12))) delete resp[k]; // the last dozen answers are enough
+  P.offerResp = resp;
+  saveProfile();
+  lastPub = 0;
+  cgPublish();
+  render();
+  toast(yes ? 'Added to your calendar.' : 'Left out. Your coach will see that.');
+}
+A.cgEvYes = ({ id }) => cgEvAnswer(id, true);
+A.cgEvNo = ({ id }) => cgEvAnswer(id, false);
 function cgAnswer(k, yes) {
   const o = P.offer && P.offer[k];
   if (!o) return;
@@ -251,6 +297,12 @@ function cgAnswer(k, yes) {
   if (yes && k === 't') {
     P.t.k = o.k;
     if (o.p) P.t.p = o.p;
+    if (o.f) P.t.f = o.f;
+    // carbohydrate is what is left after protein and fat, unless the coach set it
+    P.t.c = o.c || Math.max(50, Math.round((o.k - P.t.p * 4 - P.t.f * 9) / 4 / 5) * 5);
+    if (o.w) P.t.w = o.w;
+    if (o.fi) P.t.fi = o.fi;
+    else delete P.t.fi;
   }
   delete P.offer[k];
   P.offerResp = { ...(P.offerResp || {}), [k]: { v: o.v, yes: !!yes, d: today() } };
@@ -293,7 +345,7 @@ const cgToggles = share =>
     a =>
       `<button class="chk" data-act="cgShare" data-area="${a}" aria-pressed="${share[a] ? 'true' : 'false'}"><span class="tb"></span><span><b>${SHARE_LABEL[a][0]}</b><small class="muted" style="display:block;font-weight:400">${SHARE_LABEL[a][1]}</small></span></button>`,
   ).join('');
-const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
+const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included: you choose those one photo at a time, if you want to. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
 let CJ = null;
 A.cgJoin = async ({ code } = {}) => {
   if (!coachingOn()) return toast('Sign in to join a coach.');
@@ -344,6 +396,7 @@ A.cgShare = async ({ area }, el) => {
     await (await cgApi()).setShare(l.id, share);
     l.share = share;
     CG.sent = '';
+    CG.wkSent = {}; // the weekly summaries were removed with the old choice: send them again, cut to the new one
     lastPub = 0;
     cgPublish();
     toast(
@@ -476,10 +529,28 @@ A.cgSees = async () => {
       line('Goal', esc(copy.goal || 'None set')),
     );
   if (on.recovery) rows.push(line('Recovery today', st.ready == null ? 'No check-in' : st.ready));
+  if (on.weight && (copy.view.profile.meas || []).length)
+    rows.push(
+      line(
+        'Measurements',
+        copy.view.profile.meas.length + ' entr' + (copy.view.profile.meas.length === 1 ? 'y' : 'ies'),
+      ),
+    );
+  if (l.status === 'active') {
+    const hs = ((P.co && P.co.habits && P.co.habits.list) || []).length;
+    rows.push(
+      line('Each week', 'A summary of the week for what you share' + (hs ? ', and how many habits you ticked' : '')),
+    );
+    let shared = 0;
+    try {
+      shared = (await (await cgApi()).photos(l.id)).length;
+    } catch (e) {}
+    rows.push(line('Progress photos', shared ? shared + ' you chose to share' : 'None shared'));
+  }
   const off = SHARE_AREAS.filter(a => !on[a]).map(a => SHARE_LABEL[a][0]);
   openSheet(
     `${sh('What your coach sees')}<div class="sheet-b">${l.status === 'paused' ? `<div class="banner">${ic('lock')}<span>Sharing is paused, so your coach sees nothing at the moment.</span></div>` : ''}<div class="card" style="padding:6px 14px">${rows.join('')}</div>
-    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach are always sent. Progress photos, notes, meal plans and anything not listed here are never sent.</p></div>`,
+    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach and the forms you fill in for them are always sent. A progress photo is sent only if you choose to share that photo. Notes, meal plans and anything not listed here are never sent.</p></div>`,
     true,
   );
 };
@@ -555,6 +626,7 @@ function cgClientNote(c) {
   const on = cgAreas(c.share),
     off = SHARE_AREAS.filter(a => !(c.share && c.share[a])).map(a => SHARE_LABEL[a][0]);
   const said = Object.entries(c.resp || {})
+    .filter(([k]) => k === 'prog' || k === 't')
     .map(
       ([k, r]) =>
         `${k === 'prog' ? 'The programme you sent' : 'The targets you sent'}: ${r.yes ? 'accepted' : 'declined'} ${niceDate(r.d).toLowerCase()}.`,

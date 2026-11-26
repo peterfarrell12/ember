@@ -290,6 +290,26 @@ function cgApplyMore(a, seen) {
     seen.brand = a.brand.v;
     changed = true;
   }
+  // calls and events the coach suggests: each is offered once
+  if (a.ev && a.ev.v > (seen.ev || 0)) {
+    const known = new Set(P.evSeen || []),
+      fresh = (a.ev.list || [])
+        .filter(e => e && e.id && !known.has(e.id) && /^\d{4}-\d\d-\d\d$/.test(e.d) && e.d >= today())
+        .map(e => ({
+          id: String(e.id).slice(0, 20),
+          t: String(e.t || 'Call').slice(0, 60),
+          d: e.d,
+          tm: /^\d\d:\d\d$/.test(e.tm) ? e.tm : '',
+          min: clamp(r0(num(e.min)), 0, 600),
+        }));
+    if (fresh.length) {
+      P.offer = P.offer || {};
+      P.offer.ev = (P.offer.ev || []).concat(fresh).slice(-6);
+      P.evSeen = (P.evSeen || []).concat(fresh.map(e => e.id)).slice(-40);
+    }
+    seen.ev = a.ev.v;
+    changed = true;
+  }
   P.co = P.co || {};
   for (const k of CO_PARTS)
     if (a[k] && a[k].v > (seen[k] || 0)) {
@@ -371,6 +391,9 @@ A.cgCkRead = () => {
   saveProfile();
   render();
 };
+/* shown with any self check-in: where to turn if food is a struggle. General guidance, not a diagnosis. */
+const SUPPORT_LINE =
+  'If food or eating is weighing on you, you do not have to manage it alone. Bodywhys (bodywhys.ie) in Ireland and Beat (beateatingdisorders.org.uk) in the UK give free, confidential support, and your GP can help too.';
 let FILL = null;
 A.cgCheckin = ({ kind } = {}) => {
   const d = formsDue().find(x => x.kind === (kind || 'checkin')) || formsDue()[0];
@@ -379,7 +402,7 @@ A.cgCheckin = ({ kind } = {}) => {
   openSheet(
     `${sh((d.form.title || FORM_KINDS[d.kind]) + ' for ' + CG.coach.coach_name)}<div class="sheet-b">${d.kind === 'checkin' ? `<div class="card" style="padding:6px 14px"><div class="tiny muted" style="padding-top:6px">Sent with your answers, from your diary</div>${ckFigureRows(ckFigures())}</div>` : ''}
     ${formFields(d.form.qs, 'ckA')}
-    <p class="tiny muted">${d.kind === 'checkin' ? 'Only figures from what you share with your coach are included. You can send it again until they reply.' : 'Your answers go to your coach and to nobody else.'}</p></div>
+    <p class="tiny muted">${d.kind === 'checkin' ? 'Only figures from what you share with your coach are included. You can send it again until they reply.' : 'Your answers go to your coach and to nobody else.'}</p>${d.kind === 'self' ? `<p class="tiny muted">${SUPPORT_LINE}</p>` : ''}</div>
     <div class="sheet-f"><button class="btn ember" data-act="cgCheckinSend" id="ckGo">Send to ${esc(CG.coach.coach_name)}</button></div>`,
     true,
   );

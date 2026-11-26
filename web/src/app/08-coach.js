@@ -495,7 +495,7 @@ function coClients() {
     ad = cs.map(c => adher(c.st)).filter(v => v != null);
   const row = ({ c, al }) => {
     const a = adher(c.st);
-    return `<button class="crow" data-act="coClient" data-id="${c.id}"><span class="av">${esc(initials(c.name))}</span><span class="grow"><span class="row" style="gap:6px"><b class="ell">${esc(c.name)}</b>${kindPill(c)}</span><span class="small muted ell" style="display:block">${esc(c.st.progN || 'No program')}${c.st.rehabN ? ' · rehab: ' + esc(c.st.rehabN) : ''}</span>${a != null ? `<span class="bar ${a >= 75 ? 'good' : a >= 50 ? 'gold' : 'ember'}" style="margin-top:6px;display:block"><i style="width:${a}%"></i></span>` : ''}</span><span class="cr">${a != null ? `<b class="tn">${a}%</b>` : ''}${al.length ? `<span class="pill bad">${al.length}</span>` : ''}${(n => (n ? `<span class="pill ice">${ic('chat')} ${n}</span>` : ''))(unreadFrom(c))}</span></button>`;
+    return `<button class="crow" data-act="coClient" data-id="${c.id}"><span class="av">${esc(initials(c.name))}</span><span class="grow"><span class="row" style="gap:6px"><b class="ell">${esc(c.name)}</b>${kindPill(c)}${engPill(c)}</span><span class="small muted ell" style="display:block">${esc(c.st.progN || 'No program')}${c.st.rehabN ? ' · rehab: ' + esc(c.st.rehabN) : ''}</span>${a != null ? `<span class="bar ${a >= 75 ? 'good' : a >= 50 ? 'gold' : 'ember'}" style="margin-top:6px;display:block"><i style="width:${a}%"></i></span>` : ''}</span><span class="cr">${a != null ? `<b class="tn">${a}%</b>` : ''}${al.length ? `<span class="pill bad">${al.length}</span>` : ''}${(n => (n ? `<span class="pill ice">${ic('chat')} ${n}</span>` : ''))(unreadFrom(c))}</span></button>`;
   };
   const tc = trustChecks(coachProfile());
   return `<div class="between"><h2 class="sec-h" style="font-size:22px">Clients</h2><button class="btn sm ghost" data-act="coAdd">${ic('plus')} Add</button></div>
@@ -505,7 +505,7 @@ function coClients() {
   ${flagged.length ? `<section class="card"><h2>Needs a look</h2>${flagged.map(({ c, al }) => `<button class="entry" data-act="coClient" data-id="${c.id}"><span class="n">${esc(c.name)}</span><span class="k">${ic('chev-r')}</span><span class="s" style="white-space:normal;color:var(--bad)">${esc(al.join(' · '))}</span></button>`).join('')}</section>` : ''}
   <section class="card" style="padding:4px 14px">${withAl.map(row).join('')}</section>
   ${cs.some(c => c.kind === 'sample') ? `<div class="banner">${ic('users')}<span>Clients marked Sample are invented, with made-up numbers, plans and notes, so you can see this view working. <button class="link" data-act="coDropSamples">Remove demo data</button></span></div>` : `<button class="link" data-act="coDemoOn" style="align-self:flex-start">Show demo data</button>`}
-  <p class="tiny muted">Live clients are people who share this workspace and open Ember after you share it with them as contributors. Everyone else you add here is tracked by you.</p>`;
+  <p class="tiny muted">${coachingOn() ? 'Live clients are people who accepted your invitation and chose what to share with you.' : 'Live clients are people who share this workspace and open Ember after you share it with them as contributors.'} Everyone else you add here is tracked by you.</p>`;
 }
 A.coDropSamples = () => {
   Object.keys(CO.clients).forEach(k => {
@@ -668,7 +668,24 @@ A.coTargets = () => {
   const c = getClient(CC),
     t = (c.kind === 'me' ? P.t : recOf(c.id).t) || { k: '', p: '' };
   openSheet(
-    `${sh('Targets for ' + c.name)}<div class="sheet-b"><div class="grid2"><label class="f">Calories a day<input class="inp" id="ctK" inputmode="numeric" value="${t.k}"></label><label class="f">Protein, g<input class="inp" id="ctP" inputmode="numeric" value="${t.p}"></label></div></div><div class="sheet-f"><button class="btn" data-act="coTargetsSave">Save</button></div>`,
+    `${sh('Targets for ' + c.name)}<div class="sheet-b"><div class="grid2"><label class="f">Calories a day<input class="inp" id="ctK" inputmode="numeric" value="${t.k}"></label><label class="f">Protein, g<input class="inp" id="ctP" inputmode="numeric" value="${t.p}"></label></div>${
+      c.kind === 'live'
+        ? `<div class="grid2">${[
+            ['C', 'Carbohydrate, g', t.c],
+            ['F', 'Fat, g', t.f],
+            ['Fi', 'Fibre, g', t.fi],
+            ['W', 'Water, ml', t.w],
+          ]
+            .map(
+              ([id, l, v]) =>
+                `<label class="f">${l}<input class="inp" id="ct${id}" inputmode="numeric" value="${v || ''}" placeholder="Optional"></label>`,
+            )
+            .join(
+              '',
+            )}</div><p class="tiny muted">Leave any of these empty to keep what they have. They are asked before anything changes, and you see their answer.</p>`
+        : ''
+    }</div><div class="sheet-f"><button class="btn" data-act="coTargetsSave">${c.kind === 'live' ? 'Send to ' + esc(c.name.split(' ')[0]) : 'Save'}</button></div>`,
+    c.kind === 'live',
   );
 };
 A.coTargetsSave = async () => {
@@ -682,8 +699,16 @@ A.coTargetsSave = async () => {
     P.t.c = Math.max(50, Math.round((k - p * 4 - P.t.f * 9) / 4 / 5) * 5);
     saveProfile();
   } else if (c.kind === 'live') {
-    if (!(await pushAssign(c.uid, 't', { k, p }))) return;
-    recOf(c.id).t = { k, p };
+    const opt = (id, lo, hi) => {
+        const v = r0(num(($('#ct' + id) || {}).value));
+        return v >= lo && v <= hi ? v : 0;
+      },
+      t = { k, p, c: opt('C', 20, 900), f: opt('F', 15, 300), fi: opt('Fi', 5, 80), w: opt('W', 500, 6000) };
+    for (const key of Object.keys(t)) if (!t[key]) delete t[key];
+    if (t.p * 4 + (t.c || 0) * 4 + (t.f || 0) * 9 > k * 1.1)
+      return toast('Those grams add up to more than the calories. Check the figures.');
+    if (!(await pushAssign(c.uid, 't', t))) return;
+    recOf(c.id).t = t;
     saveCO();
   } else {
     const r = CO.clients[c.id];

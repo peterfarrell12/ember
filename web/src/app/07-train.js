@@ -285,7 +285,7 @@ A.peAdd = ({ i }) =>
 A.peItem = ({ i, j }) => {
   const it = PE.p.days[+i].items[+j];
   openSheet(`${sh(exn(it))}<div class="sheet-b"><div class="grid3"><label class="f">Sets<input class="inp" id="piS" inputmode="numeric" value="${it.sets}"></label><label class="f">Reps or time<input class="inp" id="piR" value="${esc(it.reps)}"></label><label class="f">Rest, s<input class="inp" id="piT" inputmode="numeric" value="${it.rest || 0}"></label></div>
-    <label class="f">Note, optional<input class="inp" id="piN" value="${esc(it.note || '')}" autocomplete="off"></label><p class="tiny muted">Reps can be a number, a range like 8-12, a hold like 30s, or a distance like 400 m.</p></div>
+    <label class="f">Note, optional<input class="inp" id="piN" value="${esc(it.note || '')}" autocomplete="off"></label>${isCoach() && coachingOn() ? `<label class="f">Your video of this exercise, optional<input class="inp" id="piU" value="${esc(it.url || '')}" maxlength="300" placeholder="A link to your own demo" autocomplete="off" autocapitalize="none"></label>` : ''}<p class="tiny muted">Reps can be a number, a range like 8-12, a hold like 30s, or a distance like 400 m.</p></div>
     <div class="sheet-f"><button class="btn ghost" style="width:auto" data-act="piDel" aria-label="Remove exercise">${ic('trash')}</button><button class="btn" data-act="piOk">Done</button></div>`);
   A.piOk = () => {
     it.sets = clamp(r0(num($('#piS').value, 3)), 1, 12);
@@ -294,6 +294,11 @@ A.peItem = ({ i, j }) => {
     const n = $('#piN').value.trim();
     if (n) it.note = n;
     else delete it.note;
+    if ($('#piU')) {
+      const u = safeUrl($('#piU').value.trim());
+      if (u) it.url = u;
+      else delete it.url;
+    }
     closeSheet();
     renderEditor();
   };
@@ -516,7 +521,7 @@ const mkItem = it => {
   return {
     ex: it.ex,
     sets: Array.from({ length: it.sets || 3 }, () => ({ w: s.w, r: '', done: 0 })),
-    t: { reps: it.reps || '', rest: it.rest || 0, note: it.note || '' },
+    t: { reps: it.reps || '', rest: it.rest || 0, note: it.note || '', ...(it.url ? { url: it.url } : {}) },
     tip: s.tip,
   };
 };
@@ -632,7 +637,7 @@ function renderPlayer() {
         const showW = (!['cond', 'mobility'].includes(g) && rp.u === 'reps') || it.sets.some(s => s.w !== '');
         const hold = rp.u === 's' || rp.u === 'min';
         return `<section class="card"><div class="between"><button class="wkn" data-act="exInfo" data-id="${it.ex}">${esc(exn(it.ex))}</button><button class="icon-btn" data-act="wkMenu" data-i="${i}" aria-label="Options">${ic('more', 'fill')}</button></div>
-      <div class="small muted">${it.t.reps ? esc(it.sets.length + ' × ' + it.t.reps) : ''}${it.t.rest ? ' · rest ' + it.t.rest + ' s' : ''}${it.t.note ? ' · ' + esc(it.t.note) : ''}</div>
+      <div class="small muted">${it.t.reps ? esc(it.sets.length + ' × ' + it.t.reps) : ''}${it.t.rest ? ' · rest ' + it.t.rest + ' s' : ''}${it.t.note ? ' · ' + esc(it.t.note) : ''}</div>${it.t.url && safeUrl(it.t.url) ? `<a class="link small" href="${esc(safeUrl(it.t.url))}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:4px">${ic('play')} Watch your coach's demo</a>` : ''}
       ${L && L.last ? `<div class="tiny muted" style="margin-top:3px">Last time: ${esc(L.last.map(s => (s[0] ? s[0] + ' × ' : '') + s[1]).join(', '))}</div>` : ''}${L && L.note ? `<div class="tiny" style="margin-top:3px">${ic('pen')} ${esc(L.note)}</div>` : ''}${it.tip ? `<div class="pill good" style="margin-top:6px;white-space:normal">${ic('chart')} ${esc(it.tip)}</div>` : ''}
       <div class="sets"><div class="sethead" aria-hidden="true"><span class="w22"></span>${showW ? '<span>kg</span>' : ''}<span>${hold ? 'seconds' : 'reps'}</span>${hold ? '<span class="w38"></span>' : ''}<span class="w44"></span></div>${it.sets.map((s, j) => `<div class="setrow ${s.done ? 'on' : ''}"><span class="sn">${j + 1}</span>${showW ? `<input class="inp" inputmode="decimal" placeholder="kg" value="${s.w}" data-on="wk" data-i="${i}" data-j="${j}" data-f="w" aria-label="Weight, set ${j + 1}">` : ''}<input class="inp" inputmode="decimal" placeholder="${esc(it.t.reps || 'reps')}" value="${s.r}" data-on="wk" data-i="${i}" data-j="${j}" data-f="r" aria-label="${hold ? 'Time' : 'Reps'}, set ${j + 1}">${hold ? `<button class="icon-btn solid" data-act="wkHold" data-i="${i}" data-j="${j}" aria-label="Start the timer">${ic('timer')}</button>` : ''}<button class="tick" data-act="wkTick" data-i="${i}" data-j="${j}" aria-label="Set ${j + 1} done" aria-pressed="${!!s.done}">${ic('check')}</button></div>`).join('')}</div>
       <button class="link" data-act="wkAddSet" data-i="${i}" style="font-size:13px">+ Add a set</button></section>`;
