@@ -1096,6 +1096,95 @@ try {
       await closeSheets(a);
     },
   );
+  await step(
+    "a consultation form, a self check-in and a note on the roadmap each reach the client, and the answers come back",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      const assigned = async (part, test) =>
+        until(part + " on the server", async () => {
+          const { data } = await admin.from("coach_links").select("coach_assign(data)").eq("client_id", people[3]);
+          const v = data[0].coach_assign && data[0].coach_assign.data[part];
+          return !!(v && test(v));
+        });
+      await closeSheets(a);
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="plan"]');
+      // the consultation form: Ember's starter, as the coach has not built their own
+      await a.click('[data-act="cgCkForm"][data-kind="consult"]');
+      assert.match(await a.locator("#ckPick option:checked").innerText(), /Ember's starter: Consultation/);
+      assert.equal(await a.locator("#ckEvery").count(), 0, "a consultation is asked once, with no schedule");
+      await a.click('[data-act="cgCkFormSave"]');
+      await assigned("consult", (c) => c.form.qs.length === 11);
+      // a self check-in on a schedule
+      await a.waitForFunction(() => !document.querySelector("#ckPick"));
+      await a.click('[data-act="cgCkForm"][data-kind="self"]');
+      await a.selectOption("#ckEvery", "2");
+      await a.click('[data-act="cgCkFormSave"]');
+      await assigned("self", (c) => c.form.title === "Relationship with food" && c.every === 2);
+      // phases, and a note with a milestone on this week
+      await a.waitForFunction(() => !document.querySelector("#ckPick"));
+      await a.click('[data-act="rmEdit"]');
+      await a.click('[data-act="rmSave"]');
+      await assigned("phases", (p) => p.list.length === 3);
+      await a.waitForFunction(() => !document.querySelector("#rmBody"));
+      await a.click('[data-act="rmView"]');
+      await a.click('[data-act="rmNote"] >> nth=0');
+      await a.fill("#pnT", "Good first week. Keep the walks going.");
+      await a.click('[data-seg="pnMs"] [data-val="met"]');
+      await a.click('[data-act="rmNoteSave"]');
+      await assigned("phases", (p) => Object.values(p.notes || {}).some((n) => n.ms === "met" && /Good first week/.test(n.t)));
+      await a.waitForFunction(() => /Milestone met[\s\S]*Your note:\s*Good first week/.test([...document.querySelectorAll(".sheet")].pop().innerText), null, { timeout: 10000 });
+      await closeSheets(a);
+
+      // the client: both forms are waiting on Today
+      await closeSheets(d);
+      await d.goto(APP + "#today");
+      await d.reload();
+      await d.waitForSelector('[data-act="cgCheckin"][data-kind="consult"]', { timeout: 20000 });
+      assert.match(await text(d, "#main"), /For your coach, Coach Ann \| Consultation \| 11 questions\. Your coach reads this before building your plan\./);
+      await d.click('[data-act="cgCheckin"][data-kind="consult"]');
+      await d.click("#ckGo");
+      assert.equal((await admin.from("coach_checkins").select("id").eq("kind", "consult")).data.length, 0, "needed questions first");
+      await d.fill("#ckA0", "Lose 5 kg by the summer");
+      await d.click('#ckA2 [data-v="3"]');
+      await d.click('#ckA3 [data-v="A gym"]');
+      await d.click('#ckA3 [data-v="Outdoors"]');
+      await d.click('#ckA5 [data-v="No"]');
+      await d.fill("#ckA8", "7");
+      await d.click("#ckGo");
+      await until("the consultation on the server", async () => {
+        const { data } = await admin.from("coach_checkins").select("kind, title, answers").eq("kind", "consult");
+        return data.length === 1 && data[0].answers[3].a === "A gym, Outdoors" && data[0].answers[8].a === "7 hours";
+      });
+      await d.waitForFunction(() => !document.querySelector(".sheet"));
+      assert.equal(await d.locator('[data-act="cgCheckin"][data-kind="consult"]').count(), 0, "asked once");
+      // the self check-in carries the support line
+      await d.click('[data-act="cgCheckin"][data-kind="self"]');
+      assert.match(await text(d, ".sheet >> nth=-1"), /Relationship with food for Coach Ann[\s\S]*Bodywhys \(bodywhys\.ie\) in Ireland and Beat \(beateatingdisorders\.org\.uk\) in the UK/);
+      await d.click('#ckA0 [data-v="7"]');
+      await d.click("#ckGo");
+      await until("the self check-in on the server", async () =>
+        (await admin.from("coach_checkins").select("id").eq("kind", "self")).data.length === 1,
+      );
+      await d.waitForFunction(() => !document.querySelector(".sheet"));
+      // the roadmap with the coach's note
+      await d.click("#brandTag");
+      await d.waitForSelector("#csBody");
+      assert.match(await text(d, "#csBody"), /Ignite \| Now, week 1 of 4[\s\S]*Milestone met[\s\S]*From your coach:[\s|]*Good first week\. Keep the walks going\./);
+      await shot(d, "client-roadmap-note");
+      await closeSheets(d);
+
+      // the coach: the consultation is in the inbox to answer; the self check-in is not something to answer
+      await a.reload();
+      await a.waitForSelector('[data-act="cgInboxOpen"]', { timeout: 20000 });
+      assert.match(await text(a, "#main"), /Check-ins \| Dee \| To answer \| Consultation/);
+      assert.equal(await a.locator('[data-act="cgInboxOpen"]').count(), 1);
+      await a.click('[data-act="cgInboxOpen"]');
+      await a.waitForSelector("#ckReply", { timeout: 15000 });
+      assert.match(await text(a, ".sheet >> nth=-1"), /Dee: Consultation[\s\S]*What do you want to achieve, and by when\? \| Lose 5 kg by the summer[\s\S]*Where will you train\? \| A gym, Outdoors[\s\S]*No answer/);
+      await closeSheets(a);
+    },
+  );
   await step("no page errors", async () => assert.deepEqual(errs, []));
 } finally {
   await browser.close();
