@@ -50,7 +50,8 @@ async function cgLoad(force) {
     CG.coach = coach;
     // no coach any more: what the last one set (forms, phases, habits and the rest) goes with them
     if (!coach && (P.co || P.ckForm || P.coachBrand)) {
-      for (const k of ['co', 'ckForm', 'coachBrand', 'asg', 'offer', 'consultSent', 'selfSent', 'ckSent']) delete P[k];
+      for (const k of ['co', 'ckForm', 'coachBrand', 'asg', 'offer', 'evSeen', 'consultSent', 'selfSent', 'ckSent'])
+        delete P[k];
       saveProfile();
     }
     CG.at = Date.now();
@@ -256,8 +257,36 @@ function cgOfferCard() {
         'Keep mine',
       ),
     );
+  for (const e of P.offer.ev || [])
+    out.push(
+      `<section class="card stack" style="border-color:var(--ember)"><div><div class="tiny muted">From your coach, ${who}</div><h2>${esc(e.t)}</h2></div><p class="small">${longDate(e.d)}${e.tm ? ' at ' + e.tm : ''}${e.min ? ', ' + e.min + ' minutes' : ''}. Add it to your calendar?</p><div class="two"><button class="btn sm ember" data-act="cgEvYes" data-id="${e.id}">Add to my calendar</button><button class="btn sm ghost" data-act="cgEvNo" data-id="${e.id}">Not for me</button></div></section>`,
+    );
   return out.join('');
 }
+/* a call or an event the coach suggests: added to the calendar only if the client says so */
+function cgEvAnswer(id, yes) {
+  const list = (P.offer && P.offer.ev) || [],
+    e = list.find(x => x.id === id);
+  if (!e) return;
+  if (yes) {
+    const pl = plan();
+    pl.ev = pl.ev
+      .filter(x => x.id !== 'co' + e.id)
+      .concat([{ id: 'co' + e.id, k: 'appt', t: e.t, tm: e.tm, min: e.min, wd: null, d: e.d }]);
+  }
+  P.offer.ev = list.filter(x => x.id !== id);
+  const resp = { ...(P.offerResp || {}), ['ev' + id]: { v: Date.now(), yes: !!yes, d: today() } },
+    evs = Object.keys(resp).filter(k => k.startsWith('ev'));
+  for (const k of evs.slice(0, Math.max(0, evs.length - 12))) delete resp[k]; // the last dozen answers are enough
+  P.offerResp = resp;
+  saveProfile();
+  lastPub = 0;
+  cgPublish();
+  render();
+  toast(yes ? 'Added to your calendar.' : 'Left out. Your coach will see that.');
+}
+A.cgEvYes = ({ id }) => cgEvAnswer(id, true);
+A.cgEvNo = ({ id }) => cgEvAnswer(id, false);
 function cgAnswer(k, yes) {
   const o = P.offer && P.offer[k];
   if (!o) return;
@@ -597,6 +626,7 @@ function cgClientNote(c) {
   const on = cgAreas(c.share),
     off = SHARE_AREAS.filter(a => !(c.share && c.share[a])).map(a => SHARE_LABEL[a][0]);
   const said = Object.entries(c.resp || {})
+    .filter(([k]) => k === 'prog' || k === 't')
     .map(
       ([k, r]) =>
         `${k === 'prog' ? 'The programme you sent' : 'The targets you sent'}: ${r.yes ? 'accepted' : 'declined'} ${niceDate(r.d).toLowerCase()}.`,

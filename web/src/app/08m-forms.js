@@ -290,6 +290,26 @@ function cgApplyMore(a, seen) {
     seen.brand = a.brand.v;
     changed = true;
   }
+  // calls and events the coach suggests: each is offered once
+  if (a.ev && a.ev.v > (seen.ev || 0)) {
+    const known = new Set(P.evSeen || []),
+      fresh = (a.ev.list || [])
+        .filter(e => e && e.id && !known.has(e.id) && /^\d{4}-\d\d-\d\d$/.test(e.d) && e.d >= today())
+        .map(e => ({
+          id: String(e.id).slice(0, 20),
+          t: String(e.t || 'Call').slice(0, 60),
+          d: e.d,
+          tm: /^\d\d:\d\d$/.test(e.tm) ? e.tm : '',
+          min: clamp(r0(num(e.min)), 0, 600),
+        }));
+    if (fresh.length) {
+      P.offer = P.offer || {};
+      P.offer.ev = (P.offer.ev || []).concat(fresh).slice(-6);
+      P.evSeen = (P.evSeen || []).concat(fresh.map(e => e.id)).slice(-40);
+    }
+    seen.ev = a.ev.v;
+    changed = true;
+  }
   P.co = P.co || {};
   for (const k of CO_PARTS)
     if (a[k] && a[k].v > (seen[k] || 0)) {

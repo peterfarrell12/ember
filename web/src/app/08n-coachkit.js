@@ -537,7 +537,18 @@ function cgListCards(c) {
       return `<section class="card stack"><div class="between"><h2>${LISTS[k].title}</h2><button class="link" data-act="coList" data-k="${k}">${cur && cur.length ? 'Change' : 'Set'}</button></div><p class="small muted">${cur && cur.length ? cur.map(x => esc(x.n)).join(' · ') : LISTS[k].blank}</p></section>`;
     },
     st = rec.steps;
-  return `${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Steps and cardio</h2><button class="link" data-act="coSteps">${st ? 'Change' : 'Set'}</button></div><p class="small muted">${st ? [st.goal ? fmt(st.goal) + ' steps a day' : '', st.cardio].filter(Boolean).map(esc).join(' · ') : 'A daily step target and any cardio you want done.'}</p></section>`;
+  const evs = (rec.calls || []).filter(e => e.d >= today()),
+    resp = c.resp || {};
+  return `${card('habits')}${card('supps')}<section class="card stack"><div class="between"><h2>Calls and events</h2><button class="link" data-act="coEv">Add</button></div>${
+    evs.length
+      ? evs
+          .map(e => {
+            const r = resp['ev' + e.id];
+            return `<div class="between small"><span>${esc(e.t)}, ${shortDate(e.d)}${e.tm ? ' at ' + e.tm : ''}</span><span class="pill ${r ? (r.yes ? 'good' : '') : 'gold'}">${r ? (r.yes ? 'In their calendar' : 'Declined') : 'Offered'}</span></div>`;
+          })
+          .join('')
+      : `<p class="small muted">Suggest a call, a review or an event. It goes into their calendar only if they accept.</p>`
+  }</section><section class="card stack"><div class="between"><h2>Steps and cardio</h2><button class="link" data-act="coSteps">${st ? 'Change' : 'Set'}</button></div><p class="small muted">${st ? [st.goal ? fmt(st.goal) + ' steps a day' : '', st.cardio].filter(Boolean).map(esc).join(' · ') : 'A daily step target and any cardio you want done.'}</p></section>`;
 }
 let LK = '';
 A.coList = ({ k }) => {
@@ -560,6 +571,36 @@ A.coListSave = async () => {
   closeSheet();
   renderClient();
   toast(list.length ? LISTS[LK].title + ' sent.' : 'Removed.');
+};
+A.coEv = () => {
+  const c = getClient(CC);
+  openSheet(
+    `${sh('A call or event for ' + c.name)}<div class="sheet-b"><label class="f">What is it<input class="inp" id="ceT" maxlength="60" value="Call with ${esc(P.coachName || 'your coach')}"></label><label class="f">Date<input class="inp" type="date" id="ceD" value="${addDays(today(), 1)}" min="${today()}"></label><div class="grid2"><label class="f">Time, optional<input class="inp" type="time" id="ceTm"></label><label class="f">Minutes<input class="inp" id="ceMin" inputmode="numeric" value="30"></label></div><p class="tiny muted">They are asked first. It goes into their calendar only if they accept, and you see their answer.</p></div><div class="sheet-f"><button class="btn" data-act="coEvSave">Offer it</button></div>`,
+    true,
+  );
+};
+A.coEvSave = async () => {
+  const c = getClient(CC),
+    d = $('#ceD').value,
+    e = {
+      id: newId(),
+      t: ($('#ceT').value || '').trim().slice(0, 60) || 'Call',
+      d,
+      tm: /^\d\d:\d\d$/.test($('#ceTm').value) ? $('#ceTm').value : '',
+      min: clamp(r0(num($('#ceMin').value)), 0, 600),
+    };
+  if (!/^\d{4}-\d\d-\d\d$/.test(d) || d < today()) return toast('Pick a date from today on.');
+  const rec = recOf(c.id),
+    list = (rec.calls || [])
+      .filter(x => x.d >= today())
+      .concat([e])
+      .slice(-10);
+  if (!(await pushAssign(c.uid, 'ev', { list }))) return;
+  rec.calls = list;
+  saveCO();
+  closeSheet();
+  renderClient();
+  toast('Offered. They will be asked.');
 };
 A.coSteps = () => {
   const c = getClient(CC),
@@ -735,6 +776,8 @@ A.coAllGo = async () => {
 };
 
 /* ================= the client's side: the Coach space ================= */
+/* the daily step target a coach has set, if there is one */
+const stepGoal = () => (coached() && P.co && P.co.steps && P.co.steps.goal) || 0;
 /* the coach's name in the header is a tag made into a button, so the keyboard has to work on it too */
 document.addEventListener('keydown', e => {
   const el = /** @type {HTMLElement} */ (e.target);

@@ -576,6 +576,12 @@ try {
         await text(b, "#main"),
         /Habits \| from Coach Ann \| Your coach sees how many you tick each week, not which days\. \| Sit down for one meal without a screen/,
       );
+      assert.match(
+        await text(b, "#main"),
+        /Fibre \| \d+ \/ 30 g[\s\S]*\d+ g to go, set by your coach/,
+        "the fibre target the coach set shows on Today",
+      );
+      assert.match(await text(b, "#main"), /Step target 8,000/);
       await shot(b, "client-today-habits");
       await b.click('[data-act="habitTick"] >> nth=0');
       await until("the habit ticked in the client's own diary", async () => {
@@ -1004,6 +1010,49 @@ try {
         "https://example.com/squat-demo",
       );
       assert.match(await text(d, ".sheet >> nth=-1"), /Slow on the way down/);
+    },
+  );
+  await step(
+    "a call the coach suggests goes into the client's calendar only when they accept, and the coach sees the answer",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      await closeSheets(a);
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="plan"]');
+      await a.click('[data-act="coEv"]');
+      await a.fill("#ceT", "Review call");
+      await a.fill("#ceTm", "18:30");
+      await a.click('[data-act="coEvSave"]');
+      await until("the call offered on the server", async () => {
+        const { data } = await admin.from("coach_links").select("coach_assign(data)").eq("client_id", people[3]);
+        const ev = data[0].coach_assign && data[0].coach_assign.data.ev;
+        return !!(ev && ev.list.length === 1 && ev.list[0].t === "Review call");
+      });
+      assert.match(await text(a, "#ccBody"), /Calls and events \| Add \| Review call, [\s\S]*at 18:30 \| Offered/);
+      const before = (await docs(people[3], "profile"))[0].data.plan;
+      assert.ok(!before || !before.ev.some((e) => e.t === "Review call"), "nothing in their calendar yet");
+      await closeSheets(d);
+      await d.goto(APP + "#today");
+      await d.reload();
+      await d.waitForSelector('[data-act="cgEvYes"]', { timeout: 20000 });
+      assert.match(await text(d, "#main"), /From your coach, Coach Ann \| Review call \|[\s\S]*at 18:30, 30 minutes\. Add it to your calendar\?/);
+      await d.click('[data-act="cgEvYes"]');
+      await until("the call in the client's own calendar", async () => {
+        const plan = (await docs(people[3], "profile"))[0].data.plan;
+        return !!(plan && plan.ev.some((e) => e.t === "Review call" && e.tm === "18:30" && e.k === "appt"));
+      });
+      await until("the answer reaching the coach", async () => {
+        const { data } = await admin.from("coach_links").select("coach_status(data)").eq("client_id", people[3]);
+        const st = data[0].coach_status;
+        return !!(st && Object.keys(st.data.resp || {}).some((k) => k.startsWith("ev")));
+      }, 90000);
+      await closeSheets(a);
+      await a.reload();
+      await a.waitForSelector('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")', { timeout: 20000 });
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="plan"]');
+      assert.match(await text(a, "#ccBody"), /Review call, [\s\S]*at 18:30 \| In their calendar/);
+      await closeSheets(a);
     },
   );
   await step("no page errors", async () => assert.deepEqual(errs, []));
