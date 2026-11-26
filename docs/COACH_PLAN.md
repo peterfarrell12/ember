@@ -2,6 +2,88 @@
 
 How Ember's coach side goes from the switched-off prototype to the best coaching app on the market. Written 25 November 2026. It replaces the one paragraph for Phase 7 in `docs/BUILD_PLAN.md`. The gym view (Phase 8) is not covered here.
 
+## Round two: what Cillian asked for (26 November 2026)
+
+Cillian is the business partner and a working coach with other coaches under him. He walked through the two tools he uses, 1FIT and Trainerize, and his judgement leads this round. His verdict in one line: **1FIT is the better tool for the coach and worse for the client; Trainerize is the reverse. Ember has to be both.**
+
+### What he said, and what follows from it
+
+| Cillian's point | What Ember must do |
+|---|---|
+| Adding a client in Trainerize is one step: enter them, they get an email, create an account, the consultation form arrives by itself, and they are in | Add a client by email. The consultation form is sent automatically. No waiting room the coach has to manage by hand |
+| 1FIT makes the coach accept, park people in "prospects" and send the form manually: "so strange and so weird" | Prospects are only people who have applied and not yet been accepted. Nothing manual after acceptance |
+| The coach's side bar is right: clients, check-ins, messages, templates, library, forms | Build the coach workspace around exactly those, on a wide screen first |
+| One overview per client: last check-in, last weigh-in, engagement, photos | A client overview with an engagement score, what is behind, and one-tap Message |
+| The phases roadmap is "savage", and Trainerize does not have it: named phases over a year, and each completed week fills in average weight, calories against target and steps against goal, with notes and milestones | Build phases. This is the headline feature of the round |
+| Physique: latest weigh-in, seven-day average, high and low. The layout in 1FIT is poor | Weight card with those four figures, body measurements, and photos, laid out better |
+| Training data (sets per body part, lift graphs) is too much for general clients and essential for prep clients | Show the depth per client: a simple view by default, the full view when the coach switches it on |
+| Nutrition, hydration and caffeine targets; plans built in the app | Ember already holds the diary itself, so no syncing from another app. Add targets by training and rest day, and a meal plan the coach builds or attaches |
+| 1FIT "corrects" calories synced from MyFitnessPal and clients do not understand why their number changed | Never show a client a different number from the one their coach sees. Ember's own diary and its source labels already give one figure |
+| Supplement templates, useful for athletes | Build supplement plans from templates |
+| Step and cardio targets | Coach sets a step target and cardio; the client sees them |
+| Sleep, physical state, mental readiness, health markers; a cycle tracker later | The daily check-in covers the first three. Health markers and cycle tracking come later |
+| A vault of resources | Build a vault: files, links and videos a coach shares with all clients or one |
+| Check-ins with overdue status | A check-ins inbox across all clients: due, overdue, to answer, streaks |
+| 1FIT's wearable syncing is unreliable (Garmin, Fitbit, Apple Watch) | Sync has to be dependable or not offered. Apple Health and Health Connect first, tested on real devices |
+| Trainerize is nicer for clients: goals and habits, the calendar of what they logged, a meal plan as a PDF, progress | A "Coach" space in the client's app that gathers the plan, the phase, habits, the check-in, messages and the vault in one place |
+| Trainerize's AI meal planner is too American | Ember's planner already uses Irish and UK food. Let the coach edit its plan and send it |
+| He runs several coaches | A business account with coaches under it, and clients assigned to a coach |
+| He has his own branded app | The coach's brand on the client's app, beyond the name and colour that exist now |
+
+### Where Ember stands against that list
+
+| Area | Today |
+|---|---|
+| Client list with who needs a look | Built |
+| Invite, sharing by area, pause and end | Built. By link or code only: no invite by email |
+| See the client's app, read-only | Built |
+| Programmes and targets as offers | Built. Targets are calories and protein only |
+| Weekly check-in with figures filled in and an AI draft reply | Built. Text questions only, no overdue tracking, no inbox across clients |
+| Messages | Built, slow (up to 20 seconds), no inbox across clients on a wide screen |
+| Coach's page and applications | Built |
+| Daily tasks | Built. Fixed list, not custom habits |
+| Food diary, water, caffeine, weight trend, training log, rehab | Built on the client's side, and visible to a coach through "see their app" |
+| Engagement score and ledger | Not built |
+| Phases roadmap | Not built |
+| Consultation form and custom forms | Not built |
+| Body measurements; photos shared with a coach | Not built (photos are hidden when signed in) |
+| Sets per body part and lift graphs in the coach's view | Partly: the client has trends; the coach sees them only through "see their app" |
+| Meal plan from a coach; targets by training and rest day | Not built |
+| Supplements, step targets, cardio targets | Not built |
+| Vault and exercise video library | Not built |
+| A "Coach" space for the client | Not built: what a coach sends is spread across Today, You and Messages |
+| Live wearable sync | Not built |
+| Coaches under one business; payments; a branded app | Not built |
+
+### The build order for this round
+
+Every step works on the web at desk width and on a phone, from the same code, and ends with something Cillian can use with a real client.
+
+| Step | What gets built | Why here |
+|---|---|---|
+| A. The coach workspace | The side bar he described (Clients, Prospects, Check-ins, Messages, Templates, Library, Forms) and a client page with its own menu (Overview, Calendar, Phases, Physique, Training, Nutrition, Habits, Vault). The existing screens move into it | Everything else hangs off this frame |
+| B. Getting a client in | Add by email; forms with question types (text, number, scale, choice, photo); a consultation form sent by itself on joining; prospects for applicants only | His first complaint, and every client meets it first |
+| C. Overview and check-ins | Engagement score and ledger, tiles for weight, check-in, training, nutrition, steps and last message, alerts with Message and Dismiss; a check-ins inbox with due and overdue | What he opens every day |
+| D. Phases | Named phases on a timeline, an active phase, weekly averages filled in from the diary against the targets, notes and milestones; the client sees their roadmap | What he called the best thing in either tool |
+| E. Physique | Latest weigh-in, seven-day average, high and low; body measurements; progress photos shared with the coach on private storage | Coaches judge progress here |
+| F. Nutrition and supplements | Targets by training and rest day, with carbohydrate and fat; a meal plan the coach edits from Ember's planner or attaches as a file; supplement templates; step and cardio targets | Completes what a coach prescribes |
+| G. The client's Coach space | One place in the client's app for the plan, phase, habits, check-in, messages and vault; custom habits | Keeps Ember the friendlier app for clients |
+| H. Training depth | Sets per body part and lift graphs in the coach's view, switched on per client | Needed for prep clients, noise for others |
+| I. Vault and library | Files, links and videos for all clients or one; the coach's own exercise videos by link | Needs a decision on storage cost for uploads |
+| J. The business | Coaches under one business with clients assigned; payments; the coach's brand | Needs Stripe and decisions on price |
+| Later | Live wearable sync (needs real devices), health markers, cycle tracking | |
+
+### Questions for Cillian before step B
+
+1. What is in your consultation form today? Send the form itself.
+2. What does your weekly check-in ask, and which answers do you read first?
+3. Which body measurements do you take, and how often are photos?
+4. How do your coaches and clients divide up: does a client belong to one coach, and what should a head coach see?
+5. For a general client, which of the 1FIT menus do you never open?
+6. What do you send as a meal plan now: a PDF, and built in what?
+7. How do clients pay you today?
+8. Which wearables do your clients use most?
+
 ## Where it starts
 
 The prototype already has about 2,600 lines of working coach screens, switched off behind `FEATURES.coach`:
