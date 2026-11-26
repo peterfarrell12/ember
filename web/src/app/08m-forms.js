@@ -371,6 +371,9 @@ A.cgCkRead = () => {
   saveProfile();
   render();
 };
+/* shown with any self check-in: where to turn if food is a struggle. General guidance, not a diagnosis. */
+const SUPPORT_LINE =
+  'If food or eating is weighing on you, you do not have to manage it alone. Bodywhys (bodywhys.ie) in Ireland and Beat (beateatingdisorders.org.uk) in the UK give free, confidential support, and your GP can help too.';
 let FILL = null;
 A.cgCheckin = ({ kind } = {}) => {
   const d = formsDue().find(x => x.kind === (kind || 'checkin')) || formsDue()[0];
@@ -379,7 +382,7 @@ A.cgCheckin = ({ kind } = {}) => {
   openSheet(
     `${sh((d.form.title || FORM_KINDS[d.kind]) + ' for ' + CG.coach.coach_name)}<div class="sheet-b">${d.kind === 'checkin' ? `<div class="card" style="padding:6px 14px"><div class="tiny muted" style="padding-top:6px">Sent with your answers, from your diary</div>${ckFigureRows(ckFigures())}</div>` : ''}
     ${formFields(d.form.qs, 'ckA')}
-    <p class="tiny muted">${d.kind === 'checkin' ? 'Only figures from what you share with your coach are included. You can send it again until they reply.' : 'Your answers go to your coach and to nobody else.'}</p></div>
+    <p class="tiny muted">${d.kind === 'checkin' ? 'Only figures from what you share with your coach are included. You can send it again until they reply.' : 'Your answers go to your coach and to nobody else.'}</p>${d.kind === 'self' ? `<p class="tiny muted">${SUPPORT_LINE}</p>` : ''}</div>
     <div class="sheet-f"><button class="btn ember" data-act="cgCheckinSend" id="ckGo">Send to ${esc(CG.coach.coach_name)}</button></div>`,
     true,
   );

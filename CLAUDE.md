@@ -21,7 +21,7 @@ Read these before changing anything:
 
 - **Nothing fake presented as real.** Sample data is labelled as sample. No invented reviews. A figure Claude estimated is labelled Estimate; one recalled from memory is labelled Recalled; only database or label figures look verified.
 - **Rehab and health content is general guidance**, never diagnosis.
-- **Progress photos are private by default.** Sharing with a coach is opt-in per photo.
+- **Progress photos are private by default.** Sharing with a coach is opt-in per photo. Between real accounts a shared photo is one row in `coach_photos` naming the file; the storage rule lets the coach open that file only while the row exists and the link is active.
 - **Design:** premium and restrained. No emoji in the interface, no decorative gradients, nothing that looks machine-generated. The floating voice button stays bottom right above the tab bar.
 - **Check every screen at 320 px and 390 px wide, in light and dark.**
 - **Locale:** metric, kcal, pints for beer, Irish and UK products and portion sizes.

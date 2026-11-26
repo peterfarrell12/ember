@@ -701,8 +701,38 @@ function cgKitCard() {
   if (!coachingOn()) return '';
   const v = ((CO.vault && CO.vault.list) || []).length,
     r = ((CO.recipes && CO.recipes.list) || []).length;
-  return `<div class="grp">For all your clients</div><div class="two"><button class="act" data-act="cfForms">${ic('edit')}<span>Forms<small>Consultation, check-ins</small></span></button><button class="act" data-act="coVault">${ic('book')}<span>Vault<small>${v ? v + ' item' + (v === 1 ? '' : 's') : 'Guides and videos'}</small></span></button></div><button class="act" data-act="coMenu">${ic('fork')}<span>Recipes and menu of the week<small>${r ? r + ' shared with your clients' : 'From your own recipe book'}</small></span></button>`;
+  return `<div class="grp">For all your clients</div><div class="two"><button class="act" data-act="cfForms">${ic('edit')}<span>Forms<small>Consultation, check-ins</small></span></button><button class="act" data-act="coVault">${ic('book')}<span>Vault<small>${v ? v + ' item' + (v === 1 ? '' : 's') : 'Guides and videos'}</small></span></button></div><div class="two"><button class="act" data-act="coMenu">${ic('fork')}<span>Recipes and menu<small>${r ? r + ' shared' : 'From your recipe book'}</small></span></button><button class="act" data-act="coAll">${ic('send')}<span>Message everyone<small>One note to each client</small></span></button></div>`;
 }
+
+/* one message to every client: each gets it in their own conversation, and replies come back there */
+A.coAll = () => {
+  const n = activeLinks().filter(l => l.status === 'active').length;
+  if (!n) return toast('You have no clients sharing with you yet.');
+  openSheet(
+    `${sh('Message everyone')}<div class="sheet-b"><label class="f">Your message<textarea class="inp" id="caT" rows="5" maxlength="2000" autocapitalize="sentences" placeholder="No sessions on the bank holiday Monday. Back as normal on Tuesday."></textarea></label><p class="tiny muted">Goes to ${n} client${n === 1 ? '' : 's'}, each in their own conversation with you. Nobody sees who else received it.</p></div><div class="sheet-f"><button class="btn ember" data-act="coAllGo" id="caGo">Send to ${n}</button></div>`,
+    true,
+  );
+};
+A.coAllGo = async () => {
+  const text = ($('#caT').value || '').trim();
+  if (text.length < 2) return toast('Write the message first.');
+  const go = $('#caGo'),
+    api = await cgApi();
+  go.disabled = true;
+  let sent = 0;
+  for (const l of activeLinks().filter(x => x.status === 'active'))
+    try {
+      await api.send(l.id, text);
+      sent++;
+    } catch (e) {}
+  await cgMsgs();
+  closeSheet();
+  toast(
+    sent
+      ? `Sent to ${sent} client${sent === 1 ? '' : 's'}.`
+      : 'That did not send. Check your connection and try again.',
+  );
+};
 
 /* ================= the client's side: the Coach space ================= */
 /* the coach's name in the header is a tag made into a button, so the keyboard has to work on it too */

@@ -316,7 +316,7 @@ const cgToggles = share =>
     a =>
       `<button class="chk" data-act="cgShare" data-area="${a}" aria-pressed="${share[a] ? 'true' : 'false'}"><span class="tb"></span><span><b>${SHARE_LABEL[a][0]}</b><small class="muted" style="display:block;font-weight:400">${SHARE_LABEL[a][1]}</small></span></button>`,
   ).join('');
-const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
+const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included: you choose those one photo at a time, if you want to. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
 let CJ = null;
 A.cgJoin = async ({ code } = {}) => {
   if (!coachingOn()) return toast('Sign in to join a coach.');
@@ -500,10 +500,28 @@ A.cgSees = async () => {
       line('Goal', esc(copy.goal || 'None set')),
     );
   if (on.recovery) rows.push(line('Recovery today', st.ready == null ? 'No check-in' : st.ready));
+  if (on.weight && (copy.view.profile.meas || []).length)
+    rows.push(
+      line(
+        'Measurements',
+        copy.view.profile.meas.length + ' entr' + (copy.view.profile.meas.length === 1 ? 'y' : 'ies'),
+      ),
+    );
+  if (l.status === 'active') {
+    const hs = ((P.co && P.co.habits && P.co.habits.list) || []).length;
+    rows.push(
+      line('Each week', 'A summary of the week for what you share' + (hs ? ', and how many habits you ticked' : '')),
+    );
+    let shared = 0;
+    try {
+      shared = (await (await cgApi()).photos(l.id)).length;
+    } catch (e) {}
+    rows.push(line('Progress photos', shared ? shared + ' you chose to share' : 'None shared'));
+  }
   const off = SHARE_AREAS.filter(a => !on[a]).map(a => SHARE_LABEL[a][0]);
   openSheet(
     `${sh('What your coach sees')}<div class="sheet-b">${l.status === 'paused' ? `<div class="banner">${ic('lock')}<span>Sharing is paused, so your coach sees nothing at the moment.</span></div>` : ''}<div class="card" style="padding:6px 14px">${rows.join('')}</div>
-    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach are always sent. Progress photos, notes, meal plans and anything not listed here are never sent.</p></div>`,
+    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach and the forms you fill in for them are always sent. A progress photo is sent only if you choose to share that photo. Notes, meal plans and anything not listed here are never sent.</p></div>`,
     true,
   );
 };

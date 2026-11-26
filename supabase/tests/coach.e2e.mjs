@@ -550,6 +550,15 @@ try {
         .data.vault.list;
       assert.equal(vault[0].url, "https://example.com/night-out");
       assert.doesNotMatch(vault[1].url, /^javascript/i);
+      // one note to every client, each in their own conversation
+      await a.click('[data-act="coAll"]');
+      assert.match(await text(a, ".sheet >> nth=-1"), /Goes to 1 client, each in their own conversation with you/);
+      await a.fill("#caT", "No sessions on Monday.");
+      await a.click("#caGo");
+      await until("the note on the server", async () => {
+        const { data } = await admin.from("coach_messages").select("body");
+        return data.filter((m) => m.body === "No sessions on Monday.").length === 1;
+      });
       await a.click('nav.tabs [data-tab="clients"]');
 
       // the client: habits on Today, everything else behind the coach's name
@@ -571,7 +580,7 @@ try {
       const space = await text(b, ".sheet >> nth=-1");
       assert.match(
         space,
-        /Your coach: Coach Ann[\s\S]*Messages[\s\S]*Your roadmap[\s\S]*Ignite \| Now, week 1 of 4[\s\S]*Aiming for 2,200 kcal, 8,000 steps\.[\s\S]*Transform[\s\S]*Thrive/i,
+        /Your coach: Coach Ann[\s\S]*Messages · 1 new \| No sessions on Monday\.[\s\S]*Your roadmap[\s\S]*Ignite \| Now, week 1 of 4[\s\S]*Aiming for 2,200 kcal, 8,000 steps\.[\s\S]*Transform[\s\S]*Thrive/i,
       );
       assert.match(
         space,
@@ -727,7 +736,16 @@ try {
       await b.click("#chipYou");
       await b.click('[data-act="myCoach"]');
       await b.click('[data-act="cgSees"]');
+      await b.waitForFunction(() =>
+        /What your coach sees/.test(
+          [...document.querySelectorAll(".sheet")].pop().innerText,
+        ),
+      );
       const sees = await text(b, ".sheet >> nth=-1");
+      assert.match(
+        sees,
+        /Each week \| A summary of the week for what you share, and how many habits you ticked \| Progress photos \| None shared/,
+      );
       assert.match(
         sees,
         /What your coach sees[\s\S]*Food, last 7 days[\s\S]*Sessions, last 7 days/,
@@ -867,6 +885,73 @@ try {
       assert.match(over, /Engagement \| Not enough yet/);
       assert.match(over, /Physique[\s\S]*86 kg[\s\S]*Hips\tWaist[\s\S]*98\.5\t84/);
       await shot(a, "coach-stall-physique", true);
+      await closeSheets(a);
+    },
+  );
+  await step(
+    "progress photos: the client shares one and keeps one; the coach sees only the shared one, until it is unshared",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      const add = async (file, share) => {
+        const [chooser] = await Promise.all([
+          d.waitForEvent("filechooser"),
+          d.click('#phBody [data-act="phAdd"]'),
+        ]);
+        await chooser.setFiles(
+          fileURLToPath(new URL("../../prototype/test/" + file, import.meta.url)),
+        );
+        if (share) await d.click('[data-act="phShareNew"]');
+        await d.click("#phGoBtn");
+        await d.waitForFunction(() => !document.querySelector("#phGoBtn"));
+      };
+      await closeSheets(d);
+      await d.click("#chipYou");
+      await d.click('[data-act="photos"]');
+      await d.waitForSelector('#phBody [data-act="phAdd"]');
+      await add("p1.jpg", true);
+      await add("p2.jpg", false);
+      await until(
+        "two files stored and one shared",
+        async () =>
+          (await admin.storage.from("photos").list(people[3])).data.length ===
+            2 &&
+          (await admin.from("coach_photos").select("path")).data.length === 1,
+      );
+      await closeSheets(d);
+      // the coach: the Photos tab shows the one shared photo, through a signed link
+      await a.reload();
+      await a.waitForSelector('[data-act="coClient"][data-id^="u:"]:has-text("Dee")', { timeout: 20000 });
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="photos"]');
+      await a.waitForSelector("#ccBody .pht img", { timeout: 15000 });
+      assert.equal(await a.locator("#ccBody .pht img").count(), 1);
+      const seen = await a.evaluate(async () => {
+        const im = document.querySelector("#ccBody .pht img");
+        await im.decode().catch(() => {});
+        return { src: im.src, ok: im.naturalWidth > 0 };
+      });
+      assert.match(seen.src, /\/storage\/v1\/object\/sign\/photos\/.+token=/);
+      assert.ok(seen.ok, "the shared picture loads for the coach");
+      assert.match(await text(a, "#ccBody"), /Dee chooses which photos to share with you/);
+      await shot(a, "coach-photos", true);
+      await closeSheets(a);
+      // the client changes their mind
+      await d.click("#chipYou");
+      await d.click('[data-act="photos"]');
+      await d.click('#phBody .pht:has-text("Shared")');
+      await d.click('[data-act="phShare"]');
+      await until(
+        "nothing shared any more",
+        async () =>
+          (await admin.from("coach_photos").select("path")).data.length === 0,
+      );
+      await closeSheets(d);
+      await a.reload();
+      await a.waitForSelector('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")', { timeout: 20000 });
+      await a.click('.crow[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.click('[data-act="ccTab"][data-t="photos"]');
+      await a.waitForFunction(() => /No photos here yet/.test(document.querySelector("#ccBody").innerText), null, { timeout: 15000 });
+      assert.equal(await a.locator("#ccBody .pht img").count(), 0);
       await closeSheets(a);
     },
   );

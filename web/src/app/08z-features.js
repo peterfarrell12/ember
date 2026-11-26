@@ -68,6 +68,8 @@ const FEATURE_ACTIONS = {
     'suppTick',
     'coRecipeKeep',
     'coachSpace',
+    'coAll',
+    'coAllGo',
     'cgPage',
     'cgPageSave',
     'cgPageCopy',

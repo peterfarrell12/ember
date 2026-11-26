@@ -388,6 +388,29 @@ export function coachingApi(client, userId) {
       if (error) fail(error);
       return data;
     },
+    /* ----- progress photos, shared one at a time ----- */
+    /** Client: share or unshare one of their own photos. `p.path` is the file in their private folder. */
+    photoShare: (p, on) =>
+      rpc('coach_photo_share', {
+        p_path: p.path,
+        p_on: !!on,
+        p_d: p.d || null,
+        p_pose: p.pose || '',
+        p_kg: p.kg || null,
+        p_w: p.w || null,
+        p_h: p.h || null,
+      }),
+    /** The photos shared on a link, newest first. */
+    async photos(linkId) {
+      const { data, error } = await client
+        .from('coach_photos')
+        .select('path, d, pose, kg, w, h')
+        .eq('link_id', linkId)
+        .order('d', { ascending: false })
+        .limit(60);
+      if (error) fail(error);
+      return data;
+    },
     /* ----- weekly summaries ----- */
     /** Client: write a week's summary (already cut to what is shared). */
     weekPut: (week, data) => rpc('coach_week_put', { p_week: week, p_data: data }),
