@@ -306,5 +306,5 @@ function viewMore() {
     <section class="card"><h2>How Ember keeps numbers honest</h2><div class="stack small" style="margin-top:10px">
       <div class="row" style="align-items:flex-start">${srcBadge('F')}<span>Everyday foods come from USDA FoodData Central, measured in a lab or a national survey.</span></div>
       <div class="row" style="align-items:flex-start">${srcBadge('B')}<span>Branded products use the printed label, from Open Food Facts.</span></div>
-      <div class="row" style="align-items:flex-start">${srcBadge('AI')}<span>Anything Claude had to estimate is marked, so you know which numbers are measured and which are a best guess.</span></div></div></section>`;
+      <div class="row" style="align-items:flex-start">${srcBadge('AI')}<span>Anything Ember AI had to estimate is marked, so you know which numbers are measured and which are a best guess.</span></div></div></section>`;
 }

@@ -1,0 +1,4 @@
+TRAIN as seeded: Mon | 17 | Tue | 18 | Wed | 19 | Thu | 20 | Fri | 21 | Sat | 22 | Sun |  | 0 strength sessions this week, 60 minutes active. |  |  Calendar | No program yet | Pick a plan to follow | Each session opens with your last numbers on every lift and tells you when it is time to go up. | Choose a program | Have Ember AI build one | Just
+has pattern button: False
+light ERRS []
+dark ERRS []

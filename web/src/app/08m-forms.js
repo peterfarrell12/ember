@@ -569,11 +569,11 @@ A.cgCkDraft = async () => {
       },
     ]);
     if (!$('#ckSum')) return;
-    out.innerHTML = `<div class="card stack" style="gap:4px"><span class="src e" style="align-self:flex-start">Claude's summary</span><p class="small">${esc(String(r.summary || ''))}</p></div>`;
+    out.innerHTML = `<div class="card stack" style="gap:4px"><span class="src e" style="align-self:flex-start">Ember AI's summary</span><p class="small">${esc(String(r.summary || ''))}</p></div>`;
     const box = $('#ckReply');
     if (r.reply && !box.value.trim()) {
       box.value = String(r.reply);
-      out.innerHTML += `<p class="tiny muted">A draft reply is in the box below. It is Claude's wording: read it, change it, and send it only when it says what you mean.</p>`;
+      out.innerHTML += `<p class="tiny muted">A draft reply is in the box below. It is Ember AI's wording: read it, change it, and send it only when it says what you mean.</p>`;
     }
   } catch (e) {
     if ($('#ckSum')) out.innerHTML = `<div class="banner">${ic('spark')}<span>${esc(aiError(e))}</span></div>`;

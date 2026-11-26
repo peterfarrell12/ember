@@ -4,7 +4,7 @@
    policy and terms agreed to (privacy.html, terms.html); change it when they change in a way that matters. */
 const CONSENT_VERSION = '2026-11-19';
 const consentHtml = () =>
-  `<label class="agree"><input type="checkbox" id="siAgree"><span>I am 18 or over and agree to the <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a> and <a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a>. I consent to Ember storing the health information I enter, and to what I send to its AI features being processed by Anthropic in the United States.</span></label>`;
+  `<label class="agree"><input type="checkbox" id="siAgree"><span>I am 18 or over and agree to the <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a> and <a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a>. I consent to Ember storing the health information I enter, and to what I send to its AI features being processed by an outside AI provider in the United States.</span></label>`;
 /* Once signed in, note on the account which version was agreed to and when. */
 function recordConsent() {
   const c = LS.get('ember:consent');

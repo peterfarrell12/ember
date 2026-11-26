@@ -98,7 +98,7 @@ A.assistant = async () => {
   if (!AI.sample)
     return toast(
       AI.ready
-        ? 'The assistant needs Claude, which is not available in this view.'
+        ? 'The assistant needs Ember AI, which is not available in this view.'
         : 'Still connecting. Try again in a moment.',
     );
   AS = asNew(false);

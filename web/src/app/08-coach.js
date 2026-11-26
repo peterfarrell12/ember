@@ -505,7 +505,7 @@ function coClients() {
   ${flagged.length ? `<section class="card"><h2>Needs a look</h2>${flagged.map(({ c, al }) => `<button class="entry" data-act="coClient" data-id="${c.id}"><span class="n">${esc(c.name)}</span><span class="k">${ic('chev-r')}</span><span class="s" style="white-space:normal;color:var(--bad)">${esc(al.join(' · '))}</span></button>`).join('')}</section>` : ''}
   <section class="card" style="padding:4px 14px">${withAl.map(row).join('')}</section>
   ${cs.some(c => c.kind === 'sample') ? `<div class="banner">${ic('users')}<span>Clients marked Sample are invented, with made-up numbers, plans and notes, so you can see this view working. <button class="link" data-act="coDropSamples">Remove demo data</button></span></div>` : `<button class="link" data-act="coDemoOn" style="align-self:flex-start">Show demo data</button>`}
-  <p class="tiny muted">Live clients are people in your Claude organisation who open Ember after you share it with them as contributors. Everyone else you add here is tracked by you.</p>`;
+  <p class="tiny muted">Live clients are people who share this workspace and open Ember after you share it with them as contributors. Everyone else you add here is tracked by you.</p>`;
 }
 A.coDropSamples = () => {
   Object.keys(CO.clients).forEach(k => {
@@ -719,7 +719,7 @@ A.coSend = async ({ as }) => {
   else toast(as === 'msg' ? 'Sent' : 'Note saved');
 };
 A.coDraft = async () => {
-  if (!AI.sample) return toast('Drafting needs Claude, which is not available in this view.');
+  if (!AI.sample) return toast('Drafting needs Ember AI, which is not available in this view.');
   const c = getClient(CC),
     st = c.st,
     box = $('#ccMsg');
@@ -777,7 +777,7 @@ A.coRemove = () => {
 function coLibrary() {
   const mine = Object.values(S.progs);
   return `<div class="between"><h2 class="sec-h" style="font-size:22px">Library</h2></div>${cgKitCard()}
-  <div class="two"><button class="act" data-act="progAI">${ic('spark')}<span>Build with Claude<small>Goal, days, kit</small></span></button><button class="act" data-act="progNew">${ic('edit')}<span>Write a program<small>From scratch</small></span></button></div>
+  <div class="two"><button class="act" data-act="progAI">${ic('spark')}<span>Build with Ember AI<small>Goal, days, kit</small></span></button><button class="act" data-act="progNew">${ic('edit')}<span>Write a program<small>From scratch</small></span></button></div>
   ${mine.length ? `<div class="grp">Your programs</div><div class="list">${mine.map(p => `<button class="res" data-act="progView" data-id="${p.id}"><span class="n">${esc(p.n)}</span><span class="k muted small">${p.days.length} days</span><span class="s" style="white-space:normal">${esc(p.about || '')}</span></button>`).join('')}</div>` : ''}
   <div class="grp">Ready-made programs</div><div class="list">${TEMPLATES.map(t => `<button class="res" data-act="tplView" data-id="${t.id}"><span class="n">${esc(t.n)}</span><span class="k"><span class="pill">${esc(t.tag)}</span></span><span class="s" style="white-space:normal">${esc(t.about)}</span></button>`).join('')}</div>
   <div class="grp">Rehab plans</div><div class="list">${REHAB.concat(Object.values(TR.rplans))
