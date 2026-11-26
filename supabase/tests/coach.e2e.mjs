@@ -557,6 +557,34 @@ try {
         .data.vault.list;
       assert.equal(vault[0].url, "https://example.com/night-out");
       assert.doesNotMatch(vault[1].url, /^javascript/i);
+      // recipes and a menu of the week from the coach's own recipe book (a recipe put there for the test)
+      await closeSheets(a);
+      await admin.from("user_docs").upsert({
+        user_id: people[0],
+        kind: "recipes",
+        id: "rc1",
+        data: {
+          id: "rc1",
+          n: "Chicken and rice",
+          sv: 2,
+          items: [
+            { n: "Chicken breast", g: 300, k: 495, p: 93, c: 0, f: 10.8 },
+            { n: "Rice, cooked", g: 400, k: 520, p: 10.8, c: 112, f: 1.2 },
+          ],
+        },
+      });
+      await a.reload();
+      await a.waitForSelector('nav.tabs [data-tab="library"]', { timeout: 20000 });
+      await a.waitForTimeout(2500);
+      await a.click('nav.tabs [data-tab="library"]');
+      await a.click('[data-act="coMenu"]');
+      assert.match(await text(a, ".sheet >> nth=-1"), /Chicken and rice \| 508 kcal a serving/);
+      await a.click('.sheet [data-rid="rc1"]');
+      await a.fill("#mnT", "A day of eating");
+      for (const m of ["b", "l", "d"]) await a.selectOption("#mn" + m, "rc1");
+      await a.click('[data-act="coMenuSave"]');
+      await set("menu", (m) => m.meals.length === 3 && m.meals[0].k === 508 && m.meals[0].p === 51.9 && m.total === 1524);
+      await set("recipes", (r) => r.list.length === 1 && r.list[0].per.p === 51.9 && r.list[0].per.c === 56);
       // one note to every client, each in their own conversation
       await a.click('[data-act="coAll"]');
       assert.match(await text(a, ".sheet >> nth=-1"), /Goes to 1 client, each in their own conversation with you/);
@@ -604,8 +632,19 @@ try {
         "https://example.com/night-out",
       );
       assert.equal(await b.locator(".sheet a.entry").count(), 1);
+      // the menu sized to their own 2,100 kcal target and marked as an estimate; the recipe to keep
+      assert.match(
+        space,
+        /A day of eating \| Chicken and rice \| 762 \| Breakfast · 1\.5 servings · 78 g protein \| ESTIMATE[\s\S]*Sized to your 2,100 kcal target by scaling the servings to the nearest quarter, so the figures are estimates\.[\s\S]*Recipes from Coach Ann \| Chicken and rice \| 508 \| Save \| kcal a serving · 51\.9 g protein · makes 2/i,
+      );
+      await b.click('[data-act="coRecipeKeep"]');
+      await until("the recipe kept in the client's own recipes", async () =>
+        (await docs(people[1], "recipes")).some((r) => r.data.n === "Chicken and rice" && r.data.items.length === 2),
+      );
+      await clear(b); // keeping a first recipe earns an award, which shows over the sheet
       await b.click('[data-act="suppTick"]');
       await b.waitForSelector('[data-act="suppTick"][aria-pressed="true"]');
+      await clear(b); // the award for a first recipe can show now, over the sheet
       await b.click('[data-act="stepsToday"]');
       await b.fill("#stN", "9000");
       await b.click('[data-act="stepsSave"]');
@@ -1028,6 +1067,8 @@ try {
         const ev = data[0].coach_assign && data[0].coach_assign.data.ev;
         return !!(ev && ev.list.length === 1 && ev.list[0].t === "Review call");
       });
+      // the screen redraws a moment after the server has it
+      await a.waitForFunction(() => /Review call[\s\S]*Offered/.test(document.querySelector("#ccBody").innerText), null, { timeout: 10000 });
       assert.match(await text(a, "#ccBody"), /Calls and events \| Add \| Review call, [\s\S]*at 18:30 \| Offered/);
       const before = (await docs(people[3], "profile"))[0].data.plan;
       assert.ok(!before || !before.ev.some((e) => e.t === "Review call"), "nothing in their calendar yet");

@@ -122,7 +122,7 @@ async function cgWelcome(api, linked) {
   for (const l of linked) {
     if (l.status !== 'active' || CO.welcomed[l.id]) continue;
     try {
-      const rec = recOf('u:' + l.client_id),
+      const rec = () => recOf('u:' + l.client_id), // looked up each time: records can be re-read between sends
         pick = async kind => {
           await formsLoad();
           const f = formsOf(kind)[0] || FORM_STARTERS[kind]; // the coach's own form if they have built one
@@ -132,12 +132,12 @@ async function cgWelcome(api, linked) {
       if (st.consult) {
         const form = await pick('consult');
         await api.assign(l.id, 'consult', { form, wd: 0, every: 1 });
-        rec.consult = { ...form, wd: 0, every: 1 };
+        rec().consult = { ...form, wd: 0, every: 1 };
       }
       if (st.ck) {
         const form = await pick('checkin');
         await api.assign(l.id, 'checkin', { form, wd: 4, every: 1 });
-        rec.ck = { ...form, wd: 4, every: 1 };
+        rec().ck = { ...form, wd: 4, every: 1 };
       }
       await cgShareKit(api, l.id);
       CO.welcomed[l.id] = 1;

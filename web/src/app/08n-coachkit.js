@@ -476,15 +476,14 @@ A.rmNote = ({ w }) => {
 SEG.pnMs = v => (PHX.ms = v);
 A.rmNoteSave = async () => {
   const c = getClient(CC),
-    rec = recOf(c.id),
-    ph = clone(rec.phases),
+    ph = clone(recOf(c.id).phases),
     cur = (ph.notes || {})[PHX.w] || {};
   ph.notes = {
     ...(ph.notes || {}),
     [PHX.w]: { t: ($('#pnT').value || '').trim().slice(0, 400), ms: PHX.ms === undefined ? cur.ms || '' : PHX.ms },
   };
   if (!(await pushAssign(c.uid, 'phases', ph))) return;
-  rec.phases = ph;
+  recOf(c.id).phases = ph;
   saveCO();
   closeSheet();
   closeSheet();
@@ -590,13 +589,12 @@ A.coEvSave = async () => {
       min: clamp(r0(num($('#ceMin').value)), 0, 600),
     };
   if (!/^\d{4}-\d\d-\d\d$/.test(d) || d < today()) return toast('Pick a date from today on.');
-  const rec = recOf(c.id),
-    list = (rec.calls || [])
-      .filter(x => x.d >= today())
-      .concat([e])
-      .slice(-10);
+  const list = (recOf(c.id).calls || [])
+    .filter(x => x.d >= today())
+    .concat([e])
+    .slice(-10);
   if (!(await pushAssign(c.uid, 'ev', { list }))) return;
-  rec.calls = list;
+  recOf(c.id).calls = list; // looked up again: the coach's records may have been re-read while that was sending
   saveCO();
   closeSheet();
   renderClient();
@@ -683,7 +681,7 @@ A.coMenu = () => {
     menu = (CO.menu && CO.menu.meals) || [];
   if (!mine.length) return toast('Add recipes of your own first, under My view, You, Recipes. Then share them here.');
   openSheet(
-    `${sh('Recipes and menu of the week')}<div class="sheet-b"><div class="f">Recipes your clients can see<div class="stack" style="gap:6px;margin-top:6px">${mine.map(r => `<button class="chk" data-act="cgPageOpen" data-rid="${r.id}" aria-pressed="${shared.has(r.id) ? 'true' : 'false'}"><span class="tb"></span><span>${esc(r.n)}<small class="muted" style="display:block;font-weight:400">${fmt(recipeFood(r).per.k)} kcal a serving</small></span></button>`).join('')}</div></div>
+    `${sh('Recipes and menu of the week')}<div class="sheet-b"><div class="f">Recipes your clients can see<div class="stack" style="gap:6px;margin-top:6px">${mine.map(r => `<button class="chk" data-act="cgPageOpen" data-rid="${r.id}" aria-pressed="${shared.has(r.id) ? 'true' : 'false'}"><span class="tb"></span><span>${esc(r.n)}<small class="muted" style="display:block;font-weight:400">${fmt(perServing(r).k)} kcal a serving</small></span></button>`).join('')}</div></div>
     <div class="card stack"><h2>Menu of the week</h2><label class="f">Title<input class="inp" id="mnT" maxlength="60" value="${esc((CO.menu && CO.menu.title) || '')}" placeholder="A day of eating"></label>
     ${Object.entries(MEALS)
       .map(
@@ -697,17 +695,20 @@ A.coMenu = () => {
     true,
   );
 };
-const recipeOut = r => {
-  const f = recipeFood(r);
-  return {
-    id: r.id,
-    n: r.n,
-    sv: r.sv,
-    items: r.items,
-    per: { k: r0(f.per.k), p: r1(f.per.p), c: r1(f.per.c), f: r1(f.per.f) },
-    ...(r.from ? { from: r.from, url: r.url } : {}),
-  };
+/* one serving of a recipe: its ingredients added up and shared out */
+const perServing = r => {
+  const t = recipeTotals(r),
+    n = r.sv || 1;
+  return { k: r0(t.k / n), p: r1(t.p / n), c: r1(t.c / n), f: r1(t.f / n) };
 };
+const recipeOut = r => ({
+  id: r.id,
+  n: r.n,
+  sv: r.sv,
+  items: r.items,
+  per: perServing(r),
+  ...(r.from ? { from: r.from, url: r.url } : {}),
+});
 A.coMenuSave = async () => {
   const picked = $$('.sheet [data-rid][aria-pressed="true"]')
     .map(b => S.recipes[b.dataset.rid])
@@ -716,7 +717,7 @@ A.coMenuSave = async () => {
   const meals = Object.keys(MEALS)
     .map(m => {
       const r = S.recipes[$('#mn' + m).value];
-      return r ? { m, rid: r.id, n: r.n, k: r0(recipeFood(r).per.k), p: r1(recipeFood(r).per.p) } : null;
+      return r ? { m, rid: r.id, n: r.n, k: perServing(r).k, p: perServing(r).p } : null;
     })
     .filter(Boolean);
   // a recipe on the menu is shared too, so a client can open it
@@ -815,7 +816,7 @@ A.suppTick = async ({ id }) => {
   if (d.sp[id]) delete d.sp[id];
   else d.sp[id] = 1;
   commitDay(d, { quiet: true });
-  A.coachSpace();
+  coachSpaceRedraw();
 };
 A.stepsToday = () => {
   const h = P.hist[today()] || {};
@@ -831,8 +832,9 @@ A.stepsSave = async () => {
   saveProfile();
   lastPub = 0;
   publishStatus();
-  closeAll();
-  A.coachSpace();
+  closeSheet();
+  coachSpaceRedraw();
+  render(); // Today, behind the sheet, shows the steps too
 };
 A.coRecipeKeep = ({ id }) => {
   const r = ((P.co.recipes && P.co.recipes.list) || []).find(x => x.id === id);
@@ -847,11 +849,25 @@ A.coRecipeKeep = ({ id }) => {
   S.recipes[mine.id] = mine;
   Store.put('recipes', mine.id, mine);
   toast('Saved to your recipes. Log a serving from the Add sheet.', 'good');
-  A.coachSpace();
+  coachSpaceRedraw();
 };
 A.coachSpace = () => {
   if (!hasCoach()) return A.cgJoin();
   while (sheets.length) closeSheet();
+  openSheet(
+    `${sh('Your coach: ' + CG.coach.coach_name)}<div class="sheet-b" id="csBody">${coachSpaceHtml()}</div>`,
+    true,
+  );
+};
+/* after a tick or a save inside the Coach space: the same sheet, redrawn where it was */
+function coachSpaceRedraw() {
+  const b = $('#csBody');
+  if (!b) return;
+  const at = b.scrollTop;
+  b.innerHTML = coachSpaceHtml();
+  b.scrollTop = at;
+}
+function coachSpaceHtml() {
   const l = CG.coach,
     co = P.co || {},
     who = esc(l.coach_name),
@@ -899,9 +915,13 @@ A.coachSpace = () => {
     );
   }
   if (co.menu && co.menu.meals && co.menu.meals.length) {
-    const f = co.menu.total ? P.t.k / co.menu.total : 1;
+    // a menu that covers a whole day (three meals or more) is sized to the person's own calories, within
+    // sensible bounds; a single meal or two is shown as the coach wrote it
+    const full = co.menu.meals.length >= 3 && co.menu.total > 0,
+      f = full ? clamp(P.t.k / co.menu.total, 0.5, 2) : 1,
+      sv = Math.round(f * 4) / 4;
     out.push(
-      `<div class="grp">${esc(co.menu.title || 'Menu of the week')}</div><section class="card" style="padding:4px 14px">${co.menu.meals.map(x => `<div class="entry" style="cursor:default"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k * f)}</span><span class="s">${MEALS[x.m]} · about ${r1(f)} serving${Math.abs(f - 1) < 0.05 ? '' : 's'} · ${r0(x.p * f)} g protein ${srcBadge('AI')}</span></div>`).join('')}</section><p class="tiny muted">Sized to your ${fmt(P.t.k)} kcal target by scaling the servings, so the figures are estimates.</p>`,
+      `<div class="grp">${esc(co.menu.title || 'Menu of the week')}</div><section class="card" style="padding:4px 14px">${co.menu.meals.map(x => `<div class="entry" style="cursor:default"><span class="n">${esc(x.n)}</span><span class="k">${fmt(x.k * sv)}</span><span class="s">${MEALS[x.m]} · ${sv === 1 ? '1 serving' : sv + ' servings'} · ${r0(x.p * sv)} g protein${full ? ' ' + srcBadge('AI') : ''}</span></div>`).join('')}</section><p class="tiny muted">${full ? `Sized to your ${fmt(P.t.k)} kcal target by scaling the servings to the nearest quarter, so the figures are estimates.` : `As your coach wrote it: ${fmt(co.menu.total)} kcal in all.`}</p>`,
     );
   }
   if (co.recipes && co.recipes.list && co.recipes.list.length)
@@ -915,5 +935,5 @@ A.coachSpace = () => {
   out.push(
     `<div class="grp">You and ${who}</div><button class="btn ghost" data-act="measSheet">${ic('scale')} Measurements</button><button class="btn ghost" data-act="myCoach">${ic('lock')} What ${who} can see</button>`,
   );
-  openSheet(`${sh('Your coach: ' + l.coach_name)}<div class="sheet-b">${out.join('')}</div>`, true);
-};
+  return out.join('');
+}
