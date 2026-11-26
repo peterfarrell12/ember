@@ -125,8 +125,10 @@ const plusDays = (key, n) => {
 /**
  * One week of a person's own data as a handful of averages, cut to what they share. Written by the client's
  * app for their coach, so a coach's phases and trends have history without the diary ever being read.
- * @param {{ week: string, hist: Record<string, any>, wts: { d: string, kg: number }[], sess: { d: string, kind?: string }[], planned?: number }} own
- *   week is the Monday; planned is how many sessions the programme asks for in a week
+ * @param {{ week: string, hist: Record<string, any>, wts: { d: string, kg: number }[], sess: { d: string, kind?: string }[], planned?: number,
+ *   habits?: { done: number, of: number } }} own
+ *   week is the Monday; planned is how many sessions the programme asks for in a week; habits is how many of
+ *   the coach's habits were ticked out of how many there were to tick (sent whatever is shared, like tasks)
  * @param {Partial<Record<'food' | 'training' | 'weight' | 'recovery', boolean>>} share
  */
 export function weekSummary(own, share) {
@@ -155,13 +157,16 @@ export function weekSummary(own, share) {
     const steps = lines.filter(h => h.st > 0).map(h => h.st);
     if (steps.length) out.steps = round(mean(steps));
   }
+  // habits the coach set: how many were ticked, never which days or anything else from the diary
+  if (own.habits && own.habits.of > 0) out.hab = { done: Math.min(own.habits.done, own.habits.of), of: own.habits.of };
   return out;
 }
 
 /**
  * How engaged a client is, from what they share. Each part is a share of what was asked for; a part the
  * client does not share, or that the coach has not asked for, is left out and does not count against them.
- * Nothing from before they became a client counts either: `since` is the day the link was accepted.
+ * Nothing from before they became a client counts either: `since` is the day the link was accepted, and
+ * there is no score at all for their first two days.
  * @param {{ share: any, st: any, weeks: { week: string, data: any }[], checkins: { week: string, kind: string }[],
  *   schedule?: { every?: number } | null, thisWeek: string, since?: string, today?: string }} c
  * @returns {{ score: number | null, state: 'On track' | 'Slipping' | 'Behind' | 'Not enough yet', parts: { key: string, label: string, done: number, of: number }[] }}
@@ -216,9 +221,38 @@ export function engagement(c) {
         of: last4.length,
       });
   }
-  if (!parts.length) return { score: null, state: 'Not enough yet', parts };
+  // nobody is judged on their first two days
+  if (!parts.length || (c.since && c.today && daysBetween(since, c.today) < 2))
+    return { score: null, state: 'Not enough yet', parts };
   const score = Math.round(mean(parts.map(p => p.done / p.of)) * 100);
   return { score, state: score >= 80 ? 'On track' : score >= 50 ? 'Slipping' : 'Behind', parts };
+}
+
+/**
+ * Has weight stalled? Looks at the last three finished weeks of a client's summaries. If they logged food on
+ * most days, weighed in each week, and the weekly average moved by less than 0.2 kg from first to last, their
+ * logged intake is about what holds their weight steady. Returns that estimate and, when the coach is aiming
+ * for a rate of change, the daily calories that rate works out to (7,700 kcal to a kilogram). An estimate
+ * for the coach to weigh up, never applied by itself.
+ * @param {{ weeks: { week: string, data: any }[], thisWeek: string, rate?: number, direction?: 'lose' | 'gain' | '' }} c
+ * @returns {null | { from: number, to: number, kcal: number, suggest: number | null, weeks: number }}
+ */
+export function stall(c) {
+  const want = [3, 2, 1].map(i => plusDays(c.thisWeek, -7 * i)),
+    got = want.map(w => (c.weeks || []).find(x => x.week === w));
+  if (got.some(w => !w || !(w.data.weighs > 0) || !(w.data.days >= 5) || !(w.data.kcal > 0))) return null;
+  const from = got[0].data.kg,
+    to = got[2].data.kg;
+  if (Math.abs(to - from) >= 0.2) return null;
+  const kcal = Math.round(mean(got.map(w => w.data.kcal)) / 10) * 10,
+    step = c.rate > 0 && c.direction ? Math.round((c.rate * 1100) / 10) * 10 : 0;
+  return {
+    from,
+    to,
+    kcal,
+    suggest: step ? (c.direction === 'lose' ? kcal - step : kcal + step) : null,
+    weeks: 3,
+  };
 }
 
 const REASONS = [
@@ -367,6 +401,17 @@ export function coachingApi(client, userId) {
         .limit(limit);
       if (error) fail(error);
       return data.reverse();
+    },
+    /** Coach: every client's weekly summaries from a given week on, oldest first. */
+    async weeksAll(fromWeek) {
+      const { data, error } = await client
+        .from('coach_weeks')
+        .select('link_id, week, data')
+        .gte('week', fromWeek)
+        .order('week')
+        .limit(5000);
+      if (error) fail(error);
+      return data;
     },
     /* ----- a coach's page and applications ----- */
     /** The coach's own page, or null. */

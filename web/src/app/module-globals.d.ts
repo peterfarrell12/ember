@@ -107,5 +107,6 @@ declare global {
   const sharedCopy: typeof m18.sharedCopy;
   const weekSummary: typeof m18.weekSummary;
   const engagement: typeof m18.engagement;
+  const stall: typeof m18.stall;
   const coachingApi: typeof m18.coachingApi;
 }

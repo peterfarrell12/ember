@@ -315,6 +315,8 @@ try {
       await a.click('[data-act="coTargets"]');
       await a.fill("#ctK", "2100");
       await a.fill("#ctP", "140");
+      await a.fill("#ctFi", "30");
+      await a.fill("#ctW", "2500");
       await a.click('[data-act="coTargetsSave"]');
       await until("the targets on the server", async () => {
         const { data } = await admin.from("coach_assign").select("data");
@@ -333,13 +335,16 @@ try {
       });
       assert.match(
         await text(b, "#main"),
-        /From your coach, Coach Ann \| New targets \| 2,100 kcal a day and 140 g of protein/,
+        /From your coach, Coach Ann \| New targets \| 2,100 kcal a day, 140 g protein, 30 g fibre, 2,500 ml water\. Yours now/,
       );
       await b.click('[data-act="cgOfferYes"][data-k="t"]');
       await until(
         "the accepted targets in the client's account",
         async () => (await docs(people[1], "profile"))[0].data.t.k === 2100,
       );
+      const t = (await docs(people[1], "profile"))[0].data.t;
+      assert.deepEqual([t.p, t.fi, t.w], [140, 30, 2500]);
+      assert.equal(t.c, Math.max(50, Math.round((2100 - 140 * 4 - t.f * 9) / 4 / 5) * 5), "carbohydrate is what is left");
       await until("the answer reaching the coach", async () => {
         const { data } = await admin.from("coach_status").select("data");
         return !!(data[0] && data[0].data.resp && data[0].data.resp.t);
@@ -450,6 +455,7 @@ try {
         async () =>
           (await admin.from("coach_checkins").select("id")).data.length === 1,
       );
+      await b.waitForFunction(() => !document.querySelector(".sheet"));
       assert.equal(
         await b.locator('[data-act="cgCheckin"]').count(),
         0,
@@ -552,7 +558,7 @@ try {
       await b.waitForSelector('[data-act="habitTick"]', { timeout: 20000 });
       assert.match(
         await text(b, "#main"),
-        /Habits \| from Coach Ann \| Sit down for one meal without a screen/,
+        /Habits \| from Coach Ann \| Your coach sees how many you tick each week, not which days\. \| Sit down for one meal without a screen/,
       );
       await shot(b, "client-today-habits");
       await b.click('[data-act="habitTick"] >> nth=0');
@@ -589,19 +595,43 @@ try {
       await b.reload();
       await until("the week's summary on the server", async () => {
         const { data } = await admin.from("coach_weeks").select("data");
-        return data.some((w) => w.data.steps === 9000 && w.data.days === 1);
+        return data.some(
+          (w) =>
+            w.data.steps === 9000 &&
+            w.data.days === 1 &&
+            w.data.hab &&
+            w.data.hab.done === 1 &&
+            w.data.hab.of === 4,
+        );
       }, 90000);
       const wk = (await admin.from("coach_weeks").select("data")).data;
       assert.ok(
         wk.every((w) => w.data.kg === undefined && w.data.weighs === undefined),
         "no weight in a summary while weight is not shared",
       );
+      // a client of a few minutes is not judged
+      await openClient(a);
+      await a.waitForSelector("#ccBody table.mini", { timeout: 15000 });
+      assert.match(
+        await text(a, "#ccBody"),
+        /Engagement \| Not enough yet \| Nothing to judge yet[\s\S]*The last weeks[\s\S]*9,000\t1 of 4/,
+      );
+      await closeSheets(a);
+      // as if they had joined eight days ago: now there is a score, and the list flags it
+      await admin
+        .from("coach_links")
+        .update({ accepted_at: new Date(Date.now() - 8 * 864e5).toISOString() })
+        .eq("client_id", people[1]);
       await openClient(a);
       await a.waitForSelector("#ccBody table.mini", { timeout: 15000 });
       const over = await text(a, "#ccBody");
       assert.match(
         over,
-        /Engagement \| On track \| 100 \| out of 100[\s\S]*Check-ins, last 1 week \| 1 of 1 \| Food logged, last 1 day \| 1 of 1[\s\S]*The last weeks[\s\S]*9,000/,
+        /Engagement \| (Slipping|Behind) \| \d+ \| out of 100[\s\S]*Check-ins, last \d weeks? \| 1 of \d \| Food logged, last 7 days \| 1 of 7[\s\S]*The last weeks[\s\S]*9,000/,
+      );
+      assert.match(
+        await text(a, '#main .crow[data-act="coClient"][data-id^="u:"]'),
+        /Bee \| Live \| (Slipping|Behind)/,
       );
       assert.doesNotMatch(over, /Physique/, "nothing on weight unless shared");
       await shot(a, "coach-client-overview", true);
@@ -778,6 +808,66 @@ try {
       await d.waitForSelector("#cjBody .banner", { timeout: 25000 });
       assert.match(await text(d, "#cjBody"), /Coach Ann has invited you/);
       assert.equal((await d.inputValue("#cjCode")).length, 8);
+      for (const area of ["food", "training", "weight", "recovery"])
+        await d.click(`[data-act="cgShare"][data-area="${area}"]`);
+      await d.fill("#cjName", "Dee");
+      await d.click("#cjGo");
+      await d.waitForFunction(() => !document.querySelector("#cjBody"));
+      await closeSheets(d);
+    },
+  );
+  await step(
+    "with weight shared the coach sees measurements, and three flat weeks bring up an estimate to weigh up",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      await d.waitForSelector("#brandTag[data-act]", { timeout: 20000 });
+      await d.click("#brandTag");
+      await d.click('[data-act="measSheet"]');
+      await d.fill("#msWaist", "84");
+      await d.fill("#msHips", "98.5");
+      await d.click('[data-act="measSave"]');
+      await until("the measurements in what the coach may see", async () => {
+        const { data } = await admin
+          .from("coach_links")
+          .select("coach_status(data)")
+          .eq("client_id", people[3]);
+        const st = data[0] && data[0].coach_status;
+        const m = st && st.data.view.profile.meas;
+        return !!(m && m[0] && m[0].v.Waist === 84);
+      }, 90000);
+      // three finished weeks of history, written here as the client's app would have written them
+      const link = (
+        await admin.from("coach_links").select("id").eq("client_id", people[3])
+      ).data[0].id;
+      const monday = (n) => {
+        const t = new Date();
+        t.setDate(t.getDate() - ((t.getDay() + 6) % 7) - 7 * n);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+      };
+      for (const [n, kg, kcal] of [
+        [3, 86.1, 2210],
+        [2, 86.0, 2180],
+        [1, 86.05, 2240],
+      ])
+        await admin.from("coach_weeks").upsert({
+          link_id: link,
+          week: monday(n),
+          data: { week: monday(n), kg, kcal, prot: 130, days: 6, weighs: 3, sess: 3, plan: 3 },
+        });
+      await a.reload();
+      await a.waitForSelector('[data-act="coClient"][data-id^="u:"]:has-text("Dee")', { timeout: 20000 });
+      await a.click('[data-act="coClient"][data-id^="u:"]:has-text("Dee")');
+      await a.waitForSelector("#ccBody table.mini", { timeout: 15000 });
+      const over = await text(a, "#ccBody");
+      assert.match(
+        over,
+        /Weight has held for three weeks \| Estimate \| Weekly averages went from 86\.1 kg to 86\.05 kg while they logged about 2,210 kcal a day/i,
+      );
+      assert.match(over, /it is your call/);
+      assert.match(over, /Engagement \| Not enough yet/);
+      assert.match(over, /Physique[\s\S]*86 kg[\s\S]*Hips\tWaist[\s\S]*98\.5\t84/);
+      await shot(a, "coach-stall-physique", true);
+      await closeSheets(a);
     },
   );
   await step("no page errors", async () => assert.deepEqual(errs, []));

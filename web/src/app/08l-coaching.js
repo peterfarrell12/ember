@@ -41,7 +41,7 @@ const cgList = words =>
 async function cgLoad(force) {
   if (!coachingOn() || CG.busy || DEMO || (!force && Date.now() - CG.at < 20000)) return;
   CG.busy = true;
-  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page, CG.inbox2, P.co]);
+  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page, CG.inbox2, P.co, CG.wk]);
   const before = mark();
   try {
     const api = await cgApi();
@@ -71,6 +71,9 @@ async function cgLoad(force) {
       LIVE = next;
       await cgWelcome(api, linked);
       CG.inbox2 = await api.inbox(200); // every client's form answers, for the inbox and the overdue list
+      const wk = Object.fromEntries(linked.map(l => [l.id, []]));
+      for (const w of await api.weeksAll(addDays(ckWeek(), -84))) if (wk[w.link_id]) wk[w.link_id].push(w);
+      CG.wk = wk; // weekly summaries, for engagement, the last weeks and the roadmap
     } else if (!linked.length) LIVE = {};
     if (coach && coach.status !== 'invited') {
       const set = await api.assigned(coach.id);
@@ -211,6 +214,20 @@ function cgOffers(a, seen) {
   }
   return changed;
 }
+/* a set of targets in words: 2,200 kcal a day, 150 g protein, 60 g fat… */
+const tgWords = t =>
+  [
+    fmt(t.k) + ' kcal a day',
+    t.p ? t.p + ' g protein' : '',
+    t.c ? t.c + ' g carbohydrate' : '',
+    t.f ? t.f + ' g fat' : '',
+    t.fi ? t.fi + ' g fibre' : '',
+    t.w ? fmt(t.w) + ' ml water' : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+/* the lowest daily calorie target Ember sets by itself (the same floor the retune uses) */
+const kcalFloor = () => (P.sex === 'f' ? 1200 : 1500);
 function cgOfferCard() {
   if (!hasCoach() || !P.offer) return '';
   const who = esc(CG.coach.coach_name),
@@ -234,7 +251,7 @@ function cgOfferCard() {
       card(
         't',
         'New targets',
-        `${fmt(t.k)} kcal a day${t.p ? ' and ' + t.p + ' g of protein' : ''}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g' : ''}.`,
+        `${tgWords(t)}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g of protein' : ''}.${t.k < kcalFloor() ? ` This is below ${fmt(kcalFloor())} kcal, the lowest daily target Ember sets by itself. Talk it through with your coach before using it, and with a doctor if you have a health condition.` : ''}`,
         'Use these targets',
         'Keep mine',
       ),
@@ -251,6 +268,12 @@ function cgAnswer(k, yes) {
   if (yes && k === 't') {
     P.t.k = o.k;
     if (o.p) P.t.p = o.p;
+    if (o.f) P.t.f = o.f;
+    // carbohydrate is what is left after protein and fat, unless the coach set it
+    P.t.c = o.c || Math.max(50, Math.round((o.k - P.t.p * 4 - P.t.f * 9) / 4 / 5) * 5);
+    if (o.w) P.t.w = o.w;
+    if (o.fi) P.t.fi = o.fi;
+    else delete P.t.fi;
   }
   delete P.offer[k];
   P.offerResp = { ...(P.offerResp || {}), [k]: { v: o.v, yes: !!yes, d: today() } };
@@ -344,6 +367,7 @@ A.cgShare = async ({ area }, el) => {
     await (await cgApi()).setShare(l.id, share);
     l.share = share;
     CG.sent = '';
+    CG.wkSent = {}; // the weekly summaries were removed with the old choice: send them again, cut to the new one
     lastPub = 0;
     cgPublish();
     toast(

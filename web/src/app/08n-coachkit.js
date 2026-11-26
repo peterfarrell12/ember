@@ -19,10 +19,20 @@ async function cgWeeksSend() {
   if (!coached() || DEMO) return;
   CG.wkSent = CG.wkSent || {};
   const p = activeProg(),
-    api = await cgApi();
+    api = await cgApi(),
+    days = await cgRecentDays(),
+    hb = (P.co && P.co.habits) || {},
+    hs = (hb.list || []).map(h => h.id),
+    hbFrom = hb.v ? dkey(new Date(hb.v)) : ''; // only days since the coach set them count
   for (const week of [addDays(ckWeek(), -7), ckWeek()]) {
+    // habits: ticks out of the habits there were to tick on the days of that week so far
+    const dates = Array.from({ length: 7 }, (x, i) => addDays(week, i)).filter(d => d <= today() && d >= hbFrom),
+      habits = {
+        done: dates.reduce((n, d) => n + hs.filter(id => ((days[d] || {}).hb || {})[id]).length, 0),
+        of: hs.length * dates.length,
+      };
     const data = weekSummary(
-        { week, hist: P.hist, wts: P.wts, sess: TR.sess, planned: p ? p.days.length : 0 },
+        { week, hist: P.hist, wts: P.wts, sess: TR.sess, planned: p ? p.days.length : 0, habits },
         l.share,
       ),
       key = JSON.stringify(data);
@@ -175,6 +185,37 @@ const engOf = c => {
     since: link.accepted_at ? dkey(new Date(link.accepted_at)) : '',
   });
 };
+/* on the Clients list: only the two states that ask for a look */
+const engPill = c => {
+  if (!coachingOn() || c.kind !== 'live' || !c.link || c.paused) return '';
+  const e = engOf(c);
+  return e.state === 'Slipping'
+    ? '<span class="pill gold">Slipping</span>'
+    : e.state === 'Behind'
+      ? '<span class="pill bad">Behind</span>'
+      : '';
+};
+/* weight has held for three weeks: what that says about their intake, for the coach to weigh up */
+function cgStallCard(c, weeks) {
+  const ph = (CO.clients[c.id] || {}).phases,
+    now = ph && phaseNow(ph),
+    goalKg = num((String(c.goal || '').match(/([\d.]+) kg/) || [])[1]),
+    kg = c.st && c.st.kg,
+    direction = goalKg && kg ? (goalKg < kg - 0.5 ? 'lose' : goalKg > kg + 0.5 ? 'gain' : '') : '',
+    s = stall({ weeks, thisWeek: ckWeek(), rate: (now && now.rate) || 0, direction });
+  if (!s) return '';
+  return `<section class="card stack" style="border-color:var(--gold)"><div class="between"><h2>Weight has held for three weeks</h2>${srcBadge('AI')}</div>
+    <p class="small">Weekly averages went from ${s.from} kg to ${s.to} kg while they logged about ${fmt(s.kcal)} kcal a day. That makes ${fmt(s.kcal)} roughly what holds their weight steady, if the logging is complete.</p>
+    ${
+      !s.suggest
+        ? `<p class="small muted">Set a rate for the current phase and a goal weight to see what a change would work out to.</p>`
+        : s.suggest < 1200
+          ? `<p class="small">The ${now.rate} kg a week this phase aims for would work out below 1,200 kcal a day, which is lower than Ember will suggest. A slower rate, more activity or a spell at maintenance are the other options.</p>`
+          : `<p class="small">For the ${now.rate} kg a week this phase aims for, that works out at about <b>${fmt(s.suggest)} kcal a day</b>.</p>`
+    }
+    <p class="tiny muted">Worked out from their figures, not measured. Check the logging and how they feel before changing anything; it is your call.</p>
+    <button class="btn sm ghost" data-act="coTargets" style="align-self:flex-start">Open their targets</button></section>`;
+}
 const ENG_TONE = { 'On track': 'good', Slipping: 'gold', Behind: 'bad' };
 function cgClientEngage(c) {
   if (c.kind !== 'live' || !c.link || c.paused) return '';
@@ -200,15 +241,16 @@ function cgClientEngage(c) {
         wt ? (d.weighs ? d.kg + ' kg' : none) : off,
         tr ? d.sess + (d.plan ? ' of ' + d.plan : '') : off,
         d.steps ? fmt(d.steps) : tr || c.share.recovery ? none : off,
+        d.hab ? d.hab.done + ' of ' + d.hab.of : '',
       ]
         .map(x => `<td>${x}</td>`)
         .join('');
     };
-  return `<section class="card stack"><div class="between"><h2>Engagement</h2>${e.score == null ? '<span class="pill">Not enough yet</span>' : `<span class="pill ${ENG_TONE[e.state] || ''}">${e.state}</span>`}</div>
+  return `${cgStallCard(c, weeks)}<section class="card stack"><div class="between"><h2>Engagement</h2>${e.score == null ? '<span class="pill">Not enough yet</span>' : `<span class="pill ${ENG_TONE[e.state] || ''}">${e.state}</span>`}</div>
     ${e.score == null ? `<p class="small muted">Nothing to judge yet: this fills in from what they share and what you have asked for.</p>` : `<div class="row" style="align-items:baseline;gap:8px"><span class="num" style="font-size:38px;line-height:1">${e.score}</span><span class="muted small">out of 100, from what you asked for and they share</span></div>${e.parts.map(p => `<div><div class="between small"><span>${p.label}</span><b class="tn">${p.done} of ${p.of}</b></div><div class="bar ${p.done / p.of >= 0.8 ? 'good' : ''}" style="margin-top:4px"><i style="width:${Math.round((p.done / p.of) * 100)}%"></i></div></div>`).join('')}`}</section>
     ${
       last4.length
-        ? `<section class="card" style="overflow-x:auto"><h2>The last weeks</h2><table class="mini" style="margin-top:8px"><tr><th>Week of</th><th>kcal</th><th>Protein</th><th>Weight</th><th>Sessions</th><th>Steps</th></tr>${last4.map(w => `<tr><td class="muted">${wkDate(w.week)}</td>${wkRow(w.data)}</tr>`).join('')}</table></section>`
+        ? `<section class="card" style="overflow-x:auto"><h2>The last weeks</h2><table class="mini" style="margin-top:8px"><tr><th>Week of</th><th>kcal</th><th>Protein</th><th>Weight</th><th>Sessions</th><th>Steps</th><th>Habits</th></tr>${last4.map(w => `<tr><td class="muted">${wkDate(w.week)}</td>${wkRow(w.data)}</tr>`).join('')}</table></section>`
         : ''
     }
     ${
@@ -677,7 +719,7 @@ function habitsCard() {
   const d = day(),
     done = d.hb || {},
     wk = Array.from({ length: 7 }, (x, i) => S.days[addDays(ckWeek(), i)]).filter(Boolean);
-  return `<section class="card stack"><div class="between"><h2>Habits</h2><span class="muted small">from ${esc(CG.coach.coach_name)}</span></div>${hs
+  return `<section class="card stack"><div class="between"><h2>Habits</h2><span class="muted small">from ${esc(CG.coach.coach_name)}</span></div><p class="tiny muted" style="margin-top:-6px">Your coach sees how many you tick each week, not which days.</p>${hs
     .map(h => {
       const n = wk.filter(x => (x.hb || {})[h.id]).length;
       return `<button class="chk" data-act="habitTick" data-id="${h.id}" aria-pressed="${done[h.id] ? 'true' : 'false'}"><span class="tb"></span><span>${esc(h.n)}<small class="muted" style="display:block;font-weight:400">${h.why ? esc(h.why) + ' · ' : ''}${n} day${n === 1 ? '' : 's'} this week</small></span></button>`;
@@ -690,6 +732,9 @@ A.habitTick = async ({ id }) => {
   if (d.hb[id]) delete d.hb[id];
   else d.hb[id] = 1;
   commitDay(d);
+  if (CG.recent) CG.recent[d.date] = d;
+  clearTimeout(CG.wkLater);
+  CG.wkLater = setTimeout(cgWeeksSend, 4000); // the week's count, once the ticking has stopped
 };
 A.suppTick = async ({ id }) => {
   const d = await loadDay(today());
