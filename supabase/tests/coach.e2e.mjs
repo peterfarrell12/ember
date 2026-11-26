@@ -450,10 +450,10 @@ try {
         async () =>
           (await admin.from("coach_checkins").select("id")).data.length === 1,
       );
-      assert.equal(
-        await b.locator('[data-act="cgCheckin"]').count(),
-        0,
+      // the row reaches the server before the client's screen redraws, so wait for the prompt to go
+      await until(
         "asked once a week",
+        async () => (await b.locator('[data-act="cgCheckin"]').count()) === 0,
       );
       // the measurement asked for in the form is kept with the client's own, and is not shared without weight
       const meas = (await docs(people[1], "profile"))[0].data.meas;
