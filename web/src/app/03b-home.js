@@ -312,7 +312,7 @@ function viewToday() {
   ${bodyCard(S.date)}
   ${isToday && myUnread() ? msgStrip() : ''}
   ${planStrip(S.date)}
-  ${cgOfferCard()}${cgCheckinCard()}${weekReviewCard()}
+  ${cgOfferCard()}${cgCheckinCard()}${habitsCard()}${weekReviewCard()}
   ${noteCard()}
   ${nextCard(nextUp(d, t, z))}
   ${againRail(d)}

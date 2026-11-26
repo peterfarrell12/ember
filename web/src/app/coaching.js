@@ -82,7 +82,13 @@ export function sharedCopy(full, share) {
       ...pick(p, ['coachName', 'xp', 'gems', 'fr', 'best', 'ach', 'lg', 'st', 'created', 'theme', 'brks', 'onboarded']),
       hist,
       ...(on.food ? pick(p, ['t', 'goal', 'rate', 'exAdd', 'usual', 'fast']) : {}),
-      ...(on.weight ? { ...pick(p, ['kg', 'goalKg', 'sex', 'age', 'cm', 'act']), wts: (p.wts || []).slice(-120) } : {}),
+      ...(on.weight
+        ? {
+            ...pick(p, ['kg', 'goalKg', 'sex', 'age', 'cm', 'act']),
+            wts: (p.wts || []).slice(-120),
+            meas: (p.meas || []).slice(-40),
+          }
+        : {}),
       ...(on.training ? pick(p, ['prog', 'tasks', 'plan']) : {}),
     };
     const days = {};
@@ -104,6 +110,115 @@ export function sharedCopy(full, share) {
     out.view = { profile, days, train, progs: on.training ? full.progs || {} : {} };
   }
   return out;
+}
+
+const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const round = (x, dp = 0) => (x == null ? null : Math.round(x * 10 ** dp) / 10 ** dp);
+const utc = key => Date.UTC(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10));
+const daysBetween = (a, b) => Math.round((utc(b) - utc(a)) / 864e5);
+const plusDays = (key, n) => {
+  const [y, m, d] = key.split('-').map(Number),
+    t = new Date(y, m - 1, d + n);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * One week of a person's own data as a handful of averages, cut to what they share. Written by the client's
+ * app for their coach, so a coach's phases and trends have history without the diary ever being read.
+ * @param {{ week: string, hist: Record<string, any>, wts: { d: string, kg: number }[], sess: { d: string, kind?: string }[], planned?: number }} own
+ *   week is the Monday; planned is how many sessions the programme asks for in a week
+ * @param {Partial<Record<'food' | 'training' | 'weight' | 'recovery', boolean>>} share
+ */
+export function weekSummary(own, share) {
+  const on = clean(share),
+    days = Array.from({ length: 7 }, (x, i) => plusDays(own.week, i)),
+    end = days[6],
+    lines = days.map(d => own.hist[d]).filter(Boolean),
+    logged = lines.filter(h => h.n > 0 && !h.im),
+    out = { week: own.week };
+  if (on.food) {
+    out.days = logged.length;
+    out.kcal = round(mean(logged.map(h => h.k || 0)));
+    out.prot = round(mean(logged.map(h => h.p || 0)));
+    out.fibre = round(mean(logged.filter(h => h.fi != null).map(h => h.fi)));
+  }
+  if (on.weight) {
+    const ws = (own.wts || []).filter(w => w.d >= own.week && w.d <= end).map(w => w.kg);
+    out.kg = round(mean(ws), 1);
+    out.weighs = ws.length;
+  }
+  if (on.training) {
+    out.sess = (own.sess || []).filter(s => s.d >= own.week && s.d <= end && s.kind !== 'rehab').length;
+    out.plan = own.planned || 0;
+  }
+  if (on.recovery || on.training) {
+    const steps = lines.filter(h => h.st > 0).map(h => h.st);
+    if (steps.length) out.steps = round(mean(steps));
+  }
+  return out;
+}
+
+/**
+ * How engaged a client is, from what they share. Each part is a share of what was asked for; a part the
+ * client does not share, or that the coach has not asked for, is left out and does not count against them.
+ * Nothing from before they became a client counts either: `since` is the day the link was accepted.
+ * @param {{ share: any, st: any, weeks: { week: string, data: any }[], checkins: { week: string, kind: string }[],
+ *   schedule?: { every?: number } | null, thisWeek: string, since?: string, today?: string }} c
+ * @returns {{ score: number | null, state: 'On track' | 'Slipping' | 'Behind' | 'Not enough yet', parts: { key: string, label: string, done: number, of: number }[] }}
+ */
+export function engagement(c) {
+  const on = clean(c.share),
+    st = c.st || {},
+    parts = [],
+    since = c.since || '0000-00-00';
+  // the last four finished weeks they were a client for the whole of
+  const last4 = Array.from({ length: 4 }, (x, i) => plusDays(c.thisWeek, -7 * (i + 1))).filter(w => w >= since);
+  if (c.schedule) {
+    const every = c.schedule.every || 1,
+      inWeek = /** @type {Set<string>} */ (
+        new Set((c.checkins || []).filter(k => k.kind === 'checkin').map(k => k.week))
+      ),
+      early = inWeek.has(c.thisWeek) ? 1 : 0, // this week's is already in: it counts, and so does its week
+      due = Math.floor((last4.length + early) / every),
+      got = last4.filter(w => inWeek.has(w)).length + early;
+    if (due > 0)
+      parts.push({
+        key: 'checkins',
+        label: 'Check-ins, last ' + (last4.length + early) + ' week' + (last4.length + early === 1 ? '' : 's'),
+        done: Math.min(got, due),
+        of: due,
+      });
+  }
+  if (on.food && st.logged7 != null) {
+    // someone who joined three days ago is judged on three days
+    const days = c.since && c.today ? Math.min(7, Math.max(1, daysBetween(since, c.today) + 1)) : 7;
+    parts.push({
+      key: 'food',
+      label: 'Food logged, last ' + (days === 7 ? '7 days' : days + ' day' + (days === 1 ? '' : 's')),
+      done: Math.min(st.logged7, days),
+      of: days,
+    });
+  }
+  if (on.training && st.plan7 > 0)
+    parts.push({
+      key: 'training',
+      label: 'Sessions, last 7 days',
+      done: Math.min(st.sess7 || 0, st.plan7),
+      of: st.plan7,
+    });
+  if (on.weight && last4.length) {
+    const weeks = (c.weeks || []).filter(w => last4.includes(w.week));
+    if (weeks.length)
+      parts.push({
+        key: 'weight',
+        label: 'Weeks with a weigh-in, last ' + last4.length,
+        done: weeks.filter(w => w.data.weighs > 0).length,
+        of: last4.length,
+      });
+  }
+  if (!parts.length) return { score: null, state: 'Not enough yet', parts };
+  const score = Math.round(mean(parts.map(p => p.done / p.of)) * 100);
+  return { score, state: score >= 80 ? 'On track' : score >= 50 ? 'Slipping' : 'Behind', parts };
 }
 
 const REASONS = [
@@ -151,10 +266,16 @@ export function coachingApi(client, userId) {
       };
     },
     /** Make an invitation. Returns { id, code }. */
-    async invite(coachName, clientName) {
-      const out = await rpc('coach_invite', { p_coach_name: coachName, p_client_name: clientName || '' });
+    async invite(coachName, clientName, email) {
+      const out = await rpc('coach_invite', {
+        p_coach_name: coachName,
+        p_client_name: clientName || '',
+        p_email: email || null,
+      });
       return Array.isArray(out) ? out[0] : out;
     },
+    /** Invitations waiting for this person's own email address: [{ code, coach_name }]. */
+    invitesForMe: () => rpc('coach_invites_for_me', {}),
     /** Who an invitation is from: { coach_name, own }. */
     inviteInfo: code => rpc('coach_invite_info', { p_code: code }),
     /** Accept an invitation. Returns the link's id. */
@@ -191,26 +312,61 @@ export function coachingApi(client, userId) {
       if (error) fail(error);
       return data.map(m => ({ ...m, mine: m.sender === userId }));
     },
+    /** Messages on every link this person is on, after a given id, oldest first. */
+    async messagesAll(afterId = 0) {
+      const { data, error } = await client
+        .from('coach_messages')
+        .select('id, link_id, sender, body, created_at')
+        .gt('id', afterId)
+        .order('id')
+        .limit(500);
+      if (error) fail(error);
+      return data.map(m => ({ ...m, mine: m.sender === userId }));
+    },
     async send(linkId, body) {
       const { error } = await client.from('coach_messages').insert({ link_id: linkId, body });
       if (error) fail(error);
     },
     /* ----- check-ins ----- */
     /** Client: send this week's check-in. Returns its id. */
-    checkinSend: (week, answers, figures) =>
-      rpc('coach_checkin_send', { p_week: week, p_answers: answers, p_figures: figures }),
+    checkinSend: (week, answers, figures, kind = 'checkin', title = '') =>
+      rpc('coach_checkin_send', { p_week: week, p_answers: answers, p_figures: figures, p_kind: kind, p_title: title }),
     /** Coach: reply to a check-in. */
     checkinReply: (id, feedback) => rpc('coach_checkin_reply', { p_id: id, p_feedback: feedback }),
     /** The check-ins on a link, newest first. */
     async checkins(linkId, limit = 12) {
       const { data, error } = await client
         .from('coach_checkins')
-        .select('id, week, answers, figures, feedback, created_at, feedback_at')
+        .select('id, week, kind, title, answers, figures, feedback, created_at, feedback_at')
         .eq('link_id', linkId)
         .order('week', { ascending: false })
         .limit(limit);
       if (error) fail(error);
       return data;
+    },
+    /** Coach: every form answer from every client, newest first (for the inbox). */
+    async inbox(limit = 200) {
+      const { data, error } = await client
+        .from('coach_checkins')
+        .select('id, link_id, week, kind, title, answers, figures, feedback, created_at, feedback_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) fail(error);
+      return data;
+    },
+    /* ----- weekly summaries ----- */
+    /** Client: write a week's summary (already cut to what is shared). */
+    weekPut: (week, data) => rpc('coach_week_put', { p_week: week, p_data: data }),
+    /** The weekly summaries on a link, oldest first. */
+    async weeks(linkId, limit = 60) {
+      const { data, error } = await client
+        .from('coach_weeks')
+        .select('week, data')
+        .eq('link_id', linkId)
+        .order('week', { ascending: false })
+        .limit(limit);
+      if (error) fail(error);
+      return data.reverse();
     },
     /* ----- a coach's page and applications ----- */
     /** The coach's own page, or null. */

@@ -926,6 +926,51 @@ try {
     },
   );
   await check(
+    "a consultation form and a check-in are kept apart; weekly summaries reach the coach and go when sharing changes",
+    async () => {
+      await cb.checkinSend("1970-01-01", [{ q: "Any injuries?", a: "No" }], {}, "consult", "Consultation");
+      const kinds = (await ca.checkins(linkId)).map((k) => k.kind).sort();
+      assert.deepEqual(kinds, ["checkin", "consult"]);
+      assert.equal((await ca.inbox()).length, 2);
+      await assert.rejects(cb.checkinSend("2026-11-23", [], {}, "other"), (e) => e.code === "not_allowed");
+      await cb.weekPut("2026-11-16", { kcal: 2100, kg: 80.4 });
+      await cb.weekPut("2026-11-23", { kcal: 2050, kg: 80.1 });
+      await cb.weekPut("2026-11-23", { kcal: 2060, kg: 80.0 });
+      assert.deepEqual(
+        (await ca.weeks(linkId)).map((w) => [w.week, w.data.kcal]),
+        [
+          ["2026-11-16", 2100],
+          ["2026-11-23", 2060],
+        ],
+      );
+      await assert.rejects(ca.weekPut("2026-11-23", { kcal: 1 }), (e) => e.code === "no_coach");
+      const c = await person("weeks-c");
+      assert.deepEqual(await coachingApi(c.client, c.id).weeks(linkId), []);
+      assert.deepEqual(await coachingApi(c.client, c.id).inbox(), []);
+      await admin.auth.admin.deleteUser(c.id);
+      await cb.setShare(linkId, { food: true, training: true });
+      assert.deepEqual(await ca.weeks(linkId), [], "changing what is shared removes the summaries");
+      await cb.weekPut("2026-11-23", { kcal: 2060 });
+    },
+  );
+  await check(
+    "an invitation with an email is found by the person who signs in with that address, and by nobody else",
+    async () => {
+      const mailC = `invited-${Date.now()}@example.test`;
+      await ca.invite("Coach A", "Dee", mailC.toUpperCase());
+      const made = await admin.auth.admin.createUser({ email: mailC, password: "pw-Invited-1x", email_confirm: true });
+      const dc = createClient(url, env.ANON_KEY, opts);
+      await dc.auth.signInWithPassword({ email: mailC, password: "pw-Invited-1x" });
+      const forD = await coachingApi(dc, made.data.user.id).invitesForMe();
+      assert.equal(forD.length, 1);
+      assert.equal(forD[0].coach_name, "Coach A");
+      assert.match(forD[0].code, /^[A-HJ-NP-Z2-9]{8}$/);
+      assert.deepEqual(await cb.invitesForMe(), [], "another person sees none of it");
+      assert.deepEqual(await ca.invitesForMe(), [], "nor does the coach who sent it");
+      await admin.auth.admin.deleteUser(made.data.user.id);
+    },
+  );
+  await check(
     "a coach`s page is read by its address, applied to once, and only the coach answers; accepting makes an invitation",
     async () => {
       await ca.savePage({

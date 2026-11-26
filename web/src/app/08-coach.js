@@ -461,6 +461,7 @@ function renderChrome() {
   m.dataset.act = co ? 'modeBack' : 'modeMenu';
   $('#brandTag').textContent = gy ? 'Gym' : 'Coach';
   $('#brandTag').style.borderColor = '';
+  for (const k of ['data-act', 'role', 'tabindex', 'aria-label']) $('#brandTag').removeAttribute(k);
   cgBrandTag();
   const tab = (t, i, l) =>
     `<button class="tab" data-act="tab" data-tab="${t}" ${S.tab === t ? 'aria-current="page"' : ''}>${ic(i)}${l}</button>`;
@@ -499,7 +500,7 @@ function coClients() {
   const tc = trustChecks(coachProfile());
   return `<div class="between"><h2 class="sec-h" style="font-size:22px">Clients</h2><button class="btn sm ghost" data-act="coAdd">${ic('plus')} Add</button></div>
   ${WK ? `<section class="card stack" style="border-color:var(--ember)"><div class="between"><b>${esc(WK.name)}${WK.client && CO.clients[WK.client] ? ' with ' + esc(CO.clients[WK.client].name) : ''}</b><span class="pill gold">In progress</span></div><div class="two"><button class="btn sm ember" data-act="wkResume">Resume</button><button class="btn sm ghost" data-act="wkDiscard">Discard</button></div></section>` : ''}
-  <div class="two">${coachingOn() ? `<button class="act" data-act="cgPage">${ic('flag')}<span>Your page<small>${CG.page ? 'Your link ends #c=' + esc(CG.page.slug) : 'A link people can apply from'}</small></span></button>` : `<button class="act" data-act="coProfile">${ic('shield')}<span>Your profile<small>${tc.filter(t => t[1]).length} of ${tc.length} trust checks</small></span></button>`}${FEATURES.community ? `<button class="act" data-act="catalogue">${ic('search')}<span>Coach catalogue<small>How clients find you</small></span></button>` : `<button class="act" data-act="cgInvite">${ic('link')}<span>Invite a client<small>They choose what you see</small></span></button>`}</div>${cgInvitesCard()}${cgApplicationsCard()}
+  <div class="two">${coachingOn() ? `<button class="act" data-act="cgPage">${ic('flag')}<span>Your page<small>${CG.page ? 'Your link ends #c=' + esc(CG.page.slug) : 'A link people can apply from'}</small></span></button>` : `<button class="act" data-act="coProfile">${ic('shield')}<span>Your profile<small>${tc.filter(t => t[1]).length} of ${tc.length} trust checks</small></span></button>`}${FEATURES.community ? `<button class="act" data-act="catalogue">${ic('search')}<span>Coach catalogue<small>How clients find you</small></span></button>` : `<button class="act" data-act="cgInvite">${ic('link')}<span>Invite a client<small>They choose what you see</small></span></button>`}</div>${cgInvitesCard()}${cgApplicationsCard()}${cgInboxCard()}
   <div class="grid3"><div class="stat"><div class="num">${cs.length}</div><span>Clients</span></div><div class="stat"><div class="num">${ad.length ? r0(ad.reduce((a, b) => a + b, 0) / ad.length) + '%' : 'n/a'}</div><span>Sessions done</span></div><div class="stat"><div class="num">${flagged.length}</div><span>Need a look</span></div></div>
   ${flagged.length ? `<section class="card"><h2>Needs a look</h2>${flagged.map(({ c, al }) => `<button class="entry" data-act="coClient" data-id="${c.id}"><span class="n">${esc(c.name)}</span><span class="k">${ic('chev-r')}</span><span class="s" style="white-space:normal;color:var(--bad)">${esc(al.join(' · '))}</span></button>`).join('')}</section>` : ''}
   <section class="card" style="padding:4px 14px">${withAl.map(row).join('')}</section>
@@ -775,7 +776,7 @@ A.coRemove = () => {
 /* ---------- library and feed ---------- */
 function coLibrary() {
   const mine = Object.values(S.progs);
-  return `<div class="between"><h2 class="sec-h" style="font-size:22px">Library</h2></div>
+  return `<div class="between"><h2 class="sec-h" style="font-size:22px">Library</h2></div>${cgKitCard()}
   <div class="two"><button class="act" data-act="progAI">${ic('spark')}<span>Build with Claude<small>Goal, days, kit</small></span></button><button class="act" data-act="progNew">${ic('edit')}<span>Write a program<small>From scratch</small></span></button></div>
   ${mine.length ? `<div class="grp">Your programs</div><div class="list">${mine.map(p => `<button class="res" data-act="progView" data-id="${p.id}"><span class="n">${esc(p.n)}</span><span class="k muted small">${p.days.length} days</span><span class="s" style="white-space:normal">${esc(p.about || '')}</span></button>`).join('')}</div>` : ''}
   <div class="grp">Ready-made programs</div><div class="list">${TEMPLATES.map(t => `<button class="res" data-act="tplView" data-id="${t.id}"><span class="n">${esc(t.n)}</span><span class="k"><span class="pill">${esc(t.tag)}</span></span><span class="s" style="white-space:normal">${esc(t.about)}</span></button>`).join('')}</div>
