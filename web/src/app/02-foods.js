@@ -60,8 +60,12 @@ const SRC = {
   B: ['Label', 'l', 'Product label via Open Food Facts'],
   C: ['Yours', 'm', 'A food you saved'],
   R: ['Recipe', 'm', 'One of your recipes'],
-  AI: ['Estimate', 'e', 'Estimated by Claude, not from a database'],
-  AK: ['Recalled', 'e', "The maker's figures as Claude remembers them. Not in the product database, so check the pack"],
+  AI: ['Estimate', 'e', 'Estimated by Ember AI, not from a database'],
+  AK: [
+    'Recalled',
+    'e',
+    "The maker's figures as Ember AI remembers them. Not in the product database, so check the pack",
+  ],
   LB: ['Label', 'l', 'Read from the packaging or ticket in your photo'],
   WB: ['Web', 'e', "From the maker's or a shop's website, found by a web search. Check it against the pack"],
   DR: ['Standard', 'l', 'Worked out from standard values for milk and sugar'],
@@ -868,13 +872,13 @@ async function initAI() {
   }
 }
 const AI_MSG = {
-  rate_limited: 'Claude is busy or you have hit a usage limit. Try again in a bit.',
+  rate_limited: 'Ember AI is busy or you have hit a usage limit. Try again in a bit.',
   daily_limit:
     'Today’s AI allowance for Ember is used up. It starts again at midnight. You can still search and log by hand.',
   personal_limit:
     'You have used today’s free AI allowance (40 photo, voice and chat requests). It starts again at midnight. Searching, scanning and logging by hand are never limited.',
   session_expired: 'Sign in again, then retry.',
-  refused: 'Claude could not work with that. Try rewording it.',
+  refused: 'Ember AI could not work with that. Try rewording it.',
   image_rejected: 'That image could not be read. Try another photo.',
   invalid_json: 'The answer came back garbled. Try again.',
   upstream_error: 'Connection hiccup. Try again.',
@@ -885,11 +889,11 @@ function aiError(e) {
     ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(code)
   ) {
     AI.sample = null;
-    return 'Claude is not available in this view, so smart logging is off.';
+    return 'Ember AI is not available in this view, so smart logging is off.';
   }
   if (code === 'images_unavailable') {
     AI.images = false;
-    return 'Photos cannot be sent to Claude in this view.';
+    return 'Photos cannot be sent to Ember AI in this view.';
   }
   return AI_MSG[code] || 'Something went wrong. Try again.';
 }

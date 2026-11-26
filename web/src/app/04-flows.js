@@ -914,7 +914,7 @@ function openSay(ctx = {}) {
     `${sh(ctx.title || 'Describe what you ate')}<div class="sheet-b" id="sayBody">
     <textarea class="inp" id="sayText" placeholder="Two scrambled eggs on buttered toast and a flat white" autocapitalize="sentences">${esc(SAY.seed)}</textarea>
     <div class="row" id="sayMicRow">${AI.dict ? `<button class="mic" id="micBtn" data-act="mic" aria-label="Start dictation">${ic('mic')}</button><span class="small muted grow" id="sayLive">Tap the microphone and talk. Tap again when you are done.</span>` : `<span class="small muted">${ic('mic')} Tap the microphone key on your keyboard to speak it, or type. Amounts help: "200 g", "two slices", "a small bowl".</span>`}</div>
-    ${AI.ready && !AI.sample ? `<div class="banner">${ic('spark')}<span>Claude is not available in this view, so foods are matched by keyword. Separate foods with commas.</span></div>` : ''}
+    ${AI.ready && !AI.sample ? `<div class="banner">${ic('spark')}<span>Ember AI is not available in this view, so foods are matched by keyword. Separate foods with commas.</span></div>` : ''}
   </div><div class="sheet-f"><button class="btn ember" data-act="sayGo">${ic('spark')} Work it out</button></div>`,
     true,
   );
@@ -1005,7 +1005,7 @@ A.photo = () => {
   if (!(AI.sample && AI.images))
     return toast(
       AI.ready
-        ? 'Photo logging needs Claude, which is not available in this view.'
+        ? 'Photo logging needs Ember AI, which is not available in this view.'
         : 'Still connecting. Try again in a moment.',
     );
   $('#filePhoto').click();
@@ -1076,7 +1076,7 @@ function renderReview() {
       .filter(i => (i.food.src === 'AI' || i.food.src === 'AK') && i.food.b)
       .map(
         i =>
-          `<div class="banner">${ic('search')}<span><b>${esc(i.food.b + ' ' + i.food.n)}</b> is not in the product list${i.food.src === 'AK' ? ", so these are the maker's figures as Claude remembers them" : ''}. <a href="https://www.google.com/search?q=${encodeURIComponent(i.food.b + ' ' + i.food.n + ' nutrition per 100g')}" target="_blank" rel="noopener">Check it online</a>, then say what to fix below or add it from its label.</span></div>`,
+          `<div class="banner">${ic('search')}<span><b>${esc(i.food.b + ' ' + i.food.n)}</b> is not in the product list${i.food.src === 'AK' ? ", so these are the maker's figures as Ember AI remembers them" : ''}. <a href="https://www.google.com/search?q=${encodeURIComponent(i.food.b + ' ' + i.food.n + ' nutrition per 100g')}" target="_blank" rel="noopener">Check it online</a>, then say what to fix below or add it from its label.</span></div>`,
       )
       .join('')}
     ${AI.sample ? `<div class="row"><input class="inp" id="revFix" placeholder="Something wrong? Say what to fix" autocomplete="off"><button class="btn sm ghost" data-act="revFix">Fix</button></div>` : ''}`;

@@ -77,7 +77,7 @@ A.chat = ({ id } = {}) => {
             )
           : ''
       }
-      <div class="row" style="align-items:flex-end;gap:8px"><textarea class="inp" id="chT" rows="1" placeholder="Write a message" autocapitalize="sentences"></textarea>${coach && c.kind !== 'me' ? `<button class="icon-btn solid" data-act="chatDraft" aria-label="Draft a message with Claude">${ic('spark')}</button>` : ''}<button class="btn sm ember" data-act="chatGo" aria-label="Send">${ic('send')}</button></div></div>`,
+      <div class="row" style="align-items:flex-end;gap:8px"><textarea class="inp" id="chT" rows="1" placeholder="Write a message" autocapitalize="sentences"></textarea>${coach && c.kind !== 'me' ? `<button class="icon-btn solid" data-act="chatDraft" aria-label="Draft a message with Ember AI">${ic('spark')}</button>` : ''}<button class="btn sm ember" data-act="chatGo" aria-label="Send">${ic('send')}</button></div></div>`,
     true,
   );
   SEG.chatAs = v => {
@@ -196,7 +196,7 @@ A.chatGo = async () => {
   if (copy) copyText(copy, 'Saved and copied. Paste it into a message to them.');
 };
 A.chatDraft = async () => {
-  if (!AI.sample) return toast('Drafting needs Claude, which is not available in this view.');
+  if (!AI.sample) return toast('Drafting needs Ember AI, which is not available in this view.');
   const c = getClient(CH.cid),
     st = c.st || {},
     box = $('#chT'),

@@ -191,7 +191,7 @@ function cleanItems(items) {
 A.progAIGo = async () => {
   if (!AI.sample)
     return toast(
-      'Building a program needs Claude, which is not available in this view. Pick a ready-made one instead.',
+      'Building a program needs Ember AI, which is not available in this view. Pick a ready-made one instead.',
     );
   const v = id => $(id).value;
   const ask = `Goal: ${v('#aiGoal')}. ${v('#aiDays')} sessions a week of about ${v('#aiLen')}. Kit: ${v('#aiKit')}. Experience: ${v('#aiLvl')}.${v('#aiNote').trim() ? ' Work around: ' + v('#aiNote').trim().slice(0, 300) + '.' : ''}`;
@@ -1066,7 +1066,7 @@ A.rehabCustom = () => {
   openSheet(
     `${sh("Your physio's plan")}<div class="sheet-b" id="rcBody"><textarea class="inp" id="rcText" placeholder="Phase 1: clamshells 3 x 15 each side, glute bridge 3 x 12, side plank 3 x 20 seconds..."></textarea>
     ${AI.sample && AI.images ? `<button class="btn ghost" data-act="rcPhoto">${ic('camera')} Photograph the sheet instead</button>` : ''}
-    <p class="small muted">Claude lays it out exactly as written, without adding or changing exercises. Check it against the original before you start.</p></div>
+    <p class="small muted">Ember AI lays it out exactly as written, without adding or changing exercises. Check it against the original before you start.</p></div>
     <div class="sheet-f"><button class="btn ghost" data-act="rcHand">Build by hand</button><button class="btn ember" data-act="rcGo">${ic('spark')} Lay it out</button></div>`,
     true,
   );
@@ -1078,7 +1078,7 @@ A.rcPhoto = () => {
   inp.click();
 };
 async function rehabFromAI(text, files) {
-  if (!AI.sample) return toast('This needs Claude, which is not available in this view. Use Build by hand.');
+  if (!AI.sample) return toast('This needs Ember AI, which is not available in this view. Use Build by hand.');
   const body = $('#rcBody'),
     foot = topSheet().querySelector('.sheet-f');
   foot.classList.add('hide');
