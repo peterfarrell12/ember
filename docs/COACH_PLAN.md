@@ -4,6 +4,8 @@ How Ember's coach side goes from the switched-off prototype to the best coaching
 
 ## Round two: what Cillian asked for (26 November 2026)
 
+The detailed build plan that follows from this round, with a coach side and a client side for every step, is in `docs/COACH_BUILD_PLAN.md`.
+
 Cillian is the business partner and a working coach with other coaches under him. He walked through the two tools he uses, 1FIT and Trainerize, and his judgement leads this round. His verdict in one line: **1FIT is the better tool for the coach and worse for the client; Trainerize is the reverse. Ember has to be both.**
 
 ### What he said, and what follows from it
