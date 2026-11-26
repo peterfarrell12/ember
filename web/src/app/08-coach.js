@@ -505,7 +505,7 @@ function coClients() {
   ${flagged.length ? `<section class="card"><h2>Needs a look</h2>${flagged.map(({ c, al }) => `<button class="entry" data-act="coClient" data-id="${c.id}"><span class="n">${esc(c.name)}</span><span class="k">${ic('chev-r')}</span><span class="s" style="white-space:normal;color:var(--bad)">${esc(al.join(' · '))}</span></button>`).join('')}</section>` : ''}
   <section class="card" style="padding:4px 14px">${withAl.map(row).join('')}</section>
   ${cs.some(c => c.kind === 'sample') ? `<div class="banner">${ic('users')}<span>Clients marked Sample are invented, with made-up numbers, plans and notes, so you can see this view working. <button class="link" data-act="coDropSamples">Remove demo data</button></span></div>` : `<button class="link" data-act="coDemoOn" style="align-self:flex-start">Show demo data</button>`}
-  <p class="tiny muted">Live clients are people in your Claude organisation who open Ember after you share it with them as contributors. Everyone else you add here is tracked by you.</p>`;
+  <p class="tiny muted">${coachingOn() ? 'Live clients are people who accepted your invitation and chose what to share with you.' : 'Live clients are people in your Claude organisation who open Ember after you share it with them as contributors.'} Everyone else you add here is tracked by you.</p>`;
 }
 A.coDropSamples = () => {
   Object.keys(CO.clients).forEach(k => {

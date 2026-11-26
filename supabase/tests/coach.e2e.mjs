@@ -362,7 +362,14 @@ try {
       const { data } = await admin.from("coach_messages").select("body");
       return data.length === 1 && data[0].body === "How did the session go?";
     });
-    assert.match(await text(a, "#chBody"), /How did the session go\?/);
+    await a.waitForFunction(
+      () =>
+        /How did the session go\?/.test(
+          document.querySelector("#chBody").innerText,
+        ),
+      null,
+      { timeout: 10000 },
+    );
     await b.reload();
     await b.waitForSelector("nav.tabs .tab");
     await b.waitForTimeout(2500);
@@ -953,6 +960,50 @@ try {
       await a.waitForFunction(() => /No photos here yet/.test(document.querySelector("#ccBody").innerText), null, { timeout: 15000 });
       assert.equal(await a.locator("#ccBody .pht img").count(), 0);
       await closeSheets(a);
+    },
+  );
+  await step(
+    "a programme with the coach's own demo video: offered, accepted, and the link is there during the workout",
+    async () => {
+      const d = browser.contexts().pop().pages()[0];
+      await a.click('nav.tabs [data-tab="library"]');
+      await a.click('[data-act="progNew"]');
+      await a.fill('#peBody [data-on="peName"]', "Ann's strength block");
+      await a.click('[data-act="peAdd"] >> nth=0');
+      await a.click('#pkList [data-act="pkPick"] >> nth=0');
+      await a.click('[data-act="peItem"] >> nth=0');
+      await a.fill("#piN", "Slow on the way down");
+      await a.fill("#piU", "example.com/squat-demo");
+      await a.click('[data-act="piOk"]');
+      await a.click('[data-act="peSave"]');
+      await closeSheets(a);
+      await a.click('nav.tabs [data-tab="library"]');
+      await a.click('[data-act="progView"]:has-text("strength block")');
+      await a.click('[data-act="coAssignFrom"]');
+      await a.click('[data-act="coAssignTo"]:has-text("Dee")');
+      await until("the programme offered on the server", async () => {
+        const { data } = await admin
+          .from("coach_links")
+          .select("coach_assign(data)")
+          .eq("client_id", people[3]);
+        const prog = data[0].coach_assign && data[0].coach_assign.data.prog;
+        return !!(prog && prog.p && prog.p.days[0].items[0].url === "https://example.com/squat-demo");
+      });
+      await a.click('nav.tabs [data-tab="clients"]');
+      await closeSheets(d);
+      await d.goto(APP + "#today");
+      await d.reload();
+      await d.waitForSelector('[data-act="cgOfferYes"][data-k="prog"]', { timeout: 20000 });
+      await d.click('[data-act="cgOfferYes"][data-k="prog"]');
+      await d.click('nav.tabs [data-tab="train"]');
+      await d.waitForSelector('[data-act="trainStart"]', { timeout: 15000 });
+      await d.click('[data-act="trainStart"]');
+      await d.waitForSelector('a:has-text("Watch your coach\'s demo")', { timeout: 15000 });
+      assert.equal(
+        await d.getAttribute('a:has-text("Watch your coach\'s demo")', "href"),
+        "https://example.com/squat-demo",
+      );
+      assert.match(await text(d, ".sheet >> nth=-1"), /Slow on the way down/);
     },
   );
   await step("no page errors", async () => assert.deepEqual(errs, []));
