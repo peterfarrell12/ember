@@ -198,6 +198,14 @@ try {
     async () => {
       await a.click("#chipYou");
       await a.click('[data-act="modeGo"][data-m="coach"]');
+      // the first time in, one sheet offers the set-up; this coach leaves it for later
+      await a.waitForSelector('[data-act="coachSetupGo"]');
+      assert.match(
+        await text(a, ".sheet >> nth=-1"),
+        /Set up your coaching[\s\S]*Your name, as clients will see it[\s\S]*For each new client[\s\S]*A consultation form[\s\S]*A weekly check-in/,
+      );
+      await a.click('[data-act="coachSetupLater"]');
+      await a.waitForFunction(() => !document.querySelector(".sheet"));
       await a.waitForSelector('[data-act="cgInvite"]');
       assert.equal(
         await a.locator('[data-act="catalogue"]').count(),
@@ -1242,6 +1250,83 @@ try {
       assert.equal(await d.locator("#csBody").count(), 1, "the Coach space stays open after logging");
       await clear(d);
       await closeSheets(d);
+    },
+  );
+  // ---- the first run for a coach and for a coach's client (onboarding phase 1b)
+  let code2 = "";
+  await step(
+    "the link for coaches: sign in, health information, no targets, the set-up sheet, then an invitation",
+    async () => {
+      const email = `coach-eve-${Date.now()}@example.test`;
+      const { data } = await admin.auth.admin.createUser({ email, email_confirm: true });
+      people.push(data.user.id);
+      const link = await admin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: APP } });
+      const e = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+      e.on("pageerror", (x) => errs.push("eve: " + String(x)));
+      await e.goto(APP + "#coach-start");
+      await e.waitForSelector("#siEmail");
+      assert.match(await text(e, "#main"), /Create your coach account|Sign in to set up your coaching/);
+      await e.goto(link.data.properties.action_link);
+      await e.waitForSelector("#hcGo", { timeout: 20000 });
+      await e.fill("#hcD", "03");
+      await e.fill("#hcM", "03");
+      await e.fill("#hcY", "1988");
+      await e.click("#hcGo");
+      await e.waitForSelector('[data-act="coachSetupGo"]', { timeout: 20000 });
+      assert.equal(await e.locator("#tgBody").count(), 0, "a coach is not asked for targets of their own");
+      await e.fill("#csName", "Coach Eve");
+      await e.fill("#csHello", "Welcome aboard.");
+      await e.click('[data-act="coachSetupGo"]');
+      await e.waitForSelector("#ciMe");
+      assert.equal(await e.inputValue("#ciMe"), "Coach Eve");
+      await e.fill("#ciName", "Fay");
+      await e.click("#ciGo");
+      await e.waitForSelector("#ciOut .sq-code");
+      code2 = (await e.innerText("#ciOut .sq-code")).trim();
+      await until("the starter kept on the coach's account", async () =>
+        (await docs(data.user.id, "meta")).some(
+          (d) => d.id === "coach" && d.data.starter && d.data.starter.consult === true && d.data.starter.msg === "Welcome aboard.",
+        ),
+      );
+    },
+  );
+  await step(
+    "a client arriving by an invitation chooses what to share before the set-up, with nothing switched on",
+    async () => {
+      const email = `coach-fay-${Date.now()}@example.test`;
+      const { data } = await admin.auth.admin.createUser({ email, email_confirm: true });
+      people.push(data.user.id);
+      const link = await admin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: APP } });
+      const f = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+      f.on("pageerror", (x) => errs.push("fay: " + String(x)));
+      await f.goto(APP + "#coach=" + code2);
+      await f.waitForSelector("#siEmail");
+      assert.match(await text(f, "#main"), /join your coach/);
+      await f.goto(link.data.properties.action_link);
+      await f.waitForSelector("#hcGo", { timeout: 20000 });
+      await f.fill("#hcD", "03");
+      await f.fill("#hcM", "03");
+      await f.fill("#hcY", "1994");
+      await f.click("#hcGo");
+      await f.waitForSelector("#cjBody .banner", { timeout: 20000 });
+      assert.equal(await f.locator("#tgBody").count(), 0, "sharing is chosen before the set-up");
+      assert.match(await text(f, "#cjBody"), /Before anything else, choose what your coach can see[\s\S]*Coach Eve has invited you/);
+      assert.equal(await f.locator('#cjBody [data-act="cgShare"][aria-pressed="true"]').count(), 0, "nothing is switched on");
+      await f.click('[data-act="cgShare"][data-area="food"]');
+      await f.fill("#cjName", "Fay");
+      await f.click("#cjGo");
+      await f.waitForSelector("#tgBody", { timeout: 20000 });
+      await f.click('#tgBody button:has-text("Female")');
+      await f.fill('#tgBody [data-k="cm"]', "168");
+      await f.fill('#tgBody [data-k="kg"]', "70");
+      await f.click('[data-act="saveTargets"]');
+      await f.waitForSelector("#obLinks");
+      await f.fill("#q", "banana");
+      await f.click('.qadd[data-act="quickPick"] >> nth=0');
+      await clear(f);
+      await closeSheets(f);
+      await clear(f);
+      await until("Today pointing at the Coach space", async () => /See what Coach Eve has set for you/.test(await text(f, "#main")));
     },
   );
   await step("no page errors", async () => assert.deepEqual(errs, []));

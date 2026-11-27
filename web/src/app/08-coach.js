@@ -435,6 +435,7 @@ A.modeToggle = () => {
   $('#main').scrollTop = 0;
   toast(P.mode === 'coach' ? 'Coach view' : 'Your view');
   if (P.mode === 'coach') loadLive();
+  if (P.mode === 'coach') coachSetupOffer(); // the first time in: how clients see you and what each new one gets
 };
 function renderChrome() {
   const gy = isGym(),

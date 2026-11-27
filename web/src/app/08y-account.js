@@ -76,24 +76,32 @@ function siDraw() {
     email = String(($('#siEmail') || {}).value || '');
   const title = $('#siTitle');
   if (title)
-    title.textContent = SI.coach
+    title.textContent = SI.asCoach
       ? mode === 'in'
-        ? 'Sign in to join your coach'
+        ? 'Sign in to set up your coaching'
         : mode === 'new'
-          ? 'Create your account to join your coach'
+          ? 'Create your coach account'
           : f.title
-      : !SI.invited
-        ? f.title
-        : mode === 'in'
-          ? 'Sign in to join the squad'
+      : SI.coach
+        ? mode === 'in'
+          ? 'Sign in to join your coach'
           : mode === 'new'
-            ? 'Create your account to join the squad'
-            : f.title;
-  const invite = SI.coach
-    ? 'Your coach has invited you to work with them on Ember. '
-    : SI.invited
-      ? 'You have been invited to a squad. '
-      : '';
+            ? 'Create your account to join your coach'
+            : f.title
+        : !SI.invited
+          ? f.title
+          : mode === 'in'
+            ? 'Sign in to join the squad'
+            : mode === 'new'
+              ? 'Create your account to join the squad'
+              : f.title;
+  const invite = SI.asCoach
+    ? 'Set up your coaching on Ember: your clients, their plans and their check-ins in one place. '
+    : SI.coach
+      ? 'Your coach has invited you to work with them on Ember. '
+      : SI.invited
+        ? 'You have been invited to a squad. '
+        : '';
   body.innerHTML = `<p class="small">${invite}${f.lead}</p>${mode === 'in' || mode === 'new' || mode === 'link' ? `<p class="small muted">${SI_WHY_ACCOUNT}</p>` : ''}
     <label class="f">Email<input class="inp" id="siEmail" name="email" type="email" inputmode="email" autocomplete="${mode === 'new' ? 'email' : 'username'}" autocapitalize="off" spellcheck="false" value="${esc(email)}"></label>
     ${mode === 'in' || mode === 'new' ? passField('siPass', 'Password', mode === 'new') : ''}${mode === 'new' || mode === 'link' ? termsHtml() : ''}<div id="siMsg" role="alert"></div>`;
@@ -149,6 +157,7 @@ function signInGate() {
   document.body.classList.add('gate');
   SI.invited = !!LS.get('ember:join'); // arrived by a squad's invite link: it is offered once they are in
   SI.coach = !!LS.get('ember:coachcode') && FEATURES.coach; // arrived by a coach's invite link: the same
+  SI.asCoach = !!LS.get('ember:ascoach') && FEATURES.coach; // arrived by the link for coaches (#coach-start)
   const point = (icon, text) => `<li>${ic(icon)}<span>${text}</span></li>`;
   $('#main').innerHTML = `<div class="gate-wrap"><div class="gate-pitch"><h1>Say what you ate. Ember does the rest.</h1>
     <ul>${point('mic', 'Log a meal by talking, a photo, a barcode or a search, with Irish and UK foods and portions.')}${point('dumbbell', 'Follow a training programme and log your sets.')}${point('flame', 'Keep a streak going with quests, and a weekly board with your friends.')}</ul>

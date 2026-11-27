@@ -280,6 +280,36 @@ try {
     await p.context().close();
   });
 
+  await step(
+    'the link for coaches skips their own targets and opens the coach view; Today offers targets later',
+    async () => {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await ctx.addInitScript(() => {
+        localStorage.setItem('ember:device-only', '1');
+        localStorage.setItem('ember:guided', '1');
+      });
+      const p = await ctx.newPage();
+      p.on('pageerror', e => errs.push(String(e)));
+      await p.goto(APP.replace('#today', '#coach-start'));
+      await p.waitForSelector('#hcCard');
+      await born(p, '03', '03', '1990');
+      await p.waitForFunction(() => /Clients/.test(document.querySelector('nav.tabs').innerText));
+      assert.equal(await p.$('#tgBody'), null, 'no targets sheet for a coach');
+      assert.match(await text(p, '#main'), /Sample/, 'the demo clients are marked');
+      assert.equal((await stored(p, 'profile')).tgSkip, true);
+      await p.click('[data-act="modeBack"]');
+      await p.waitForSelector('.hero2');
+      assert.match(await text(p, '#main'), /Set your own targets/);
+      await p.click('.next [data-act="openTargets"]');
+      await details(p, { sex: 'Male', cm: '180', kg: '80' });
+      await p.click('[data-act="saveTargets"]');
+      await p.waitForFunction(() => !document.querySelector('#tgBody'));
+      assert.equal((await stored(p, 'profile')).tgSkip, false);
+      assert.doesNotMatch(await text(p, '#main'), /Set your own targets/);
+      await ctx.close();
+    },
+  );
+
   await step('nothing is wider than the screen at 320 px', async () => {
     const p = await open({ width: 320 });
     const wide = () => p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
