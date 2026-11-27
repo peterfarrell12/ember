@@ -37,6 +37,7 @@ A.celeNext = () => {
   celeOpen = false;
   $('#cele').innerHTML = '';
   flushCele();
+  obIdle();
 };
 A.tab = ({ tab }) => {
   S.tab = tab;
@@ -104,16 +105,20 @@ async function logEntries(entries, via, opts = {}) {
   commitDay(d, {
     onHist: () => {
       if (first && milestone) {
-        const c = streak().count;
+        const c = streak().count,
+          day1 = c === 1 && OB.day1; // the very first food of a new account
+        OB.day1 = false;
         celeQ.unshift({
           icon: 'flame',
           fill: true,
           tone: 'ember',
-          title: c + '-day streak',
-          sub:
-            c === 1
+          title: day1 ? 'Day 1' : c + '-day streak',
+          sub: day1
+            ? 'Your first food is in and your streak is lit. Log again tomorrow to make it two.'
+            : c === 1
               ? 'Your streak starts today. Log again tomorrow to make it two.'
               : 'Logged again. Keep the fire going.',
+          rewards: day1 ? ['1 streak freeze to begin with'] : [],
           confetti: [3, 7, 14, 30, 50, 100, 200, 365].includes(c),
         });
       }
@@ -914,7 +919,7 @@ function openSay(ctx = {}) {
     `${sh(ctx.title || 'Describe what you ate')}<div class="sheet-b" id="sayBody">
     <textarea class="inp" id="sayText" placeholder="Two scrambled eggs on buttered toast and a flat white" autocapitalize="sentences">${esc(SAY.seed)}</textarea>
     <div class="row" id="sayMicRow">${AI.dict ? `<button class="mic" id="micBtn" data-act="mic" aria-label="Start dictation">${ic('mic')}</button><span class="small muted grow" id="sayLive">Tap the microphone and talk. Tap again when you are done.</span>` : `<span class="small muted">${ic('mic')} Tap the microphone key on your keyboard to speak it, or type. Amounts help: "200 g", "two slices", "a small bowl".</span>`}</div>
-    ${AI.ready && !AI.sample ? `<div class="banner">${ic('spark')}<span>Claude is not available in this view, so foods are matched by keyword. Separate foods with commas.</span></div>` : ''}
+    ${AI.ready && !AI.sample ? `<div class="banner">${ic('spark')}<span>Ember AI is not available in this view, so foods are matched by keyword. Separate foods with commas.</span></div>` : ''}
   </div><div class="sheet-f"><button class="btn ember" data-act="sayGo">${ic('spark')} Work it out</button></div>`,
     true,
   );
@@ -1005,7 +1010,7 @@ A.photo = () => {
   if (!(AI.sample && AI.images))
     return toast(
       AI.ready
-        ? 'Photo logging needs Claude, which is not available in this view.'
+        ? 'Photo logging needs Ember AI, which is not available in this view.'
         : 'Still connecting. Try again in a moment.',
     );
   $('#filePhoto').click();
@@ -1076,7 +1081,7 @@ function renderReview() {
       .filter(i => (i.food.src === 'AI' || i.food.src === 'AK') && i.food.b)
       .map(
         i =>
-          `<div class="banner">${ic('search')}<span><b>${esc(i.food.b + ' ' + i.food.n)}</b> is not in the product list${i.food.src === 'AK' ? ", so these are the maker's figures as Claude remembers them" : ''}. <a href="https://www.google.com/search?q=${encodeURIComponent(i.food.b + ' ' + i.food.n + ' nutrition per 100g')}" target="_blank" rel="noopener">Check it online</a>, then say what to fix below or add it from its label.</span></div>`,
+          `<div class="banner">${ic('search')}<span><b>${esc(i.food.b + ' ' + i.food.n)}</b> is not in the product list${i.food.src === 'AK' ? ", so these are the maker's figures as Ember AI remembers them" : ''}. <a href="https://www.google.com/search?q=${encodeURIComponent(i.food.b + ' ' + i.food.n + ' nutrition per 100g')}" target="_blank" rel="noopener">Check it online</a>, then say what to fix below or add it from its label.</span></div>`,
       )
       .join('')}
     ${AI.sample ? `<div class="row"><input class="inp" id="revFix" placeholder="Something wrong? Say what to fix" autocomplete="off"><button class="btn sm ghost" data-act="revFix">Fix</button></div>` : ''}`;
@@ -1644,6 +1649,8 @@ function openTargets(first) {
   };
   // a new person starts with an empty form: targets worked out from made-up details would be wrong for nearly everyone
   if (first) Object.assign(TG, { sex: '', age: 0, cm: 0, kg: 0, t: { k: 0, p: 0, c: 0, f: 0, w: 0 } });
+  // the date of birth given with the health consent sets the age, so it is not asked for again
+  if (P.dob && ageOn(P.dob, today()) >= MIN_AGE) TG.age = ageOn(P.dob, today());
   openSheet(
     `<div class="sheet-h"><h3>${first ? 'Set your daily targets' : 'Targets and profile'}</h3>${first ? '' : `<button class="icon-btn" data-act="close" aria-label="Close">${ic('x')}</button>`}</div><div class="sheet-b" id="tgBody"></div><div class="sheet-f"><button class="btn ${first ? 'ember' : ''}" data-act="saveTargets">${first ? 'Start tracking' : 'Save'}</button></div>`,
     true,
@@ -1664,27 +1671,32 @@ function openTargets(first) {
 function renderTargets() {
   const b = $('#tgBody');
   if (!b) return;
-  b.innerHTML = `${TG.first ? `<p class="muted">Four quick details and Ember works out a calorie and macro target. You can change any of it later.</p>` : ''}
-    ${segHtml(
-      'tgSex',
-      [
-        ['m', 'Male'],
-        ['f', 'Female'],
-      ],
-      TG.sex,
-    )}
-    <div class="grid3"><label class="f">Age<input class="inp" inputmode="numeric" value="${TG.age || ''}" placeholder="34" data-on="tg" data-k="age"></label><label class="f">Height cm<input class="inp" inputmode="decimal" value="${TG.cm || ''}" placeholder="175" data-on="tg" data-k="cm"></label><label class="f">Weight kg<input class="inp" inputmode="decimal" value="${TG.kg || ''}" placeholder="78" data-on="tg" data-k="kg"></label></div>
-    <label class="f">Activity<select class="inp" data-on="tgSel" data-k="act">${ACTS.map(a => `<option value="${a[0]}" ${a[0] === TG.act ? 'selected' : ''}>${a[1]}</option>`).join('')}</select></label>
-    ${segHtml(
+  const why = t => `<small class="muted tg-why">${t}</small>`,
+    age = P.dob
+      ? ''
+      : `<label class="f">Age<input class="inp" inputmode="numeric" value="${TG.age || ''}" placeholder="34" data-on="tg" data-k="age"></label>`;
+  b.innerHTML = `${TG.first ? `<p class="muted">A few quick details and Ember works out a calorie and macro target. You can change any of it later.</p>` : ''}
+    <div class="f">Your goal${segHtml(
       'tgGoal',
       [
         ['lose', 'Lose weight'],
         ['keep', 'Maintain'],
         ['gain', 'Gain'],
       ],
-      TG.goal,
-    )}
-    ${TG.goal !== 'keep' ? `<label class="f">Pace<select class="inp" data-on="tgSel" data-k="rate">${RATES[TG.goal].map(a => `<option value="${a[0]}" ${a[0] === TG.rate ? 'selected' : ''}>${a[1]}</option>`).join('')}</select></label>` : ''}
+      tgGoal(),
+    )}</div>
+    <div class="f">Sex${segHtml(
+      'tgSex',
+      [
+        ['m', 'Male'],
+        ['f', 'Female'],
+      ],
+      TG.sex,
+    )}${why('The calorie formula is different for each.')}</div>
+    <div class="${age ? 'grid3' : 'two'}">${age}<label class="f">Height cm<input class="inp" inputmode="decimal" value="${TG.cm || ''}" placeholder="175" data-on="tg" data-k="cm"></label><label class="f">Weight kg<input class="inp" inputmode="decimal" value="${TG.kg || ''}" placeholder="78" data-on="tg" data-k="kg"></label></div>
+    ${P.dob ? `<p class="tiny muted" style="margin-top:-6px">Age ${TG.age}, from your date of birth.</p>` : ''}
+    <label class="f">Activity<select class="inp" data-on="tgSel" data-k="act">${ACTS.map(a => `<option value="${a[0]}" ${a[0] === TG.act ? 'selected' : ''}>${a[1]}</option>`).join('')}</select>${why('How much you move sets how much you burn.')}</label>
+    ${tgGoal() !== 'keep' ? `<label class="f">Pace<select class="inp" data-on="tgSel" data-k="rate">${RATES[tgGoal()].map(a => `<option value="${a[0]}" ${a[0] === TG.rate ? 'selected' : ''}>${a[1]}</option>`).join('')}</select></label>` : ''}
     <div id="tgCard">${tgCard()}</div>
     <div><div class="tiny muted" style="font-weight:700;margin-bottom:5px">Exercise calories</div>${segHtml(
       'tgEx',
@@ -1695,11 +1707,17 @@ function renderTargets() {
       TG.exAdd ? '1' : '0',
     )}</div>`;
 }
+/* Ember does not set a weight-loss target for someone at or under a healthy weight for their height: the goal
+   becomes holding steady, and the card says why and where to find support. */
+const tgLow = () => TG.goal === 'lose' && TG.cm >= 120 && TG.kg >= 30 && !canLose(TG.kg, TG.cm);
+const tgGoal = () => (tgLow() ? 'keep' : TG.goal);
+const LOW_HELP =
+  'If food or your weight is on your mind a lot, Bodywhys (Ireland) and Beat (UK) can help, and so can your GP.';
 /* The targets card. Changing anything about you above recalculates it straight away; the old figures stay on show with a way back until you save. */
 function tgCard() {
   if (TG.first && !tgReady())
-    return `<div class="card"><p class="small muted">Your calorie and macro targets appear here once the four details above are in.</p></div>`;
-  const s = calcTargets(TG),
+    return `<div class="card"><p class="small muted">Your calorie and macro targets appear here once the details above are in.</p></div>`;
+  const s = calcTargets({ ...TG, goal: tgGoal() }),
     o = TG.orig,
     t = TG.t,
     changed = !TG.first && ['k', 'p', 'c', 'f', 'w'].some(k => (t[k] || 0) !== (o[k] || 0)),
@@ -1719,15 +1737,23 @@ function tgCard() {
         ' kg a week ' +
         (gap > 0 ? 'down' : 'up') +
         '.');
-  if (P.goalKg && Math.abs(gap) >= 40 && P.goalKg < TG.kg === gap > 0 && Math.abs(P.goalKg - TG.kg) > 0.2) {
+  if (Math.abs(gap) >= 40) pace += ' Results vary from person to person.';
+  // with a goal weight set: how far off it is at this pace, as a number of weeks and never as a date
+  if (
+    !TG.first &&
+    P.goalKg &&
+    Math.abs(gap) >= 40 &&
+    P.goalKg < TG.kg === gap > 0 &&
+    Math.abs(P.goalKg - TG.kg) > 0.2
+  ) {
     const wks = Math.abs(P.goalKg - TG.kg) / (Math.abs(gap) / 1100);
     if (wks < 200)
-      pace +=
-        ' At that pace you reach ' + P.goalKg + ' kg around ' + niceDate(addDays(today(), Math.round(wks * 7))) + '.';
+      pace += ' At that pace ' + P.goalKg + ' kg is roughly ' + Math.max(1, Math.round(wks)) + ' weeks away.';
   }
   const was = (k, u) =>
     changed && (t[k] || 0) !== (o[k] || 0) ? `<small class="was tn">was ${fmt(o[k] || 0)}${u}</small>` : '';
-  return `<div class="card stack ${changed ? 'chg' : ''}"><div class="between"><h2>Daily targets</h2>${TG.auto ? `<span class="pill good">Worked out for you</span>` : `<button class="link" data-act="tgSuggest">Work them out for me</button>`}</div>
+  return `<div class="card stack ${changed ? 'chg' : ''}"><div class="between"><h2>Daily targets</h2>${TG.auto ? `<span class="pill" title="Worked out from a standard formula, not measured">Estimate</span>` : `<button class="link" data-act="tgSuggest">Work them out for me</button>`}</div>
+      ${tgLow() ? `<div class="banner">${ic('label')}<span>At your height and weight Ember does not set a weight-loss target, so this one holds your weight steady. ${LOW_HELP}</span></div>` : ''}
       ${changed ? `<div class="tg-chg"><span>${TG.auto ? 'Updated to match your details.' : 'Changed.'} Before: <b class="tn">${fmt(o.k)} kcal</b>, ${o.p} g protein.</span><button class="btn sm ghost" data-act="tgRevert">${ic('undo')} Keep the old ones</button></div>` : ''}
       <p class="small muted" id="tgNote">${pace}${s.floored && TG.auto ? ' It is held at a sensible minimum rather than going lower.' : ''}</p>
       <label class="f">Calories ${was('k', '')}<input class="inp" inputmode="numeric" id="tgK" value="${t.k}" data-on="tgT" data-k="k"></label>
@@ -1735,11 +1761,11 @@ function tgCard() {
       <label class="f">Water ml ${was('w', '')}<input class="inp" inputmode="numeric" id="tgW" value="${t.w}" data-on="tgT" data-k="w"></label></div>`;
 }
 /* touched: something about the person changed, so the targets follow it */
-const tgReady = () => !!TG.sex && TG.age >= 14 && TG.cm >= 120 && TG.kg >= 30;
+const tgReady = () => !!TG.sex && TG.age >= MIN_AGE && TG.cm >= 120 && TG.kg >= 30;
 function tgRecalc(full, touched) {
   if (touched) TG.auto = true;
   if (TG.auto && tgReady()) {
-    const s = calcTargets(TG);
+    const s = calcTargets({ ...TG, goal: tgGoal() });
     TG.t = { k: s.k, p: s.p, c: s.c, f: s.f, w: s.w };
   }
   if (full) return renderTargets();
@@ -1807,10 +1833,17 @@ A.tgUndo = () => {
 };
 A.saveTargets = () => {
   if (!TG.sex) return toast('Choose male or female: it changes the sum.');
-  if (!(TG.age >= 14 && TG.age <= 100)) return toast('Enter your age.');
+  if (!(TG.age >= 0)) return toast('Enter your age.');
+  if (TG.age < MIN_AGE) return toast('Ember sets targets for people aged ' + MIN_AGE + ' and over.');
+  if (!(TG.age <= 110)) return toast('Enter your age.');
   if (!(TG.cm >= 120 && TG.cm <= 230)) return toast('Enter your height in centimetres.');
   if (!(TG.kg >= 30 && TG.kg <= 300)) return toast('Enter your weight in kilograms.');
-  if (!(TG.t.k >= 1000 && TG.t.k <= 6000)) return toast('Set a calorie target between 1,000 and 6,000.');
+  const floor = kcalFloor(TG.sex);
+  if (!(TG.t.k <= 6000)) return toast('Set a calorie target of 6,000 or less.');
+  if (!(TG.t.k >= floor))
+    return toast(
+      'Ember does not set a target below ' + fmt(floor) + ' kcal a day. Lower than that needs a doctor or dietitian.',
+    );
   const first = TG.first;
   tgPrev = first
     ? null
@@ -1831,7 +1864,7 @@ A.saveTargets = () => {
     cm: TG.cm,
     kg: TG.kg,
     act: TG.act,
-    goal: TG.goal,
+    goal: tgGoal(),
     rate: TG.rate,
     exAdd: TG.exAdd,
     t: { k: TG.t.k, p: TG.t.p || 0, c: TG.t.c || 0, f: TG.t.f || 0, w: TG.t.w || 2000 },
@@ -1841,6 +1874,7 @@ A.saveTargets = () => {
   saveProfile();
   closeAll();
   render();
+  if (first && guided()) return obAfterTargets();
   if (first) {
     celeQ.push({
       icon: 'flame',
@@ -1859,7 +1893,7 @@ A.openData = () => {
   const cnt = k => (DB[k] ? fmt(DB[k].length) : DB.st[k] === 'loading' ? 'loading' : 'not loaded yet');
   openSheet(
     `${sh('Data and sources')}<div class="sheet-b">
-    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button><div class="f">Download as a spreadsheet (CSV)<div class="opts"><button data-act="exportCsv" data-what="diary">Food diary</button><button data-act="exportCsv" data-what="weights">Weigh-ins</button><button data-act="exportCsv" data-what="sessions">Training</button></div></div>${Store.account ? `<button class="btn ghost" data-act="setPassword">Set or change your password</button><button class="btn ghost" data-act="signOut">Sign out</button><button class="link" data-act="deleteAccount" style="color:var(--bad);align-self:center">Delete my account</button>` : ''}<p class="small muted" style="text-align:center"><a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a></p></div>
+    <div class="card stack"><h2>Your diary</h2><p class="small">${Store.mode === 'cloud' ? 'Saved to your account as you go, private to you, and available on any device where you sign in.' : 'Saved on this device only. Sign in to keep your diary safe and use it on your other devices.'}</p>${Store.account ? `<p class="small muted">Signed in as ${esc(Store.account)}</p>` : ''}${consentRows()}${Store.mode !== 'cloud' && authConfigured() ? `<button class="btn" data-act="signIn">Sign in</button>` : ''}<button class="btn ghost" data-act="copyData">${ic('copy')} Copy my data as JSON</button><div class="f">Download as a spreadsheet (CSV)<div class="opts"><button data-act="exportCsv" data-what="diary">Food diary</button><button data-act="exportCsv" data-what="weights">Weigh-ins</button><button data-act="exportCsv" data-what="sessions">Training</button></div></div>${Store.account ? `<button class="btn ghost" data-act="setPassword">Set or change your password</button><button class="btn ghost" data-act="signOut">Sign out</button><button class="link" data-act="deleteAccount" style="color:var(--bad);align-self:center">Delete my account</button>` : ''}<p class="small muted" style="text-align:center"><a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a></p></div>
     <div class="card stack"><h2>Food database</h2><div class="kv small"><span>Everyday foods, UK food tables and USDA FoodData Central</span><b>${cnt('gen')}</b><span>Branded products, Ireland and UK first</span><b>${cnt('br')}</b><span>More branded products</span><b>${cnt('more')}</b></div><p class="tiny muted">UK figures are from McCance and Widdowson's Composition of Foods Integrated Dataset. Contains public sector information licensed under the Open Government Licence v3.0.</p>
       <p class="small muted">Everyday foods: U.S. Department of Agriculture, FoodData Central (Foundation Foods, FNDDS and SR Legacy), public domain. Branded products: <a href="https://world.openfoodfacts.org" class="link">Open Food Facts</a> contributors, Open Database Licence. Entries whose stated calories disagree with their macros by more than a fifth were left out.</p></div>
     <div class="card stack"><h2>Targets</h2><p class="small muted">Suggested calories use the Mifflin-St Jeor equation and your activity level. They are a starting point, not medical advice.</p></div></div>`,
@@ -1941,6 +1975,7 @@ async function boot() {
     await offerMove();
     const p = await Store.get('profile');
     P = p ? fixProfile(p) : defaultProfile();
+    if (await consentGate()) return; // health information is agreed to before anything else is asked or shown
     const [rs, fs] = await Promise.all([Store.list('recipes'), Store.list('foods')]);
     rs.forEach(r => (S.recipes[r.id] = r));
     fs.forEach(f => (S.foods[f.id] = f));

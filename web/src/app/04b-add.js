@@ -15,7 +15,7 @@ function openAdd(ctx = {}) {
   loadDB('br');
   openSheet(
     `${sh(ctx.title || 'Add', ADD.pick ? '' : `<span class="pill" id="addLeft"></span>`)}<div class="sheet-b" id="addBody">
-    ${ADD.pick ? '' : segHtml('addMeal', Object.entries(MEALS), ADD.meal)}
+    ${ctx.first ? obAddIntro() : ''}${ADD.pick ? '' : segHtml('addMeal', Object.entries(MEALS), ADD.meal)}
     <div class="searchbar">${ic('search')}<input id="q" type="text" enterkeyhint="search" placeholder="${ADD.pick ? 'Search foods and brands' : 'Search a food, or type a whole meal'}" autocomplete="off" autocapitalize="off" spellcheck="false" data-on="q" value="${esc(ADD.q)}"><button class="icon-btn hide" id="qx" data-act="clearQ" aria-label="Clear search">${ic('x')}</button></div>
     ${
       ADD.pick
@@ -26,7 +26,7 @@ function openAdd(ctx = {}) {
       <div class="also"><button data-act="addOther" data-k="water" aria-label="Add 250 ml of water">${ic('drop')}Water</button><button data-act="addOther" data-k="caf">${ic('cup')}Caffeine</button><button data-act="addOther" data-k="ex">${ic('pulse')}Exercise</button><button data-act="addOther" data-k="wt">${ic('scale')}Weight</button></div>
     </div>`
     }
-    <div id="addList"></div></div>
+    <div id="addList"></div>${ctx.first ? obAddLinks() : ''}</div>
     <div class="sheet-f hide" id="addFoot"></div>`,
     true,
   );

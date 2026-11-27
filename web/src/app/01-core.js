@@ -438,6 +438,7 @@ const defaultProfile = () => ({
   mode: 'me',
   asgV: 0,
   coachName: '',
+  dob: '', // date of birth, given with the health consent; the age for the calorie sum follows it
   bed: '23:00',
 });
 /**
@@ -730,6 +731,7 @@ function setHist(d) {
 }
 function commitDay(d, opts = {}) {
   setHist(d);
+  obFirstUse(d);
   if (opts.onHist) opts.onHist();
   checkTasks(d);
   checkQuests(d);

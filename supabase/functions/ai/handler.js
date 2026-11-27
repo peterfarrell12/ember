@@ -162,14 +162,14 @@ export function readRequest(body) {
 /** Claude's failures, as the codes the app already has wording for. */
 function claudeError(e) {
   const status = e && e.status;
-  if (status === 429 || status === 529) return fail(429, 'rate_limited', 'Claude is busy.');
+  if (status === 429 || status === 529) return fail(429, 'rate_limited', 'Ember AI is busy.');
   if (status === 400 || status === 413)
     return fail(
       400,
       /image/i.test(String(e && e.message)) ? 'image_rejected' : 'upstream_error',
-      'Claude could not take that request.',
+      'Ember AI could not take that request.',
     );
-  return fail(502, 'upstream_error', 'Claude could not be reached.');
+  return fail(502, 'upstream_error', 'Ember AI could not be reached.');
 }
 
 /**
@@ -291,7 +291,7 @@ export function createHandler({
     }
     const used = costOf(message.model || model.id, message.usage || {});
     await record(user.id, day, used).catch(() => {}); // a failed note of the cost must not lose the answer
-    if (message.stop_reason === 'refusal') return fail(422, 'refused', 'Claude could not work with that.');
+    if (message.stop_reason === 'refusal') return fail(422, 'refused', 'Ember AI could not work with that.');
     const text = (message.content || [])
       .filter(b => b.type === 'text')
       .map(b => b.text)

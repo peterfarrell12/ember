@@ -1,7 +1,7 @@
 before: {'k': 1980, 'p': 155, 'c': 205, 'f': 60, 'w': 3000} rate 0.5 kg 85.9
-save btn: Save | card head: Daily targets | Work them out for me |  | You burn about 2,527 kcal a day. This target is 547 kcal below that, about 0.5 kg a week down. At that pace you reach 
+save btn: Save | card head: Daily targets | Work them out for me |  | You burn about 2,527 kcal a day. This target is 547 kcal below that, about 0.5 kg a week down. Results vary from perso
 after pace -> k 1700 | banner: Updated to match your details. Before: 1,980 kcal, 155 g protein. | Keep the old ones | save: Save new targets
-note: You burn about 2,527 kcal a day. This target is 827 kcal below that, about 0.8 kg a week down. At that pace you reach 82 kg around Fri 25 Dec.
+note: You burn about 2,527 kcal a day. This target is 827 kcal below that, about 0.8 kg a week down. Results vary from person to person. At that pace 82 kg is roughly 5 weeks away.
 after revert -> k 1980 | banner gone: True | save: Save
 after weight 92 -> k 1790 p 165 | kg field still 92
 custom protein kept: 170 | head: Daily targets | Work them out for me | Changed. Before: 1,980 kcal, 155 g protein. | Keep 
@@ -12,5 +12,5 @@ ideas cards: 3 Chicken and rice bowl 1 | 508 kcal · 52 g protein |  | Fits. Lea
 menu cards: 3 | image sent: 1 [{'size': 12010, 'type': 'image/jpeg', 'name': 'photo.jpg'}]
 review: Log 2 items · 520 kcal
 IDEACUT cards: 2 | out: d |  | Recipe | Log this | Three different ones |  | Calories are estimates until you log a dish; each ingredient is then matched to the database wher
-IDEAFAIL cards: 0 | out: That did not work. |  | Claude is busy or you have hit a usage limit. Try again in a bit. (rate_limited) |  | Try again
+IDEAFAIL cards: 0 | out: That did not work. |  | Ember AI is busy or you have hit a usage limit. Try again in a bit. (rate_limited) |  | Try again
 ERRS []

@@ -611,7 +611,7 @@ function renderMealPlan() {
   if (!el) return;
   const mp = P.mp;
   if (!AI.sample)
-    return void (el.innerHTML = `<p class="empty">The meal plan is written by Claude, which is not available in this view. Sign in to use it.</p>`);
+    return void (el.innerHTML = `<p class="empty">The meal plan is written by Ember AI, which is not available in this view. Sign in to use it.</p>`);
   if (!mp || !mp.days || mp.days.length !== 7) {
     el.innerHTML = `<p class="muted small">A week of breakfasts, lunches and dinners sized to your ${fmt(P.t.k)} kcal and ${P.t.p} g protein, with a shopping list. Everyday Irish and UK food.</p>
       <label class="f">Anything it should know?<textarea class="inp" id="mpLikes" rows="3" maxlength="300" placeholder="No fish. Vegetarian on weekdays. Quick dinners, I get home at seven.">${esc((mp && mp.likes) || '')}</textarea></label>
@@ -624,7 +624,7 @@ function renderMealPlan() {
         '4',
       )}</div>
       <button class="btn ember" data-act="mealPlanGo" data-n="4" id="mpGo">${ic('spark')} Plan my week</button>
-      <p class="tiny muted">Uses one of today's ${AI_DAILY} AI requests. Every figure in a plan is Claude's estimate; when you log a meal from it, the foods are matched to the database as usual.</p>`;
+      <p class="tiny muted">Uses one of today's ${AI_DAILY} AI requests. Every figure in a plan is Ember AI's estimate; when you log a meal from it, the foods are matched to the database as usual.</p>`;
     SEG.mpMeals = v => ($('#mpGo').dataset.n = v);
     return;
   }
@@ -779,8 +779,8 @@ function renderNote() {
     n = noteState();
   if (!el) return;
   if (!AI.sample)
-    return void (el.innerHTML = `<p class="empty">The daily note is written by Claude, which is not available in this view.</p>`);
-  el.innerHTML = `<p class="muted small">Two or three sentences each morning, written by Claude from your own diary: what happened yesterday and the one thing worth doing today.</p>
+    return void (el.innerHTML = `<p class="empty">The daily note is written by Ember AI, which is not available in this view.</p>`);
+  el.innerHTML = `<p class="muted small">Two or three sentences each morning, written by Ember AI from your own diary: what happened yesterday and the one thing worth doing today.</p>
     ${n.d === today() && n.t ? `<div class="card"><p>${esc(n.t)}</p></div>` : noteBusy ? `<div class="busy"><div class="spinner"></div>Writing today's note</div>` : `<button class="btn" data-act="noteNow">${ic('pen')} Write today's note</button>`}
     ${n.err && !(n.d === today() && n.t) ? `<p class="small muted">${esc(n.err)}</p>` : ''}
     <div class="f">Tone${segHtml(

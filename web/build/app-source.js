@@ -30,6 +30,7 @@ export const MODULES = [
   'recipe-server.js',
   'native-dictation.js',
   'coaching.js',
+  'onboarding.js',
 ];
 
 export const numbered = dir =>

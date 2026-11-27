@@ -29,6 +29,7 @@ jobs:
           npm install --no-save playwright
           npm run test:scanner
           npm run test:voice
+          npm run test:onboarding
       - name: Keep the test output when a test fails
         if: failure()
         uses: actions/upload-artifact@v4

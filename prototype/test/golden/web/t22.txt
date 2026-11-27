@@ -1,0 +1,8 @@
+A CAN OF GUINNESS => Breakfast | Lunch | Dinner | Snacks | Guinness Draught Alcohol Free Stout | Guinness | LABEL | 75 kcal | 1 can | Amount and unit | Swap food | ml |  | Matched to the product list, so the figures are from the label. Check the amount. |  | Fix
+   tie-break asked: False | link: None
+   diary: ('Guinness Draught Alcohol Free Stout', 'Guinness', 440, 75, 'B')
+HEINEKEN => Breakfast | Lunch | Dinner | Snacks | Heineken 0.0 | Heineken | LABEL | 89 kcal | 1 bottle | Amount and unit | Swap food | ml |  | Matched to the product list, so the figures are from the label. Check the amount. |  | Fix
+   tie-break asked: True | link: None
+DUNNES TIKKA => Breakfast | Lunch | Dinner | Snacks | Chicken tikka masala with rice ready meal | Dunnes Stores | RECALLED | 520 kcal | 1 pack | Amount and unit | Swap food | grams |  | Portions from a photo are estimates. Adjust the grams if you weighed anything. |  | Dunnes Stores Chicken tikka masala with rice ready meal is not in the product list, so these are the maker's figures as Ember AI remembers them. Check it online, then
+   tie-break asked: True | link: https://www.google.com/search?q=Dunnes%20Stores%20Chicken%20tikka%20masala%20with%20rice%20ready%20meal%20nutri....%20per%20100g
+ERRS []

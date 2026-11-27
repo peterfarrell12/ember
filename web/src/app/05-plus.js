@@ -305,13 +305,19 @@ A.setGoal = () => {
   const ts = trendSeries();
   const now = ts.length ? r1(ts[ts.length - 1].t) : P.kg;
   openSheet(`${sh('Goal weight')}<div class="sheet-b"><label class="f">Goal in kg<input class="inp" id="gwKg" inputmode="decimal" value="${P.goalKg || ''}" placeholder="${r0(now - 5)}"></label>
-    <p class="small muted">Your trend weight is ${now} kg. Ember splits the distance into milestones and forecasts the date from your real pace.</p></div>
+    <p class="small muted">Your trend weight is ${now} kg. Ember splits the distance into milestones and forecasts the date from your real pace.</p><div id="gwMsg" role="alert"></div></div>
     <div class="sheet-f">${P.goalKg ? `<button class="btn ghost" style="width:auto" data-act="clearGoal" aria-label="Remove goal">${ic('trash')}</button>` : ''}<button class="btn" data-act="saveGoal">Save goal</button></div>`);
   $('#gwKg').focus();
 };
 A.saveGoal = () => {
   const g = r1(num($('#gwKg').value));
   if (g < 30 || g > 300) return toast('Enter a goal in kilograms.');
+  if (!goalWeightOk(g, P.cm)) {
+    const m = $('#gwMsg');
+    if (m)
+      m.innerHTML = `<div class="banner">${ic('label')}<span>For your height Ember does not set a goal below ${lowestHealthyKg(P.cm)} kg, the lower edge of a healthy weight. ${LOW_HELP}</span></div>`;
+    return;
+  }
   const ts = trendSeries();
   P.goalKg = g;
   P.startKg = ts.length ? r1(ts[ts.length - 1].t) : P.kg;
@@ -621,7 +627,7 @@ function readCsv(text) {
     return -1;
   };
   const iD = find(/^date$/, /activity date/, /workout start/, /start time/, /^day$/, /date/, /time/);
-  if (iD < 0) return { err: 'No date column found. Send the file to Claude in chat and it can be mapped by hand.' };
+  if (iD < 0) return { err: 'No date column found. Send the file to Ember AI in chat and it can be mapped by hand.' };
   const iW = find(/^weight/, /body ?mass/, /weight/),
     iK = find(/^calories/, /energy burned/, /kcal/, /calor/),
     iDur = find(/^duration/, /elapsed time/, /moving time/, /^time$/, /duration/);
@@ -833,9 +839,8 @@ const linkify = t =>
     u => `<a class="link" href="${u}">${u.replace(/^https?:\/\/(www\.)?/, '')}</a>`,
   );
 const MCP_MSG = {
-  server_not_connected:
-    'athletedata is not connected to your Claude account in this view. Add it in Claude under Connectors, then sync again.',
-  needs_reauth: 'athletedata needs reconnecting in Claude under Connectors.',
+  server_not_connected: 'athletedata is not connected in this view. Connect it, then sync again.',
+  needs_reauth: 'athletedata needs reconnecting.',
   not_in_manifest: 'Ember was not allowed to use athletedata. Tap Sync again and choose Allow.',
   approval_required: 'Ember needs your approval to read athletedata. Tap Sync again and choose Allow.',
   consent_required: 'Ember needs your approval to read athletedata. Tap Sync again and choose Allow.',
@@ -857,12 +862,10 @@ A.adSync = async () => {
   };
   if (!AI.ready) return out(`<p class="small muted">Still connecting. Try again in a moment.</p>`);
   if (!AI.mcp)
-    return out(
-      `<div class="banner">${ic('link')}<span>Connectors are not available in this view. Open Ember from inside Claude.</span></div>`,
-    );
+    return out(`<div class="banner">${ic('link')}<span>Connectors are not available in this view.</span></div>`);
   if (!AI.sample)
     return out(
-      `<div class="banner">${ic('spark')}<span>Syncing uses Claude to read what your devices send, and Claude is not available in this view.</span></div>`,
+      `<div class="banner">${ic('spark')}<span>Syncing uses Ember AI to read what your devices send, and Ember AI is not available in this view.</span></div>`,
     );
   out(`<div class="busy"><div class="spinner"></div>Asking athletedata for your last 14 days</div>`);
   const end = today(),
@@ -1029,7 +1032,7 @@ function coachHtml(c) {
   return `<div class="tiny muted">${niceDate(c.d)}</div><h2 style="margin:4px 0 2px">${esc(r.headline || 'Your review')}</h2>${(r.wins || []).length ? `<h4>Working</h4><ul>${li(r.wins, '', 'check')}</ul>` : ''}${(r.watch || []).length ? `<h4>Watch</h4><ul>${li(r.watch, 'w', 'target')}</ul>` : ''}${(r.next || []).length ? `<h4>This week</h4><ul>${li(r.next, 'n', 'chev-r')}</ul>` : ''}`;
 }
 A.coachReview = async () => {
-  if (!AI.sample) return toast('The coach needs Claude, which is not available in this view.');
+  if (!AI.sample) return toast('The coach needs Ember AI, which is not available in this view.');
   const logged = Object.keys(P.hist).filter(k => P.hist[k].n > 0).length;
   if (logged < 2) return toast('Log a couple of days first so there is something to review.');
   const o = $('#coachOut');
@@ -1055,7 +1058,7 @@ A.coachReview = async () => {
 A.coachAsk = async () => {
   const q = ($('#coachQ').value || '').trim();
   if (q.length < 3) return;
-  if (!AI.sample) return toast('The coach needs Claude, which is not available in this view.');
+  if (!AI.sample) return toast('The coach needs Ember AI, which is not available in this view.');
   const a = $('#coachA');
   a.textContent = 'Thinking…';
   try {
@@ -1215,7 +1218,7 @@ function ideasShow(busy, err) {
   o.innerHTML = `<div class="stack">${cards}${busy ? `<div class="busy"><div class="spinner"></div>${IDEAS.opts.length ? 'Working on the next one' : busy}</div>` : ''}${err ? `<div class="card stack"><b>${IDEAS.opts.length ? 'That is all that came back.' : 'That did not work.'}</b><p class="small muted">${esc(err)}</p><button class="btn sm" data-act="ideasRetry" style="align-self:flex-start">Try again</button></div>` : ''}${IDEAS.opts.length && !busy && !IDEAS.menu ? `<button class="btn ghost" data-act="ideasGo">${ic('spark')} Three different ones</button>` : ''}${IDEAS.opts.length && !busy ? `<p class="tiny muted">Calories are estimates until you log a dish; each ingredient is then matched to the database where it can be.</p>` : ''}</div>`;
 }
 async function ideasRun(prompt, files) {
-  if (!AI.sample) return toast('This needs Claude, which is not available in this view.');
+  if (!AI.sample) return toast('This needs Ember AI, which is not available in this view.');
   if (!$('#ideasOut')) return;
   IDEAS.opts = [];
   IDEAS.last = [prompt, files];
@@ -1253,7 +1256,7 @@ async function ideasRun(prompt, files) {
       '',
       IDEAS.opts.length
         ? ''
-        : 'Claude answered, but not with meals that could be read. Try again' +
+        : 'Ember AI answered, but not with meals that could be read. Try again' +
             (files ? ', or take the photo closer so the dish names are sharp.' : '.'),
     );
   } catch (e) {
@@ -1263,7 +1266,7 @@ async function ideasRun(prompt, files) {
     ideasShow(
       '',
       (code === ' (image_rejected)' || code === ' (images_unavailable)'
-        ? 'The photo could not be sent to Claude.'
+        ? 'The photo could not be sent to Ember AI.'
         : aiError(e)) + code,
     );
   }
@@ -1373,7 +1376,7 @@ A.ideaSave = async ({ i }) => {
 };
 A.menuPhoto = () => {
   if (!(AI.sample && AI.images))
-    return toast('Menu scanning needs Claude with photos, which is not available in this view.');
+    return toast('Menu scanning needs Ember AI with photos, which is not available in this view.');
   $('#fileMenu').click();
 };
 $('#fileMenu').addEventListener('change', e => {
@@ -1498,12 +1501,12 @@ A.photo = () => {
   if (!(AI.sample && AI.images))
     return toast(
       AI.ready
-        ? 'Photo logging needs Claude, which is not available in this view.'
+        ? 'Photo logging needs Ember AI, which is not available in this view.'
         : 'Still connecting. Try again in a moment.',
     );
   PH = { files: [], meal: ADD ? ADD.meal : mealNow() };
   openSheet(`${sh('Meal photo')}<div class="sheet-b"><button class="btn ghost" data-act="photoPick">${ic('camera')} Take or choose photos</button><div class="thumbs" id="phThumbs"></div>
-    <label class="f">Anything Claude should know, optional<input class="inp" id="phNote" placeholder="I ate half. Cooked in butter. Large plate." autocomplete="off"></label>
+    <label class="f">Anything Ember AI should know, optional<input class="inp" id="phNote" placeholder="I ate half. Cooked in butter. Large plate." autocomplete="off"></label>
     <p class="small muted">Up to three photos. A second angle helps with portions. A photo of the pack or the shelf ticket works too: printed calories are used as they are.</p></div><div class="sheet-f"><button class="btn ember" data-act="photoGo" id="phGo" disabled>${ic('spark')} Work it out</button></div>`);
   $('#filePhoto').click();
 };
@@ -1543,7 +1546,7 @@ A.photoGo = async () => {
     if (!sheets.includes(mine)) return;
     if (!items.length)
       return back(
-        'Claude could not find food or calorie figures in that photo. Try a closer, sharper shot, or add a line saying what it is.',
+        'Ember AI could not find food or calorie figures in that photo. Try a closer, sharper shot, or add a line saying what it is.',
       );
     openReview(items, {
       via: 'photo',
