@@ -305,13 +305,19 @@ A.setGoal = () => {
   const ts = trendSeries();
   const now = ts.length ? r1(ts[ts.length - 1].t) : P.kg;
   openSheet(`${sh('Goal weight')}<div class="sheet-b"><label class="f">Goal in kg<input class="inp" id="gwKg" inputmode="decimal" value="${P.goalKg || ''}" placeholder="${r0(now - 5)}"></label>
-    <p class="small muted">Your trend weight is ${now} kg. Ember splits the distance into milestones and forecasts the date from your real pace.</p></div>
+    <p class="small muted">Your trend weight is ${now} kg. Ember splits the distance into milestones and forecasts the date from your real pace.</p><div id="gwMsg" role="alert"></div></div>
     <div class="sheet-f">${P.goalKg ? `<button class="btn ghost" style="width:auto" data-act="clearGoal" aria-label="Remove goal">${ic('trash')}</button>` : ''}<button class="btn" data-act="saveGoal">Save goal</button></div>`);
   $('#gwKg').focus();
 };
 A.saveGoal = () => {
   const g = r1(num($('#gwKg').value));
   if (g < 30 || g > 300) return toast('Enter a goal in kilograms.');
+  if (!goalWeightOk(g, P.cm)) {
+    const m = $('#gwMsg');
+    if (m)
+      m.innerHTML = `<div class="banner">${ic('label')}<span>For your height Ember does not set a goal below ${lowestHealthyKg(P.cm)} kg, the lower edge of a healthy weight. ${LOW_HELP}</span></div>`;
+    return;
+  }
   const ts = trendSeries();
   P.goalKg = g;
   P.startKg = ts.length ? r1(ts[ts.length - 1].t) : P.kg;

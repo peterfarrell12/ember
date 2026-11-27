@@ -49,6 +49,7 @@ npm run typecheck    # TypeScript over the files that opt in with // @ts-check
 npm run format       # Prettier
 npm run test:voice   # the voice panel in a browser, with scripted speech
 npm run test:scanner # the live barcode scanner with a simulated camera
+npm run test:onboarding # the first run: health information, targets, first log, reminder, Ember AI
 npm run test:unit    # the modules on their own, in Node
 npm run check        # format, lint, types and unit tests in one go: what CI runs first. Run it before every commit
 ```
@@ -58,6 +59,10 @@ The phone apps are the web build inside a Capacitor shell (`web/android`, `web/i
 `prototype/` is now a frozen reference: do not change its source. Where the web app is meant to behave differently from the prototype, the difference is recorded as a test baseline in `prototype/test/golden/web/`.
 
 Everyone signs in before using the web app (owner's decision): signed out, the only screen is the sign-in screen. People sign in with an email and a password, or with an emailed link; a password can be set, changed or reset by email (owner's decision, November 2026). The browser tests ask for the old device-only mode with the `localStorage` key `ember:device-only`; accounts are tested in `supabase/tests/`.
+
+The first run follows the onboarding requirements (phase 1a, November 2026): sign in, then health information on its own screen with a date of birth (18 and over), then targets, then one thing logged straight away. Nothing is pre-ticked. `web/src/app/08x-onboard.js` holds the screens and `onboarding.js` the rules. The device-only tests keep the older first run unless they set `ember:guided`.
+
+In the interface the AI is called "Ember AI", never Claude or Anthropic (owner's decision, 26 November 2026). The provider is named only in the privacy notice. Ember AI asks before its first use and says that what is sent goes to an outside AI service in the United States; that wording is consent wording, so it is the owner's to change.
 
 The web app has moved on from the prototype in places the owner asked for (the audit and "make it 10x better", November 2026): the talk button opens a voice panel over the current screen instead of the chat; the everyday food list leads with the UK government's food tables (`web/data/foods-uk.json`, see `web/data/README.md`; the Open Government Licence line on the Data and sources sheet must stay); American measures are not offered. Each such difference is a reviewed baseline in `prototype/test/golden/web/`.
 

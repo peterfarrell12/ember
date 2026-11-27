@@ -1,17 +1,24 @@
 /* ---------- account: sign in with an emailed link, sign out, move a device's diary into the account ---------- */
-/* Consent, asked for on the sign-in form. Ember holds health information, which needs explicit consent, and its
-   AI features send what is submitted to Anthropic in the United States. The date is the version of the privacy
-   policy and terms agreed to (privacy.html, terms.html); change it when they change in a way that matters. */
-const CONSENT_VERSION = '2026-11-19';
-const consentHtml = () =>
-  `<label class="agree"><input type="checkbox" id="siAgree"><span>I am 18 or over and agree to the <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a> and <a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a>. I consent to Ember storing the health information I enter, and to what I send to its AI features being processed by an outside AI provider in the United States.</span></label>`;
-/* Once signed in, note on the account which version was agreed to and when. */
+/* Consent is no longer asked for on the sign-in form: creating an account says only that the Terms apply and
+   the Privacy notice has been read. Health information has a screen of its own straight after sign-in, the AI
+   features ask the first time one is used, and emails about Ember are an unticked choice under You (all in
+   08x-onboard.js). An account made before that split agreed to all of it with one tick here; that record
+   (ember:consent on the device, then meta/consent on the account) still stands. */
+const termsHtml = () =>
+  `<p class="tiny muted si-terms">By creating an account you agree to the <a class="link" href="./terms.html" target="_blank" rel="noopener">Terms</a> and have read the <a class="link" href="./privacy.html" target="_blank" rel="noopener">Privacy notice</a>.</p>`;
+/* Once signed in, note on the account the consent an older sign-in form left on this device. */
 function recordConsent() {
   const c = LS.get('ember:consent');
   if (!Store.durable || !c || LS.get('ember:consent-noted:' + Store.uid) === c.v) return;
-  Store.put('meta', 'consent', c);
+  if (!CONSENT) {
+    Store.put('meta', 'consent', c);
+    CONSENT = c;
+  }
   LS.set('ember:consent-noted:' + Store.uid, c.v);
 }
+/* What the account is for, in one line: shown wherever an account is made or signed in to. */
+const SI_WHY_ACCOUNT =
+  'Your account keeps your diary safe and on every device, and is what links you to a coach or a squad.';
 const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
 /* ---------- the sign-in form ----------
@@ -22,8 +29,8 @@ const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
      reset  an emailed link to choose a new password
    Someone who has used this device before starts on "in"; anyone else on "new". */
 const PASSWORD_MIN = 8;
-const SI = { mode: '', invited: false };
-const siMode = () => SI.mode || (LS.get('ember:consent') ? 'in' : 'new');
+const SI = { mode: '', invited: false, coach: false };
+const siMode = () => SI.mode || (LS.get('ember:consent') || LS.get('ember:known') ? 'in' : 'new');
 const SI_FORM = {
   in: { title: 'Sign in to Ember', lead: 'Sign in with your email and password.', go: 'Sign in' },
   new: {
@@ -69,16 +76,27 @@ function siDraw() {
     email = String(($('#siEmail') || {}).value || '');
   const title = $('#siTitle');
   if (title)
-    title.textContent = !SI.invited
-      ? f.title
-      : mode === 'in'
-        ? 'Sign in to join the squad'
+    title.textContent = SI.coach
+      ? mode === 'in'
+        ? 'Sign in to join your coach'
         : mode === 'new'
-          ? 'Create your account to join the squad'
-          : f.title;
-  body.innerHTML = `<p class="small">${SI.invited ? 'You have been invited to a squad. ' : ''}${f.lead}</p>
+          ? 'Create your account to join your coach'
+          : f.title
+      : !SI.invited
+        ? f.title
+        : mode === 'in'
+          ? 'Sign in to join the squad'
+          : mode === 'new'
+            ? 'Create your account to join the squad'
+            : f.title;
+  const invite = SI.coach
+    ? 'Your coach has invited you to work with them on Ember. '
+    : SI.invited
+      ? 'You have been invited to a squad. '
+      : '';
+  body.innerHTML = `<p class="small">${invite}${f.lead}</p>${mode === 'in' || mode === 'new' || mode === 'link' ? `<p class="small muted">${SI_WHY_ACCOUNT}</p>` : ''}
     <label class="f">Email<input class="inp" id="siEmail" name="email" type="email" inputmode="email" autocomplete="${mode === 'new' ? 'email' : 'username'}" autocapitalize="off" spellcheck="false" value="${esc(email)}"></label>
-    ${mode === 'in' || mode === 'new' ? passField('siPass', 'Password', mode === 'new') : ''}${mode === 'new' || mode === 'link' ? consentHtml() : ''}<div id="siMsg" role="alert"></div>`;
+    ${mode === 'in' || mode === 'new' ? passField('siPass', 'Password', mode === 'new') : ''}${mode === 'new' || mode === 'link' ? termsHtml() : ''}<div id="siMsg" role="alert"></div>`;
   foot.innerHTML = `<button class="btn ember" data-act="signInGo" id="siGo">${f.go}</button>
     <div class="si-links">${
       mode === 'in'
@@ -116,7 +134,7 @@ A.pwShow = ({ for: id }, el) => {
   el.setAttribute('aria-label', show ? 'Hide the password' : 'Show the password');
 };
 A.signIn = () => {
-  SI.invited = false;
+  SI.invited = SI.coach = false;
   openSheet(
     `${sh('Sign in to Ember')}<div class="sheet-b" id="siBody"></div><div class="sheet-f stack" id="siFoot"></div>`,
   );
@@ -130,6 +148,7 @@ const mustSignIn = () => Store.mode === 'local' && authConfigured() && !LS.get('
 function signInGate() {
   document.body.classList.add('gate');
   SI.invited = !!LS.get('ember:join'); // arrived by a squad's invite link: it is offered once they are in
+  SI.coach = !!LS.get('ember:coachcode') && FEATURES.coach; // arrived by a coach's invite link: the same
   const point = (icon, text) => `<li>${ic(icon)}<span>${text}</span></li>`;
   $('#main').innerHTML = `<div class="gate-wrap"><div class="gate-pitch"><h1>Say what you ate. Ember does the rest.</h1>
     <ul>${point('mic', 'Log a meal by talking, a photo, a barcode or a search, with Irish and UK foods and portions.')}${point('dumbbell', 'Follow a training programme and log your sets.')}${point('flame', 'Keep a streak going with quests, and a weekly board with your friends.')}</ul>
@@ -152,10 +171,6 @@ A.signInGo = async () => {
   if ((mode === 'in' || mode === 'new') && !password) return toast('Enter your password.');
   if (mode === 'new' && password.length < PASSWORD_MIN)
     return toast(`Choose a password of at least ${PASSWORD_MIN} characters.`);
-  if (mode === 'new' || mode === 'link') {
-    if (!($('#siAgree') || {}).checked) return toast('Tick the box to agree before you continue.');
-    LS.set('ember:consent', { v: CONSENT_VERSION, at: new Date().toISOString() });
-  }
   const go = $('#siGo');
   go.disabled = true;
   try {

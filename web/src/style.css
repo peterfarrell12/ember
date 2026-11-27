@@ -4912,6 +4912,51 @@ svg .hit {
   }
 }
 
+/* ---------- the first run: health information, the first log, a reminder time (08x-onboard.js) ---------- */
+fieldset.dob {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+fieldset.dob legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.si-terms {
+  line-height: 1.45;
+}
+.tg-why {
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ob-links {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin-top: 14px;
+}
+.ob-links .btn {
+  justify-self: stretch;
+}
+.ob-links .link {
+  text-align: left;
+}
+/* six answers do not fit on one line of a phone: three to a row */
+.seg[data-seg='tsGoal'] {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.seg[data-seg='tsGoal'] button {
+  white-space: normal;
+  min-height: 44px;
+  line-height: 1.2;
+}
 /* a small table of figures: a client's last weeks, measurements */
 table.mini {
   width: 100%;

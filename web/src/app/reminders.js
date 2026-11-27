@@ -57,7 +57,9 @@ export function reminderPlan(input, now = new Date()) {
   return out;
 }
 
-const plugin = async () => (await import('@capacitor/local-notifications')).LocalNotifications;
+/* The plugin is handed back inside an object: a Capacitor plugin answers every property, "then" included, so
+   returning it bare from an async function makes the promise treat it as another promise and fail. */
+const plugin = async () => ({ ln: (await import('@capacitor/local-notifications')).LocalNotifications });
 
 /** Whether this device can show reminders at all. */
 export const canRemind = () => isNative();
@@ -66,7 +68,7 @@ export const canRemind = () => isNative();
 export async function askToRemind() {
   if (!isNative()) return false;
   try {
-    const ln = await plugin();
+    const { ln } = await plugin();
     let p = await ln.checkPermissions();
     if (p.display !== 'granted') p = await ln.requestPermissions();
     return p.display === 'granted';
@@ -83,7 +85,7 @@ export async function askToRemind() {
 export async function syncReminders(reminders) {
   if (!isNative()) return 'unavailable';
   try {
-    const ln = await plugin();
+    const { ln } = await plugin();
     const pending = await ln.getPending();
     const ours = pending.notifications.filter(n => n.id >= FIRST_ID && n.id < FIRST_ID + 100).map(n => ({ id: n.id }));
     if (ours.length) await ln.cancel({ notifications: ours });

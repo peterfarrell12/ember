@@ -846,7 +846,7 @@ async function initAI() {
     if (!(window.claude && window.claude.use)) {
       // signed in: Claude is reached through the server function, by task name
       if (Store.durable) {
-        AI.sample = serverSample(aiAccess);
+        AI.sample = withAiConsent(serverSample(aiAccess));
         AI.images = true;
         // the phone app listens through the phone's own recogniser; a browser through its own, where it has one
         AI.dict = isNative() ? nativeDictation() : browserDictation(); // null hides the microphone
@@ -858,7 +858,7 @@ async function initAI() {
       window.claude.use('dictation'),
       window.claude.use('mcp'),
     ]);
-    AI.sample = s ? withTasks(s) : null;
+    AI.sample = s ? withAiConsent(withTasks(s)) : null;
     AI.dict = d || null;
     AI.mcp = m || null;
     if (s) {
@@ -878,6 +878,8 @@ const AI_MSG = {
   personal_limit:
     'You have used today’s free AI allowance (40 photo, voice and chat requests). It starts again at midnight. Searching, scanning and logging by hand are never limited.',
   session_expired: 'Sign in again, then retry.',
+  ai_declined: 'That needs Ember AI, so nothing was sent. Search, scanning and typing all still work.',
+  ai_off: 'Ember AI is switched off. Turn it on under You, Your data.',
   refused: 'Ember AI could not work with that. Try rewording it.',
   image_rejected: 'That image could not be read. Try another photo.',
   invalid_json: 'The answer came back garbled. Try again.',

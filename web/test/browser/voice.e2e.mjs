@@ -76,7 +76,7 @@ try {
     const t = await panel(pg);
     assert.match(t, /Logged Flat white \| 130 mg of caffeine and 78 kcal\./);
     assert.match(t, /Undo/);
-    assert.match(t, /\+15 XP/);
+    assert.match(t, /\+(15|35) XP/); // 35 on the days when the coffee also completes one of that day's quests
     assert.equal(await pg.$('#toasts .toast'), null, 'no toast over the panel');
     assert.equal(await pg.$('.cele'), null, 'the streak celebration waits');
     assert.match(await eaten(pg), /Eaten 78/);

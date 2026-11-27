@@ -90,6 +90,8 @@ function heroCard(d, t, z) {
 }
 /* The single most useful thing to do next, or nothing. */
 function nextUp(d, t, z) {
+  const first = obNext(d);
+  if (first) return first;
   if (d.date !== today()) return null;
   const h = new Date().getHours(),
     st = streak(),

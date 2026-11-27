@@ -15,6 +15,7 @@
     "typecheck": "tsc -p .",
     "test:unit": "node --test \"test/*.test.mjs\"",
     "test:scanner": "vite build --logLevel error && node test/browser/scanner.e2e.mjs",
+    "test:onboarding": "vite build --logLevel error && node test/browser/onboarding.e2e.mjs",
     "test:voice": "vite build --logLevel error && node test/browser/voice.e2e.mjs",
     "native:assets": "capacitor-assets generate --ios --android --iconBackgroundColor \"#0f3d2e\" --iconBackgroundColorDark \"#0f3d2e\" --splashBackgroundColor \"#0f3d2e\" --splashBackgroundColorDark \"#0f3d2e\"",
     "native:sync": "vite build && cap sync"

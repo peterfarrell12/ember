@@ -22,16 +22,28 @@ assert.match(env.API_URL || '', /^http:\/\/(127\.0\.0\.1|localhost):/, 'this tes
 // build the app pointed at the local Supabase, and serve it
 execFileSync('npx', ['vite', 'build', '--outDir', 'dist-local', '--logLevel', 'error'], {
   cwd: web,
-  env: { ...process.env, VITE_SUPABASE_URL: env.API_URL, VITE_SUPABASE_KEY: env.ANON_KEY },
+  env: {
+    ...process.env,
+    VITE_SUPABASE_URL: env.API_URL,
+    VITE_SUPABASE_KEY: env.ANON_KEY,
+  },
   stdio: 'inherit',
 });
-const server = spawn('python3', ['-m', 'http.server', '8765'], { cwd: web + '/dist-local', stdio: 'ignore' });
+const server = spawn('python3', ['-m', 'http.server', '8765'], {
+  cwd: web + '/dist-local',
+  stdio: 'ignore',
+});
 const APP = 'http://127.0.0.1:8765/index.html';
 await new Promise(r => setTimeout(r, 1000));
 
-const admin = createClient(env.API_URL, env.SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const admin = createClient(env.API_URL, env.SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+});
 const email = `e2e-${Date.now()}@example.test`;
-const { data: made, error: madeErr } = await admin.auth.admin.createUser({ email, email_confirm: true });
+const { data: made, error: madeErr } = await admin.auth.admin.createUser({
+  email,
+  email_confirm: true,
+});
 if (madeErr) throw madeErr;
 const uid = made.user.id;
 const link = async () => {
@@ -45,7 +57,7 @@ const link = async () => {
 };
 const rows = async () => (await admin.from('user_docs').select('kind, id, data').eq('user_id', uid)).data;
 const until = async (what, test, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     if (await test()) return;
     await new Promise(r => setTimeout(r, 200));
   }
@@ -81,7 +93,10 @@ const closeSheets = async pg => {
 };
 
 const extra = [];
-const browser = await chromium.launch({ channel: 'chrome', args: ['--no-sandbox'] });
+const browser = await chromium.launch({
+  channel: 'chrome',
+  args: ['--no-sandbox'],
+});
 const results = [];
 const step = async (name, run) => {
   if (process.env.TRACE) console.error('…', name);
@@ -106,13 +121,22 @@ try {
   const errs = [];
   a.on('pageerror', e => errs.push(String(e)));
   const setUp = async pg => {
+    // health information first, with a date of birth; then the targets, which take the age from it
+    await pg.waitForSelector('#hcGo');
+    assert.equal(await pg.locator('#tgBody').count(), 0, 'no questions before the health information screen');
+    await pg.fill('#hcD', '03');
+    await pg.fill('#hcM', '03');
+    await pg.fill('#hcY', '1992');
+    await pg.click('#hcGo');
     await pg.waitForSelector('#tgBody');
+    assert.equal(await pg.locator('[data-k="age"]').count(), 0, 'age is not asked twice');
     await pg.click('#tgBody button:has-text("Male")');
-    await pg.fill('[data-k="age"]', '34');
     await pg.fill('[data-k="cm"]', '183');
     await pg.fill('[data-k="kg"]', '86');
     await pg.click('[data-act="saveTargets"]');
-    await pg.click('[data-act="celeNext"]');
+    // straight to "What have you eaten today?"; these tests log through their own helper
+    await pg.waitForSelector('#obLinks');
+    await closeSheets(pg);
   };
   const entries = async () => ((await rows()).find(x => x.kind === 'days') || { data: { e: [] } }).data.e.length;
 
@@ -132,20 +156,18 @@ try {
       await a.innerText('#main'),
       /Sign in to Ember[\s\S]*Sign in with your email and password[\s\S]*Forgot your password\?[\s\S]*Email me a link instead[\s\S]*New here\? Create an account/,
     );
-    assert.equal(await a.locator('.agree').count(), 0, 'signing in to an account that exists asks for no new consent');
+    assert.equal(await a.locator('.si-terms').count(), 0, 'signing in to an account that exists shows no terms line');
     await a.click('[data-act="siMode"][data-mode="link"]');
     assert.match(await a.innerText('#main'), /Sign in with a link[\s\S]*No password needed[\s\S]*Email me a link/);
     await a.click('[data-act="signInGo"]');
     assert.equal(await a.locator('#siEmail').count(), 1, 'an empty email is not accepted');
-    // the consent tick: required before a link is sent, with the policy pages one tap away
+    // no tick on this screen any more: a line on the terms, and health information is asked on its own screen later
     assert.match(
-      await a.innerText('.agree'),
-      /I am 18 or over and agree to the Terms and Privacy policy\. I consent to Ember storing the health information I enter/,
+      await a.innerText('.si-terms'),
+      /By creating an account you agree to the Terms and have read the Privacy notice/,
     );
-    await a.fill('#siEmail', 'someone@example.test');
-    await a.click('[data-act="signInGo"]');
-    await a.waitForTimeout(300);
-    assert.equal(await a.locator('#siEmail').count(), 1, 'no link is sent without the tick');
+    assert.equal(await a.locator('#main input[type="checkbox"]').count(), 0, 'nothing to tick');
+    assert.match(await a.innerText('#main'), /Your account keeps your diary safe and on every device/);
     for (const page of ['privacy.html', 'terms.html']) {
       const res = await a.request.get(APP.replace('index.html', page));
       assert.equal(res.status(), 200, page);
@@ -350,15 +372,29 @@ try {
     // a diary made on the device before accounts existed (the device-only mode the tests and the prototype use)
     const c = await (await browser.newContext(phone)).newPage();
     await c.goto(APP);
-    await c.evaluate(() => localStorage.setItem('ember:device-only', '1'));
+    // ember:guided gives it the same first run as an account, so the diary carries its health consent with it
+    await c.evaluate(() => {
+      localStorage.setItem('ember:device-only', '1');
+      localStorage.setItem('ember:guided', '1');
+    });
     await c.reload();
     await setUp(c);
     await logFood(c, 'banana');
-    await c.evaluate(() => localStorage.removeItem('ember:device-only'));
+    await c.evaluate(() => {
+      localStorage.removeItem('ember:device-only');
+      localStorage.removeItem('ember:guided');
+    });
     const email2 = `e2e-move-${Date.now()}@example.test`;
-    const { data: u2 } = await admin.auth.admin.createUser({ email: email2, email_confirm: true });
+    const { data: u2 } = await admin.auth.admin.createUser({
+      email: email2,
+      email_confirm: true,
+    });
     extra.push(u2.user.id);
-    const l2 = await admin.auth.admin.generateLink({ type: 'magiclink', email: email2, options: { redirectTo: APP } });
+    const l2 = await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email2,
+      options: { redirectTo: APP },
+    });
     await c.goto(l2.data.properties.action_link);
     await c.waitForSelector('[data-act="moveYes"]');
     assert.match(await c.innerText('#main'), /Bring your diary with you\?[\s\S]*1 day in it/);
@@ -367,7 +403,11 @@ try {
     await ready(c);
     await until('the moved rows', async () => {
       const r = (await admin.from('user_docs').select('kind, data').eq('user_id', u2.user.id)).data;
-      return r.some(x => x.kind === 'profile') && r.some(x => x.kind === 'days' && x.data.e.length === 1);
+      return (
+        r.some(x => x.kind === 'profile') &&
+        r.some(x => x.kind === 'days' && x.data.e.length === 1) &&
+        r.some(x => x.kind === 'meta' && x.data.health === true)
+      );
     });
     assert.equal(await c.isVisible('nav.tabs'), true);
   });
@@ -392,7 +432,7 @@ try {
     await pg.click('[data-act="openData"]');
     await pg.click('[data-act="signOut"]');
     await pg.waitForSelector('#siEmail');
-    if (!(await pg.locator('#siPass').count()) || (await pg.locator('.agree').count()))
+    if (!(await pg.locator('#siPass').count()) || (await pg.locator('.si-terms').count()))
       await pg.click('[data-act="siMode"][data-mode="in"]');
   };
   const signInWith = async (pg, password) => {
@@ -400,45 +440,51 @@ try {
     await pg.fill('#siPass', password);
     await pg.click('#siGo');
   };
-  const account = async () => (await admin.auth.admin.listUsers({ perPage: 1000 })).data.users.find(u => u.email === mail);
+  const account = async () =>
+    (await admin.auth.admin.listUsers({ perPage: 1000 })).data.users.find(u => u.email === mail);
   await step(
-    'an account is created with an email and a password: not with a short password, not without the tick',
+    'an account is created with an email and a password, not with a short one; health consent is recorded after its own screen',
     async () => {
       await d.goto(APP);
       await d.waitForSelector('#siPass');
       await d.fill('#siEmail', mail);
       await d.fill('#siPass', 'short');
-      await d.check('#siAgree');
       await d.click('#siGo');
       await d.waitForTimeout(400);
       assert.equal(await account(), undefined, 'a short password creates nothing');
       await d.fill('#siPass', 'first-password-1');
-      await d.uncheck('#siAgree');
       await d.click('#siGo');
-      await d.waitForTimeout(400);
-      assert.equal(await account(), undefined, 'nothing is created without the tick');
-      await d.check('#siAgree');
-      await d.click('#siGo');
-      await setUp(d);
+      await d.waitForSelector('#hcGo');
       const user = await account();
       assert.ok(user, 'the account exists');
       extra.push(user.id);
+      const meta = async () =>
+        (await admin.from('user_docs').select('id,data').eq('user_id', user.id).eq('kind', 'meta')).data;
+      await d.waitForTimeout(800);
+      assert.ok(!(await meta()).some(r => r.id === 'consent'), 'no consent is recorded until the person agrees');
+      await setUp(d);
       await until('the consent on the account', async () =>
-        (await admin.from('user_docs').select('id').eq('user_id', user.id).eq('kind', 'meta')).data.some(r => r.id === 'consent'),
+        (await meta()).some(r => r.id === 'consent' && r.data.health === true && r.data.ai === undefined),
+      );
+      await until('the furthest step on the account', async () =>
+        (await meta()).some(r => r.id === 'onboarding' && r.data.step === 'targets'),
       );
     },
   );
-  await step('signing in again needs the right password, and a wrong one says so without saying which part', async () => {
-    await signOutOf(d);
-    await signInWith(d, 'not-the-password');
-    await d.waitForSelector('#siMsg .banner');
-    assert.match(await d.innerText('#siMsg'), /That email and password do not match/);
-    assert.equal(await d.isVisible('nav.tabs'), false);
-    await signInWith(d, 'first-password-1');
-    await ready(d);
-    assert.equal(await d.isVisible('nav.tabs'), true);
-    assert.equal(await d.locator('#tgBody').count(), 0, 'an account that is already set up goes straight in');
-  });
+  await step(
+    'signing in again needs the right password, and a wrong one says so without saying which part',
+    async () => {
+      await signOutOf(d);
+      await signInWith(d, 'not-the-password');
+      await d.waitForSelector('#siMsg .banner');
+      assert.match(await d.innerText('#siMsg'), /That email and password do not match/);
+      assert.equal(await d.isVisible('nav.tabs'), false);
+      await signInWith(d, 'first-password-1');
+      await ready(d);
+      assert.equal(await d.isVisible('nav.tabs'), true);
+      assert.equal(await d.locator('#tgBody').count(), 0, 'an account that is already set up goes straight in');
+    },
+  );
   await step('a signed-in person changes their password, and the old one stops working', async () => {
     await closeSheets(d);
     await d.click('#chipYou');
@@ -467,7 +513,10 @@ try {
     if (error) throw error;
     await d.goto(data.properties.action_link);
     await d.waitForSelector('#npPass', { timeout: 20000 });
-    assert.match(await d.innerText('.sheet >> nth=-1'), /Choose a new password[\s\S]*You are signed in from the link we sent/);
+    assert.match(
+      await d.innerText('.sheet >> nth=-1'),
+      /Choose a new password[\s\S]*You are signed in from the link we sent/,
+    );
     await d.fill('#npPass', 'third-password-3');
     await d.click('#npGo');
     await d.waitForFunction(() => !document.querySelector('#npPass'));

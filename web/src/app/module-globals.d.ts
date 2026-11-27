@@ -18,6 +18,7 @@ import * as m15 from './roadmap.js';
 import * as m16 from './recipe-server.js';
 import * as m17 from './native-dictation.js';
 import * as m18 from './coaching.js';
+import * as m19 from './onboarding.js';
 declare global {
   const $: typeof m0.$;
   const $$: typeof m0.$$;
@@ -109,4 +110,20 @@ declare global {
   const engagement: typeof m18.engagement;
   const stall: typeof m18.stall;
   const coachingApi: typeof m18.coachingApi;
+  const MIN_AGE: typeof m19.MIN_AGE;
+  const CONSENT_VERSION: typeof m19.CONSENT_VERSION;
+  const dobFrom: typeof m19.dobFrom;
+  const ageOn: typeof m19.ageOn;
+  const kcalFloor: typeof m19.kcalFloor;
+  const BMI_FLOOR: typeof m19.BMI_FLOOR;
+  const bmiOf: typeof m19.bmiOf;
+  const lowestHealthyKg: typeof m19.lowestHealthyKg;
+  const canLose: typeof m19.canLose;
+  const goalWeightOk: typeof m19.goalWeightOk;
+  const STEPS: typeof m19.STEPS;
+  const furthest: typeof m19.furthest;
+  const consentOf: typeof m19.consentOf;
+  const TRAIN_FOR: typeof m19.TRAIN_FOR;
+  const TRAIN_KIT: typeof m19.TRAIN_KIT;
+  const rankTemplates: typeof m19.rankTemplates;
 }

@@ -228,7 +228,6 @@ const tgWords = t =>
     .filter(Boolean)
     .join(', ');
 /* the lowest daily calorie target Ember sets by itself (the same floor the retune uses) */
-const kcalFloor = () => (P.sex === 'f' ? 1200 : 1500);
 function cgOfferCard() {
   if (!hasCoach() || !P.offer) return '';
   const who = esc(CG.coach.coach_name),
@@ -252,7 +251,7 @@ function cgOfferCard() {
       card(
         't',
         'New targets',
-        `${tgWords(t)}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g of protein' : ''}.${t.k < kcalFloor() ? ` This is below ${fmt(kcalFloor())} kcal, the lowest daily target Ember sets by itself. Talk it through with your coach before using it, and with a doctor if you have a health condition.` : ''}`,
+        `${tgWords(t)}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g of protein' : ''}.${t.k < kcalFloor(P.sex) ? ` This is below ${fmt(kcalFloor(P.sex))} kcal, the lowest daily target Ember sets by itself. Talk it through with your coach before using it, and with a doctor if you have a health condition.` : ''}`,
         'Use these targets',
         'Keep mine',
       ),

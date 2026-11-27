@@ -140,6 +140,7 @@ function closeSheet(n = 1) {
       w._from.focus({ preventScroll: true });
   }
   closeMenu();
+  if (!sheets.length) setTimeout(obIdle, 0); // a reminder time is asked for once the first log's sheets are gone
 }
 const closeAll = () => closeSheet(sheets.length);
 const topSheet = () => (sheets.length ? sheets[sheets.length - 1].firstElementChild : null);

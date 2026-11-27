@@ -104,7 +104,7 @@ function trainHero(tk, p) {
       <div class="th-links"><button data-act="progView" data-id="${p.id}">Whole program</button><button data-act="progs">Change program</button>${plan().days.length ? '' : `<button data-act="cal">Set training days</button>`}</div>${rd}</section>`;
   }
   return `<section class="thero"><div><div class="th-k">No program yet</div><div class="th-t">Pick a plan to follow</div><div class="th-f">Each session opens with your last numbers on every lift and tells you when it is time to go up.</div></div>
-    <button class="btn ember" data-act="progs">${ic('book')} Choose a program</button><div class="th-links"><button data-act="progAI">Have Ember AI build one</button><button data-act="quickStart">Just start a workout</button></div>${rd}</section>`;
+    <button class="btn ember" data-act="trainSetup">${ic('book')} Find my programme</button><div class="th-links"><button data-act="progs">See all programs</button><button data-act="progAI">Have Ember AI build one</button><button data-act="quickStart">Just start a workout</button></div>${rd}</section>`;
 }
 A.trainStats = () => {
   S.pv = 'train';

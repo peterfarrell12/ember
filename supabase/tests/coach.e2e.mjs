@@ -85,15 +85,23 @@ async function person(tag, email = `coach-${tag}-${Date.now()}@example.test`) {
   ).newPage();
   pg.on("pageerror", (e) => errs.push(tag + ": " + String(e)));
   await pg.goto(link.data.properties.action_link);
+  // health information and a date of birth first, then the targets, then the first-log sheet
+  await pg.waitForSelector("#hcGo", { timeout: 20000 });
+  await pg.fill("#hcD", "03");
+  await pg.fill("#hcM", "03");
+  await pg.fill("#hcY", "1992");
+  await pg.click("#hcGo");
   await pg.waitForSelector("#tgBody", { timeout: 20000 });
   await pg.click('#tgBody button:has-text("Male")');
   for (const [k, v] of [
-    ["age", "34"],
     ["cm", "183"],
     ["kg", "86"],
   ])
     await pg.fill(`#tgBody [data-k="${k}"]`, v);
   await pg.click('[data-act="saveTargets"]');
+  await pg.waitForSelector("#obLinks");
+  await pg.click('#obLinks [data-act="close"]');
+  await pg.waitForTimeout(300);
   await clear(pg);
   return pg;
 }
