@@ -79,6 +79,18 @@ async function loadPhotos() {
     ]);
     PHO.list = mine.sort((a, b) => (a.d < b.d ? 1 : -1));
     PHO.cl = cl.sort((a, b) => (a.d < b.d ? 1 : -1));
+    // between real accounts the server says which photos are shared: an ended link shares nothing
+    if (coachingOn() && !DEMO)
+      try {
+        const paths = new Set(hasCoach() ? (await (await cgApi()).photos(CG.coach.id)).map(r => r.path) : []);
+        for (const p of PHO.list) {
+          const sh = !!(p.aid && paths.has(p.aid));
+          if (!!p.sh !== sh) {
+            p.sh = sh;
+            Store.put('photos', p.id, p);
+          }
+        }
+      } catch (e) {}
     const a = Store.durable && (await assetStore());
     if (a && a.urls)
       try {
@@ -111,6 +123,7 @@ function photoSet(cid) {
   const c = getClient(cid);
   if (!c) return [];
   if (c.kind === 'me') return (PHO.list || []).filter(p => p.sh);
+  if (c.kind === 'live' && c.link && coachingOn()) return cgPhotosOf(c);
   if (c.kind === 'live') return ((LIVE[c.uid] || {}).ph || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1));
   return (PHO.cl || []).filter(p => p.cid === cid);
 }
@@ -154,7 +167,7 @@ function phNew(file) {
   const url = URL.createObjectURL(file);
   openSheet(`${sh('New progress photo')}<div class="sheet-b"><img class="phprev" alt="The photo you picked" src="${url}">
     ${segHtml('phPose', Object.entries(POSES), 'front')}<label class="f">Date<input class="inp" type="date" id="phD" value="${today()}" max="${today()}"></label>
-    ${PN.cid || !FEATURES.coach || Store.durable ? '' : `<button class="chk" data-act="phShareNew" aria-pressed="false"><span class="tb"></span><span>Let my coach see this one</span></button>`}</div>
+    ${PN.cid || !FEATURES.coach || (Store.durable && !coached()) ? '' : `<button class="chk" data-act="phShareNew" aria-pressed="false"><span class="tb"></span><span>Let my coach see this one</span></button>`}</div>
     <div class="sheet-f"><button class="btn ember" data-act="phSave" id="phGoBtn">Save photo</button></div>`);
   SEG.phPose = v => {
     PN.pose = v;
@@ -175,6 +188,7 @@ A.phSave = async () => {
     const st = await photoStore(PN.file),
       id = newId(),
       doc = { id, d, pose: PN.pose, ...st, ...(PN.cid ? { cid: PN.cid } : { kg: kgAt(d), sh: PN.sh }) };
+    if (doc.sh && !(await cgPhotoShare(doc, true))) doc.sh = false; // saved all the same, and kept private
     Store.put(PN.cid ? 'clphotos' : 'photos', id, doc);
     const key = PN.cid ? 'cl' : 'list';
     PHO[key] = [doc].concat(PHO[key] || []).sort((a, b) => (a.d < b.d ? 1 : -1));
@@ -201,11 +215,57 @@ function sharePhotos() {
   lastPub = 0;
   publishStatus();
 }
+/* Between two real accounts a photo is shared by name: the coach may then open that one file and no other.
+   Returns false, with a message, if it could not be done; the photo's own record is only changed after. */
+async function cgPhotoShare(p, on) {
+  if (!coachingOn()) return true;
+  if (on && !p.aid) {
+    toast('This photo is kept on this device only, so it cannot be shared. Add it again to share it.');
+    return false;
+  }
+  if (!p.aid || !hasCoach()) return true;
+  try {
+    await (await cgApi()).photoShare({ path: p.aid, d: p.d, pose: p.pose, kg: p.kg, w: p.w, h: p.h }, on);
+    return true;
+  } catch (e) {
+    toast(
+      on
+        ? 'That photo could not be shared. Check your connection and try again.'
+        : 'That could not be changed just now. Try again.',
+    );
+    return false;
+  }
+}
 const sharedPhotos = () =>
   (PHO.list || [])
     .filter(p => p.sh && p.aid)
     .slice(0, 12)
     .map(p => ({ id: p.id, d: p.d, pose: p.pose, kg: p.kg ?? null, aid: p.aid, w: p.w, h: p.h }));
+/* Coach: the photos a client has shared, read when their Photos tab first opens. Each is shown through a
+   short-lived link the server only gives while the photo is shared and the link is active. */
+function cgPhotosOf(c) {
+  CG.ph = CG.ph || {};
+  if (CG.ph[c.link] === undefined) {
+    CG.ph[c.link] = null;
+    cgPhotosLoad(c);
+  }
+  return CG.ph[c.link] || [];
+}
+async function cgPhotosLoad(c) {
+  try {
+    const rows = await (await cgApi()).photos(c.link),
+      a = await assetStore(),
+      urls = a && a.urls && rows.length ? await a.urls(rows.map(r => r.path)) : {};
+    Object.assign(PHO.signed, urls);
+    // a record whose file has gone has nothing to show
+    CG.ph[c.link] = rows
+      .filter(r => urls[r.path])
+      .map(r => ({ id: r.path, aid: r.path, d: r.d, pose: r.pose, kg: r.kg, w: r.w, h: r.h }));
+  } catch (e) {
+    CG.ph[c.link] = [];
+  }
+  if ($('#ccBody') && CC === c.id) renderClient();
+}
 let PV = null;
 A.phView = ({ id, cid }) => {
   const ps = photoSet(cid),
@@ -218,14 +278,15 @@ A.phView = ({ id, cid }) => {
   openSheet(
     `${sh(niceDate(p.d))}<div class="sheet-b"><img class="phbig" alt="${POSES[p.pose] || 'Photo'}" src="${photoUrl(p)}"><div class="row" style="flex-wrap:wrap;gap:6px"><span class="pill">${POSES[p.pose] || 'Photo'}</span>${p.kg ? `<span class="pill">${p.kg} kg</span>` : ''}${p.sh && mine ? `<span class="pill good">Shared with your coach</span>` : ''}</div>
     ${ps.length > 1 ? `<button class="btn" data-act="phCompare" data-id="${id}" data-cid="${cid || ''}">${ic('swap')} Compare with another</button>` : ''}
-    ${mine && FEATURES.coach && !Store.durable ? `<button class="btn ghost" data-act="phShare">${ic(p.sh ? 'lock' : 'users')} ${p.sh ? 'Stop sharing with my coach' : 'Share with my coach'}</button>` : ''}
+    ${mine && FEATURES.coach && (!Store.durable || coached() || p.sh) ? `<button class="btn ghost" data-act="phShare">${ic(p.sh ? 'lock' : 'users')} ${p.sh ? 'Stop sharing with my coach' : 'Share with my coach'}</button>` : ''}
     ${mine || coachOwned ? `<button class="link" data-act="phDel" style="color:var(--bad);align-self:center">Delete this photo</button>` : ''}</div>`,
     true,
   );
 };
-A.phShare = () => {
+A.phShare = async () => {
   const p = PHO.list.find(x => x.id === PV.id);
   if (!p) return;
+  if (!(await cgPhotoShare(p, !p.sh))) return;
   p.sh = !p.sh;
   Store.put('photos', p.id, p);
   sharePhotos();
@@ -237,6 +298,7 @@ A.phDel = async () => {
   const key = PV.cid ? 'cl' : 'list',
     p = (PHO[key] || []).find(x => x.id === PV.id);
   if (!p) return;
+  if (!PV.cid && p.sh) await cgPhotoShare(p, false); // a photo that is going is unshared first
   PHO[key] = PHO[key].filter(x => x.id !== p.id);
   Store.del(PV.cid ? 'clphotos' : 'photos', p.id);
   if (p.aid) {

@@ -741,7 +741,7 @@ A.dayNut = () => {
   openSheet(
     `${sh(S.date === today() ? "Today's nutrition" : 'Nutrition, ' + niceDate(S.date))}<div class="sheet-b">
     <div class="card"><div class="row" style="align-items:baseline;gap:8px;margin-bottom:12px"><span class="num bigk">${fmt(t.k)}</span><span class="muted">kcal from ${t.n} ${t.n === 1 ? 'food' : 'foods'}</span></div>
-    <div class="nut">${row('Protein', r0(t.p), 'g', P.t.p)}${row('Carbohydrate', r0(t.c), 'g', P.t.c)}${row('of which sugars', r0(t.su), 'g', 90, 1, 1)}${row('Fat', r0(t.f), 'g', P.t.f)}${row('of which saturates', r0(t.sf), 'g', 20, 1, 1)}${row('Fibre', r0(t.fi), 'g', 30)}${row('Salt', r1(salt), 'g', 6, 0, 1)}</div></div>
+    <div class="nut">${row('Protein', r0(t.p), 'g', P.t.p)}${row('Carbohydrate', r0(t.c), 'g', P.t.c)}${row('of which sugars', r0(t.su), 'g', 90, 1, 1)}${row('Fat', r0(t.f), 'g', P.t.f)}${row('of which saturates', r0(t.sf), 'g', 20, 1, 1)}${row('Fibre', r0(t.fi), 'g', P.t.fi || 30)}${row('Salt', r1(salt), 'g', 6, 0, 1)}</div></div>
     ${microCard(d)}
     <p class="tiny muted">Protein, carbohydrate and fat are set against your own targets. Sugars, saturates and salt are set against the reference intakes for an average adult printed on food labels; fibre against the 30 g a day advised for adults. General guidance, not medical advice.${gaps ? ` ${gaps} of the ${t.n} foods ${gaps === 1 ? 'does' : 'do'} not list sugars, saturates or salt, so those totals may be higher.` : ''}</p></div>`,
   );

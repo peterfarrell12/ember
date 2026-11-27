@@ -41,13 +41,19 @@ const cgList = words =>
 async function cgLoad(force) {
   if (!coachingOn() || CG.busy || DEMO || (!force && Date.now() - CG.at < 20000)) return;
   CG.busy = true;
-  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page]);
+  const mark = () => JSON.stringify([CG.coach, CG.clients, LIVE, CG.inbox, CG.cks, CG.page, CG.inbox2, P.co, CG.wk]);
   const before = mark();
   try {
     const api = await cgApi();
     const { clients, coach } = await api.links();
     CG.clients = clients;
     CG.coach = coach;
+    // no coach any more: what the last one set (forms, phases, habits and the rest) goes with them
+    if (!coach && (P.co || P.ckForm || P.coachBrand)) {
+      for (const k of ['co', 'ckForm', 'coachBrand', 'asg', 'offer', 'evSeen', 'consultSent', 'selfSent', 'ckSent'])
+        delete P[k];
+      saveProfile();
+    }
     CG.at = Date.now();
     const linked = clients.filter(l => l.client_id);
     if (linked.length && P.mode === 'coach') {
@@ -65,12 +71,29 @@ async function cgLoad(force) {
       }
       LIVE = next;
       await cgWelcome(api, linked);
+      CG.inbox2 = await api.inbox(200); // every client's form answers, for the inbox and the overdue list
+      const wk = Object.fromEntries(linked.map(l => [l.id, []]));
+      for (const w of await api.weeksAll(addDays(ckWeek(), -84))) if (wk[w.link_id]) wk[w.link_id].push(w);
+      CG.wk = wk; // weekly summaries, for engagement, the last weeks and the roadmap
     } else if (!linked.length) LIVE = {};
     if (coach && coach.status !== 'invited') {
       const set = await api.assigned(coach.id);
       if (set) applyAssign(set, true);
-      if (P.ckForm) CG.cks = await api.checkins(coach.id, 2);
+      if (P.ckForm || (P.co && (P.co.consult || P.co.self))) CG.cks = await api.checkins(coach.id, 4);
       cgPublish();
+      cgWeeksSend();
+    }
+    await cgMsgs();
+    // an invitation a coach addressed to this person's email shows up without a code being passed along
+    if (!coach && !LS.get('ember:coachcode')) {
+      const mine = (await api.invitesForMe().catch(() => [])) || [],
+        inv = mine.find(i => !(P.invSeen || []).includes(i.code));
+      if (inv) {
+        P.invSeen = (P.invSeen || []).concat([inv.code]).slice(-20);
+        saveProfile();
+        LS.set('ember:coachcode', inv.code);
+        setTimeout(cgOfferInvite, 0);
+      }
     }
     if (P.mode === 'coach') CG.page = await api.myPage();
     // applications: those waiting for this coach, and one of this person's own that a coach has accepted
@@ -87,21 +110,36 @@ async function cgLoad(force) {
   CG.busy = false;
   if (mark() !== before && !sheets.length && S.ready) render();
 }
-/* A coach's starter for new clients (set on Your page): a welcome message and the weekly check-in, sent once
-   to each client when they first appear. Nothing is sent to clients who were already linked when it was set. */
+/* A coach's starter for new clients (set on Your page): a welcome message, the consultation form and the
+   check-in, sent once to each client when they first appear, along with what every client gets (the vault,
+   recipes and the menu of the week). Nothing is sent to clients who were already linked when it was set. */
 async function cgWelcome(api, linked) {
-  const st = CO.starter;
-  if (!st || !(st.msg || st.ck)) return;
+  const st = CO.starter || {},
+    kit = CO.vault || CO.recipes || CO.menu;
+  if (!(st.msg || st.ck || st.consult || kit)) return;
   CO.welcomed = CO.welcomed || {};
   let any = false;
   for (const l of linked) {
     if (l.status !== 'active' || CO.welcomed[l.id]) continue;
     try {
+      const rec = () => recOf('u:' + l.client_id), // looked up each time: records can be re-read between sends
+        pick = async kind => {
+          await formsLoad();
+          const f = formsOf(kind)[0] || FORM_STARTERS[kind]; // the coach's own form if they have built one
+          return { title: f.title, qs: clone(f.qs) };
+        };
       if (st.msg) await api.assign(l.id, 'msg', { d: today(), t: st.msg });
-      if (st.ck) {
-        await api.assign(l.id, 'checkin', { qs: CK_STARTER, wd: 4 });
-        recOf('u:' + l.client_id).ck = { qs: CK_STARTER, wd: 4 };
+      if (st.consult) {
+        const form = await pick('consult');
+        await api.assign(l.id, 'consult', { form, wd: 0, every: 1 });
+        rec().consult = { ...form, wd: 0, every: 1 };
       }
+      if (st.ck) {
+        const form = await pick('checkin');
+        await api.assign(l.id, 'checkin', { form, wd: 4, every: 1 });
+        rec().ck = { ...form, wd: 4, every: 1 };
+      }
+      await cgShareKit(api, l.id);
       CO.welcomed[l.id] = 1;
       any = true;
     } catch (e) {}
@@ -177,6 +215,19 @@ function cgOffers(a, seen) {
   }
   return changed;
 }
+/* a set of targets in words: 2,200 kcal a day, 150 g protein, 60 g fat… */
+const tgWords = t =>
+  [
+    fmt(t.k) + ' kcal a day',
+    t.p ? t.p + ' g protein' : '',
+    t.c ? t.c + ' g carbohydrate' : '',
+    t.f ? t.f + ' g fat' : '',
+    t.fi ? t.fi + ' g fibre' : '',
+    t.w ? fmt(t.w) + ' ml water' : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+/* the lowest daily calorie target Ember sets by itself (the same floor the retune uses) */
 function cgOfferCard() {
   if (!hasCoach() || !P.offer) return '';
   const who = esc(CG.coach.coach_name),
@@ -200,13 +251,41 @@ function cgOfferCard() {
       card(
         't',
         'New targets',
-        `${fmt(t.k)} kcal a day${t.p ? ' and ' + t.p + ' g of protein' : ''}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g' : ''}.`,
+        `${tgWords(t)}. Yours now: ${fmt(P.t.k)} kcal${t.p ? ' and ' + P.t.p + ' g of protein' : ''}.${t.k < kcalFloor(P.sex) ? ` This is below ${fmt(kcalFloor(P.sex))} kcal, the lowest daily target Ember sets by itself. Talk it through with your coach before using it, and with a doctor if you have a health condition.` : ''}`,
         'Use these targets',
         'Keep mine',
       ),
     );
+  for (const e of P.offer.ev || [])
+    out.push(
+      `<section class="card stack" style="border-color:var(--ember)"><div><div class="tiny muted">From your coach, ${who}</div><h2>${esc(e.t)}</h2></div><p class="small">${longDate(e.d)}${e.tm ? ' at ' + e.tm : ''}${e.min ? ', ' + e.min + ' minutes' : ''}. Add it to your calendar?</p><div class="two"><button class="btn sm ember" data-act="cgEvYes" data-id="${e.id}">Add to my calendar</button><button class="btn sm ghost" data-act="cgEvNo" data-id="${e.id}">Not for me</button></div></section>`,
+    );
   return out.join('');
 }
+/* a call or an event the coach suggests: added to the calendar only if the client says so */
+function cgEvAnswer(id, yes) {
+  const list = (P.offer && P.offer.ev) || [],
+    e = list.find(x => x.id === id);
+  if (!e) return;
+  if (yes) {
+    const pl = plan();
+    pl.ev = pl.ev
+      .filter(x => x.id !== 'co' + e.id)
+      .concat([{ id: 'co' + e.id, k: 'appt', t: e.t, tm: e.tm, min: e.min, wd: null, d: e.d }]);
+  }
+  P.offer.ev = list.filter(x => x.id !== id);
+  const resp = { ...(P.offerResp || {}), ['ev' + id]: { v: Date.now(), yes: !!yes, d: today() } },
+    evs = Object.keys(resp).filter(k => k.startsWith('ev'));
+  for (const k of evs.slice(0, Math.max(0, evs.length - 12))) delete resp[k]; // the last dozen answers are enough
+  P.offerResp = resp;
+  saveProfile();
+  lastPub = 0;
+  cgPublish();
+  render();
+  toast(yes ? 'Added to your calendar.' : 'Left out. Your coach will see that.');
+}
+A.cgEvYes = ({ id }) => cgEvAnswer(id, true);
+A.cgEvNo = ({ id }) => cgEvAnswer(id, false);
 function cgAnswer(k, yes) {
   const o = P.offer && P.offer[k];
   if (!o) return;
@@ -217,6 +296,12 @@ function cgAnswer(k, yes) {
   if (yes && k === 't') {
     P.t.k = o.k;
     if (o.p) P.t.p = o.p;
+    if (o.f) P.t.f = o.f;
+    // carbohydrate is what is left after protein and fat, unless the coach set it
+    P.t.c = o.c || Math.max(50, Math.round((o.k - P.t.p * 4 - P.t.f * 9) / 4 / 5) * 5);
+    if (o.w) P.t.w = o.w;
+    if (o.fi) P.t.fi = o.fi;
+    else delete P.t.fi;
   }
   delete P.offer[k];
   P.offerResp = { ...(P.offerResp || {}), [k]: { v: o.v, yes: !!yes, d: today() } };
@@ -259,7 +344,7 @@ const cgToggles = share =>
     a =>
       `<button class="chk" data-act="cgShare" data-area="${a}" aria-pressed="${share[a] ? 'true' : 'false'}"><span class="tb"></span><span><b>${SHARE_LABEL[a][0]}</b><small class="muted" style="display:block;font-weight:400">${SHARE_LABEL[a][1]}</small></span></button>`,
   ).join('');
-const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
+const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included: you choose those one photo at a time, if you want to. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
 let CJ = null;
 A.cgJoin = async ({ code } = {}) => {
   if (!coachingOn()) return toast('Sign in to join a coach.');
@@ -310,6 +395,7 @@ A.cgShare = async ({ area }, el) => {
     await (await cgApi()).setShare(l.id, share);
     l.share = share;
     CG.sent = '';
+    CG.wkSent = {}; // the weekly summaries were removed with the old choice: send them again, cut to the new one
     lastPub = 0;
     cgPublish();
     toast(
@@ -442,10 +528,28 @@ A.cgSees = async () => {
       line('Goal', esc(copy.goal || 'None set')),
     );
   if (on.recovery) rows.push(line('Recovery today', st.ready == null ? 'No check-in' : st.ready));
+  if (on.weight && (copy.view.profile.meas || []).length)
+    rows.push(
+      line(
+        'Measurements',
+        copy.view.profile.meas.length + ' entr' + (copy.view.profile.meas.length === 1 ? 'y' : 'ies'),
+      ),
+    );
+  if (l.status === 'active') {
+    const hs = ((P.co && P.co.habits && P.co.habits.list) || []).length;
+    rows.push(
+      line('Each week', 'A summary of the week for what you share' + (hs ? ', and how many habits you ticked' : '')),
+    );
+    let shared = 0;
+    try {
+      shared = (await (await cgApi()).photos(l.id)).length;
+    } catch (e) {}
+    rows.push(line('Progress photos', shared ? shared + ' you chose to share' : 'None shared'));
+  }
   const off = SHARE_AREAS.filter(a => !on[a]).map(a => SHARE_LABEL[a][0]);
   openSheet(
     `${sh('What your coach sees')}<div class="sheet-b">${l.status === 'paused' ? `<div class="banner">${ic('lock')}<span>Sharing is paused, so your coach sees nothing at the moment.</span></div>` : ''}<div class="card" style="padding:6px 14px">${rows.join('')}</div>
-    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach are always sent. Progress photos, notes, meal plans and anything not listed here are never sent.</p></div>`,
+    <p class="small muted">${off.length ? 'Not shared: ' + cgList(off).toLowerCase() + '. ' : ''}Your messages to your coach and the forms you fill in for them are always sent. A progress photo is sent only if you choose to share that photo. Notes, meal plans and anything not listed here are never sent.</p></div>`,
     true,
   );
 };
@@ -457,19 +561,23 @@ A.cgInvite = () => {
   openSheet(
     `${sh('Invite a client')}<div class="sheet-b"><p class="small">They get a link or a code, sign in to Ember (it is free), and choose what you can see. You see nothing until they accept.</p>
     <label class="f">Your name, as they will see it<input class="inp" id="ciMe" maxlength="40" value="${esc(P.coachName || '')}" autocomplete="name"></label>
-    <label class="f">Their name<input class="inp" id="ciName" maxlength="40" placeholder="So you know whose invitation it is" autocomplete="off"></label><div id="ciOut"></div></div>
+    <label class="f">Their name<input class="inp" id="ciName" maxlength="40" placeholder="So you know whose invitation it is" autocomplete="off"></label>
+    <label class="f">Their email, if you have it<input class="inp" id="ciMail" type="email" maxlength="120" placeholder="Optional" autocomplete="off" autocapitalize="none"></label>
+    <p class="tiny muted">With an email, the invitation is waiting for them when they sign in to Ember with that address, with no code to type. Ember does not email them for you yet, so tell them to sign up.</p><div id="ciOut"></div></div>
     <div class="sheet-f"><button class="btn" data-act="cgInviteGo" id="ciGo">Make the invitation</button></div>`,
     true,
   );
 };
 A.cgInviteGo = async () => {
   const me = ($('#ciMe').value || '').trim(),
-    name = ($('#ciName').value || '').trim();
+    name = ($('#ciName').value || '').trim(),
+    mail = ($('#ciMail').value || '').trim().toLowerCase();
   if (!me) return toast('Add your name first.');
+  if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return toast('That email does not look right.');
   const go = $('#ciGo');
   go.disabled = true;
   try {
-    const inv = await (await cgApi()).invite(me, name);
+    const inv = await (await cgApi()).invite(me, name, mail || null);
     if (!P.coachName) {
       P.coachName = me;
       saveProfile();
@@ -481,6 +589,7 @@ A.cgInviteGo = async () => {
     go.textContent = 'Make another';
     go.disabled = false;
     $('#ciName').value = '';
+    $('#ciMail').value = '';
   } catch (e) {
     go.disabled = false;
     toast(cgWhy(e));
@@ -516,6 +625,7 @@ function cgClientNote(c) {
   const on = cgAreas(c.share),
     off = SHARE_AREAS.filter(a => !(c.share && c.share[a])).map(a => SHARE_LABEL[a][0]);
   const said = Object.entries(c.resp || {})
+    .filter(([k]) => k === 'prog' || k === 't')
     .map(
       ([k, r]) =>
         `${k === 'prog' ? 'The programme you sent' : 'The targets you sent'}: ${r.yes ? 'accepted' : 'declined'} ${niceDate(r.d).toLowerCase()}.`,
@@ -567,236 +677,6 @@ function cgLeaveLens(o) {
   A.coClient({ id: o.back });
 }
 
-/* ================= check-ins =================
-   The coach's questions arrive with what they set (part "checkin"). Once a week the client answers them, and
-   the week's figures from their own diary go with the answers: only for the areas they share, and shown to
-   them before anything is sent. The coach reads it, can ask Claude for a summary and a draft reply (marked as
-   a draft, never sent by itself), and replies. */
-const CK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-function cgApplyMore(a, seen) {
-  let changed = false;
-  if (a.checkin && a.checkin.v > (seen.checkin || 0)) {
-    P.ckForm = { qs: (a.checkin.qs || []).slice(0, 6), wd: a.checkin.wd || 0 };
-    seen.checkin = a.checkin.v;
-    changed = true;
-  }
-  if (a.brand && a.brand.v > (seen.brand || 0)) {
-    P.coachBrand = a.brand.colour || '';
-    seen.brand = a.brand.v;
-    changed = true;
-  }
-  return changed;
-}
-const ckWeek = () => weekStart(today());
-const ckDue = () =>
-  hasCoach() &&
-  CG.coach.status === 'active' &&
-  P.ckForm &&
-  P.ckForm.qs.length &&
-  P.ckSent !== ckWeek() &&
-  wdOf(today()) >= (P.ckForm.wd || 0);
-/* the week's figures, cut to what is shared, as label and value pairs */
-function ckFigures() {
-  const st = sharedCopy({ st: myStatus() }, CG.coach ? CG.coach.share : {}).st,
-    out = [['Streak', st.streak + ' days']];
-  if (st.logged7 != null)
-    out.push(
-      ['Food logged', st.logged7 + ' of 7 days'],
-      ['Calories', fmt(st.kcalAvg) + ' a day against ' + fmt(st.kcalT)],
-      ['Protein', st.protAvg + ' g a day against ' + st.protT + ' g'],
-    );
-  if (st.sess7 != null) out.push(['Sessions', st.sess7 + (st.plan7 ? ' of ' + st.plan7 + ' planned' : '')]);
-  if (st.prs14) out.push(['Records, last 14 days', String(st.prs14)]);
-  if (st.pain != null) out.push(['Rehab pain', st.pain + ' out of 10']);
-  if (st.kg != null)
-    out.push([
-      'Weight',
-      st.kg + ' kg' + (st.kg30 != null ? ', ' + (st.kg30 > 0 ? '+' : '') + st.kg30 + ' kg in a month' : ''),
-    ]);
-  if (st.ready != null) out.push(['Recovery today', String(st.ready)]);
-  return out;
-}
-const ckFigureRows = figs =>
-  figs
-    .map(
-      ([l, v]) =>
-        `<div class="between small" style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="muted">${esc(l)}</span><b style="text-align:right">${esc(v)}</b></div>`,
-    )
-    .join('');
-function cgCheckinCard() {
-  if (!hasCoach()) return '';
-  const who = esc(CG.coach.coach_name),
-    last = (CG.cks || [])[0];
-  const reply =
-    last && last.feedback && last.feedback_at > (P.ckSeen || '')
-      ? `<section class="card stack" style="border-color:var(--ember)"><div><div class="tiny muted">From your coach, ${who}</div><h2>A reply to your check-in</h2></div><p class="small" style="white-space:pre-wrap">${esc(last.feedback)}</p><button class="btn sm ghost" data-act="cgCkRead" style="align-self:flex-start">Got it</button></section>`
-      : '';
-  return (
-    reply +
-    (ckDue()
-      ? `<section class="card stack"><div><div class="tiny muted">For your coach, ${who}</div><h2>This week's check-in</h2></div><p class="small muted">${P.ckForm.qs.length} question${P.ckForm.qs.length === 1 ? '' : 's'}. Your week's figures are filled in for you.</p><button class="btn sm" data-act="cgCheckin" style="align-self:flex-start">Start</button></section>`
-      : '')
-  );
-}
-A.cgCkRead = () => {
-  P.ckSeen = new Date().toISOString();
-  saveProfile();
-  render();
-};
-A.cgCheckin = () => {
-  if (!hasCoach() || !P.ckForm) return;
-  openSheet(
-    `${sh('Check-in for ' + CG.coach.coach_name)}<div class="sheet-b"><div class="card" style="padding:6px 14px"><div class="tiny muted" style="padding-top:6px">Sent with your answers, from your diary</div>${ckFigureRows(ckFigures())}</div>
-    ${P.ckForm.qs.map((q, i) => `<label class="f">${esc(q)}<textarea class="inp" id="ckA${i}" rows="2" maxlength="1200" autocapitalize="sentences"></textarea></label>`).join('')}
-    <p class="tiny muted">Only figures from what you share with your coach are included. You can send it again this week until they reply.</p></div>
-    <div class="sheet-f"><button class="btn ember" data-act="cgCheckinSend" id="ckGo">Send to ${esc(CG.coach.coach_name)}</button></div>`,
-    true,
-  );
-};
-A.cgCheckinSend = async () => {
-  const answers = P.ckForm.qs.map((q, i) => ({ q, a: ($('#ckA' + i).value || '').trim().slice(0, 1200) }));
-  if (!answers.some(x => x.a)) return toast('Answer at least one question first.');
-  const go = $('#ckGo');
-  go.disabled = true;
-  try {
-    await (await cgApi()).checkinSend(ckWeek(), answers, Object.fromEntries(ckFigures()));
-    P.ckSent = ckWeek();
-    saveProfile();
-    closeAll();
-    render();
-    toast('Sent to your coach.', 'good');
-  } catch (e) {
-    go.disabled = false;
-    toast(e && e.code === 'already_answered' ? "Your coach has already replied to this week's check-in." : cgWhy(e));
-  }
-};
-/* ----- the coach's side ----- */
-function cgCkPlanCard(c) {
-  if (c.kind !== 'live' || !c.link) return '';
-  const f = (CO.clients[c.id] || {}).ck;
-  return `<section class="card stack"><div class="between"><h2>Weekly check-in</h2><button class="link" data-act="cgCkForm">${f ? 'Change' : 'Set'}</button></div><p class="small muted">${f && f.qs.length ? f.qs.length + ' question' + (f.qs.length === 1 ? '' : 's') + ', from ' + CK_DAYS[f.wd || 0] + ' each week. Their figures for the week come with the answers.' : 'Ask a few questions each week. Their figures for the week arrive with the answers, so they only write what the numbers cannot say.'}</p></section>`;
-}
-const CK_STARTER = [
-  'How did the week go overall?',
-  'What went well?',
-  'What got in the way?',
-  'Anything you want to change next week?',
-];
-A.cgCkForm = () => {
-  const c = getClient(CC),
-    f = (CO.clients[c.id] || {}).ck || { qs: CK_STARTER, wd: 4 };
-  openSheet(
-    `${sh('Check-in for ' + c.name)}<div class="sheet-b"><label class="f">Questions, one on each line (up to six)<textarea class="inp" id="ckQs" rows="7" maxlength="900">${esc(f.qs.join('\n'))}</textarea></label>
-    <label class="f">Ready for them from<select class="inp" id="ckWd">${CK_DAYS.map((d, i) => `<option value="${i}" ${i === (f.wd || 0) ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
-    <p class="tiny muted">It shows on their Today screen from that day until they send it. Leave the questions empty to stop asking.</p></div>
-    <div class="sheet-f"><button class="btn" data-act="cgCkFormSave">Save</button></div>`,
-    true,
-  );
-};
-A.cgCkFormSave = async () => {
-  const c = getClient(CC),
-    qs = ($('#ckQs').value || '')
-      .split('\n')
-      .map(q => q.trim().slice(0, 140))
-      .filter(Boolean)
-      .slice(0, 6),
-    wd = clamp(r0(num($('#ckWd').value)), 0, 6);
-  if (!(await pushAssign(c.uid, 'checkin', { qs, wd }))) return;
-  recOf(c.id).ck = { qs, wd };
-  saveCO();
-  closeSheet();
-  renderClient();
-  toast(qs.length ? 'Check-in set.' : 'Check-in switched off.');
-};
-/* the client's check-ins, read when their workspace opens */
-async function cgCkLoad(c) {
-  if (!c || !c.link) return;
-  CG.ck = CG.ck || {};
-  try {
-    CG.ck[c.link] = await (await cgApi()).checkins(c.link, 8);
-    if ($('#ccBody') && CC === c.id) renderClient();
-  } catch (e) {}
-}
-function cgClientCheckins(c) {
-  if (c.kind !== 'live' || !c.link) return '';
-  const list = (CG.ck || {})[c.link];
-  if (list === undefined) {
-    cgCkLoad(c);
-    return '';
-  }
-  if (!list.length) return '';
-  return `<section class="card"><h2>Check-ins</h2>${list
-    .slice(0, 4)
-    .map(
-      k =>
-        `<button class="entry" data-act="cgCkOpen" data-id="${k.id}"><span class="n">Week of ${niceDate(k.week)}</span><span class="k">${k.feedback ? '' : '<span class="pill gold">To answer</span>'}</span><span class="s" style="white-space:normal">${esc(((k.answers.find(a => a.a) || {}).a || '').slice(0, 110))}</span></button>`,
-    )
-    .join('')}</section>`;
-}
-let CKO = null;
-A.cgCkOpen = ({ id }) => {
-  const c = getClient(CC),
-    k = c && ((CG.ck || {})[c.link] || []).find(x => x.id === id);
-  if (!k) return;
-  CKO = { id, c: c.id, link: c.link };
-  openSheet(
-    `${sh(c.name.split(' ')[0] + ', week of ' + niceDate(k.week))}<div class="sheet-b"><div class="card" style="padding:6px 14px"><div class="tiny muted" style="padding-top:6px">Their week, from their diary</div>${ckFigureRows(Object.entries(k.figures || {}))}</div>
-    ${k.answers.map(a => `<div class="card stack" style="gap:4px"><b class="small">${esc(a.q)}</b><p class="small" style="white-space:pre-wrap">${a.a ? esc(a.a) : '<span class="muted">No answer</span>'}</p></div>`).join('')}
-    <div id="ckSum"></div>
-    <label class="f">Your reply<textarea class="inp" id="ckReply" rows="5" maxlength="4000" autocapitalize="sentences">${esc(k.feedback || '')}</textarea></label>
-    ${AI.sample ? `<button class="btn ghost" data-act="cgCkDraft">${ic('spark')} Summarise and draft a reply</button>` : ''}</div>
-    <div class="sheet-f"><button class="btn ember" data-act="cgCkReply" id="ckSend">${k.feedback ? 'Send the changed reply' : 'Send reply'}</button></div>`,
-    true,
-  );
-};
-A.cgCkDraft = async () => {
-  const c = getClient(CKO.c),
-    list = (CG.ck || {})[CKO.link] || [],
-    k = list.find(x => x.id === CKO.id),
-    prev = list.find(x => x.week < k.week && x.feedback),
-    out = $('#ckSum');
-  out.innerHTML = `<div class="busy"><div class="spinner"></div>Reading the check-in</div>`;
-  try {
-    const r = await AI.sample.json([
-      'checkin_read',
-      {
-        name: c.name,
-        figures:
-          Object.entries(k.figures || {})
-            .map(([l, v]) => l + ': ' + v)
-            .join('; ') || 'none shared',
-        answers: k.answers.map(a => a.q + '\n' + (a.a || '(no answer)')).join('\n\n'),
-        last: prev ? prev.feedback.slice(0, 600) : '',
-      },
-    ]);
-    if (!$('#ckSum')) return;
-    out.innerHTML = `<div class="card stack" style="gap:4px"><span class="src e" style="align-self:flex-start">Ember AI's summary</span><p class="small">${esc(String(r.summary || ''))}</p></div>`;
-    const box = $('#ckReply');
-    if (r.reply && !box.value.trim()) {
-      box.value = String(r.reply);
-      out.innerHTML += `<p class="tiny muted">A draft reply is in the box below. It is Ember AI's wording: read it, change it, and send it only when it says what you mean.</p>`;
-    }
-  } catch (e) {
-    if ($('#ckSum')) out.innerHTML = `<div class="banner">${ic('spark')}<span>${esc(aiError(e))}</span></div>`;
-  }
-};
-A.cgCkReply = async () => {
-  const text = ($('#ckReply').value || '').trim();
-  if (text.length < 2) return toast('Write your reply first.');
-  const go = $('#ckSend');
-  go.disabled = true;
-  try {
-    await (await cgApi()).checkinReply(CKO.id, text);
-    const c = getClient(CKO.c);
-    closeSheet();
-    await cgCkLoad(c);
-    toast('Reply sent.', 'good');
-  } catch (e) {
-    go.disabled = false;
-    toast(cgWhy(e));
-  }
-};
-
 /* ================= a coach's page, and applying to a coach =================
    A coach publishes a short page under an address they choose. Someone with the link signs in, reads it and
    applies with a note. If the coach accepts, the applicant gets the invitation in their app and chooses what
@@ -813,7 +693,8 @@ A.cgPage = () => {
     <label class="f">Your colour<input class="inp" id="pgBrand" type="color" value="${esc(p.brand || '#0f3d2e')}" style="height:48px;padding:6px"><small class="muted">Shown beside your name in your clients' apps.</small></label>
     <button class="chk" id="pgOpen" data-act="cgPageOpen" aria-pressed="${p.open ? 'true' : 'false'}"><span class="tb"></span><span>Taking applications</span></button>
     <div class="card stack"><h2>For each new client</h2><label class="f">A welcome message<textarea class="inp" id="pgHello" rows="3" maxlength="600" placeholder="Welcome. Here is how we will work together.">${esc((CO.starter || {}).msg || '')}</textarea></label>
-    <button class="chk" id="pgCk" data-act="cgPageOpen" aria-pressed="${(CO.starter || {}).ck ? 'true' : 'false'}"><span class="tb"></span><span>Start them on the weekly check-in</span></button><p class="tiny muted">Sent once, when someone first becomes your client. Clients you already have are not sent it.</p></div>
+    <button class="chk" id="pgCk" data-act="cgPageOpen" aria-pressed="${(CO.starter || {}).ck ? 'true' : 'false'}"><span class="tb"></span><span>Start them on the weekly check-in</span></button>
+    <button class="chk" id="pgCs" data-act="cgPageOpen" aria-pressed="${(CO.starter || {}).consult ? 'true' : 'false'}"><span class="tb"></span><span>Send them your consultation form</span></button><p class="tiny muted">Sent once, when someone first becomes your client. Clients you already have are not sent it.</p></div>
     ${CG.page ? `<button class="btn ghost" data-act="cgPageCopy">${ic('copy')} Copy your link</button>` : ''}</div>
     <div class="sheet-f"><button class="btn" data-act="cgPageSave" id="pgGo">Save</button></div>`,
     true,
@@ -840,13 +721,14 @@ A.cgPageSave = async () => {
     await api.savePage(page);
     CG.page = await api.myPage();
     const hello = ($('#pgHello').value || '').trim().slice(0, 600),
-      ck = $('#pgCk').getAttribute('aria-pressed') === 'true';
+      ck = $('#pgCk').getAttribute('aria-pressed') === 'true',
+      consult = $('#pgCs').getAttribute('aria-pressed') === 'true';
     if (!CO.starter) {
       // first time: the clients already here are not new
       CO.welcomed = CO.welcomed || {};
       for (const l of CG.clients) if (l.client_id) CO.welcomed[l.id] = 1;
     }
-    CO.starter = { msg: hello, ck };
+    CO.starter = { msg: hello, ck, consult };
     saveCO();
     // the colour and name travel to every client with what the coach sets
     for (const l of CG.clients.filter(x => x.client_id && x.status !== 'invited'))
@@ -963,6 +845,11 @@ function cgBrandTag() {
   const on = hasCoach() && CG.coach.status !== 'invited' && !DEMO;
   t.classList.toggle('hide', !on);
   if (!on) return;
-  t.textContent = 'with ' + CG.coach.coach_name;
+  t.textContent = CG.coach.coach_name;
+  // the coach's name opens the Coach space: everything they have set, in one place
+  t.dataset.act = 'coachSpace';
+  t.setAttribute('role', 'button');
+  t.setAttribute('tabindex', '0');
+  t.setAttribute('aria-label', 'Your coach, ' + CG.coach.coach_name + ': open what they have set for you');
   t.style.borderColor = /^#[0-9a-f]{6}$/i.test(P.coachBrand || '') ? P.coachBrand : '';
 }

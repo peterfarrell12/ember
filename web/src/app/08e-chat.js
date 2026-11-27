@@ -84,9 +84,11 @@ A.chat = ({ id } = {}) => {
     CH.as = v;
     $('#chT').placeholder = v === 'u' ? 'Type what they said' : 'Write a message';
   };
+  const fast = coachingOn() ? setInterval(cgMsgs, 5000) : 0; // between two accounts, new messages show within seconds
   sheets[sheets.length - 1]._onClose = () => {
     CH = null;
     clearInterval(chTimer);
+    clearInterval(fast);
     render();
     if ($('#ccBody')) renderClient();
   };
@@ -154,7 +156,12 @@ A.chatGo = async () => {
     text = (box.value || '').trim();
   if (!text || !CH) return;
   let copy = '';
-  if (CH.side === 'me') {
+  if (CH.side === 'me' && hasCoach()) {
+    // two real accounts: the message goes on the conversation both of them read
+    if (!(await cgSendMsg(CG.coach.id, text))) return;
+    P.seenC = Date.now();
+    saveProfile();
+  } else if (CH.side === 'me') {
     P.thread = myThread()
       .concat([mkMsg('u', text)])
       .slice(-CHAT_MAX);
@@ -165,7 +172,11 @@ A.chatGo = async () => {
   } else {
     const c = getClient(CH.cid),
       m = mkMsg(CH.as === 'u' && c.kind !== 'me' && c.kind !== 'live' ? 'u' : 'c', text);
-    if (c.kind === 'me') {
+    if (c.kind === 'live' && c.link && coachingOn()) {
+      if (!(await cgSendMsg(c.link, text))) return;
+      recOf(c.id).seen = Date.now();
+      saveCO();
+    } else if (c.kind === 'me') {
       P.thread = threadOf(c).concat([m]).slice(-CHAT_MAX);
       P.seenU = Date.now();
       saveProfile();

@@ -627,7 +627,8 @@ function readCsv(text) {
     return -1;
   };
   const iD = find(/^date$/, /activity date/, /workout start/, /start time/, /^day$/, /date/, /time/);
-  if (iD < 0) return { err: 'No date column found. Send the file to Ember AI in chat and it can be mapped by hand.' };
+  if (iD < 0)
+    return { err: 'No date column found. Send the file to Ember AI in the assistant and it can be mapped by hand.' };
   const iW = find(/^weight/, /body ?mass/, /weight/),
     iK = find(/^calories/, /energy burned/, /kcal/, /calor/),
     iDur = find(/^duration/, /elapsed time/, /moving time/, /^time$/, /duration/);
@@ -839,8 +840,8 @@ const linkify = t =>
     u => `<a class="link" href="${u}">${u.replace(/^https?:\/\/(www\.)?/, '')}</a>`,
   );
 const MCP_MSG = {
-  server_not_connected: 'athletedata is not connected in this view. Connect it, then sync again.',
-  needs_reauth: 'athletedata needs reconnecting.',
+  server_not_connected: 'athletedata is not connected in this view. Connect it under Connectors, then sync again.',
+  needs_reauth: 'athletedata needs reconnecting under Connectors.',
   not_in_manifest: 'Ember was not allowed to use athletedata. Tap Sync again and choose Allow.',
   approval_required: 'Ember needs your approval to read athletedata. Tap Sync again and choose Allow.',
   consent_required: 'Ember needs your approval to read athletedata. Tap Sync again and choose Allow.',

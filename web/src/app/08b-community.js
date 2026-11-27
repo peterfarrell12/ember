@@ -136,7 +136,7 @@ function renderSquad() {
           })
           .join('') || `<p class="empty">No wins posted yet. Records and milestones show up here on their own.</p>`
       }</section>
-    <p class="tiny muted">${ms.some(m => m.sample) ? 'People marked Sample are examples from the coach view, not real members. ' : ''}Real members are people in your organisation who open this app.</p>`;
+    <p class="tiny muted">${ms.some(m => m.sample) ? 'People marked Sample are examples from the coach view, not real members. ' : ''}Real members are people who share this workspace and open this app.</p>`;
 }
 A.squadPost = () => {
   const t = ($('#sqWin').value || '').trim();

@@ -2,6 +2,36 @@
 
 The detailed plan for building out coaching in Ember, written 26 November 2026 from Cillian's two walkthroughs (1FIT and Trainerize as a coach; his own MVP as a client app) and what is already in the repo. `docs/COACH_PLAN.md` holds the history and what was built in the first round. This file is the plan from here.
 
+## Where it stands (26 November 2026)
+
+Built means both sides work between two real accounts and are covered by `supabase/tests/coach.e2e.mjs` (two browsers against a local database), the policy checks and unit tests. Nothing here has been tried on a phone yet.
+
+| Step | State | What is there, and what is not |
+|---|---|---|
+| 1 Coach workspace | Part | Clients, Library and Feed tabs, the client page at desk width, an inbox of check-ins to answer and overdue ones, a "For all your clients" shelf (forms, vault, recipes and menu). Not built: separate Inbox and Business sections, saved filters. |
+| 2 Client's Coach space | Built | Opens from the coach's name in the header: forms due, messages, roadmap, steps, supplements, menu, recipes, vault, measurements, what the coach can see. It is a sheet, not a fifth tab: the tab bar and the voice button stay as they are. |
+| 3 Forms per coach | Built | A builder with ten kinds of answer, needed questions, preview; consultation, check-in and self check-in kinds; Ember's starters to copy. Answers keep the question as asked. Not built: file upload answers, sharing templates across a business. |
+| 4 Getting a client in | Part | Invitation by code or link, the coach's page with applications, and an email on the invitation that is found when that person signs in with the confirmed address. The consultation form, check-in, welcome and vault go to each new client. Not built: Ember emailing the invitation (needs an email sender), bulk import. |
+| 5 Check-ins v2 | Built | Per client: which form, how often (1, 2 or 4 weeks), which day. The week's figures travel with it, last answers show beside new ones, Claude can summarise and draft a reply. Not built: photos in a check-in, voice note replies. |
+| 6 Messages v2 | Part | On their own table, delivered within about five seconds while the conversation is open. "Message everyone" sends one note to each client in their own conversation. Not built: push notifications, attachments, read receipts. |
+| 7 Overview and engagement | Built | A score from what was asked for and what is shared (never judged on the first two days, never on what is not shared), the last weeks in a table, a state on each client row. |
+| 8 Phases | Built | Named phases with dates, purpose and targets; each week fills in from the client's weekly summary; the coach adds a note and marks a milestone; the client sees the roadmap with their own figures. A coach can save their phases as a template. |
+| 9 Nutrition targets | Part | Calories, protein, carbohydrate, fat, fibre and water, sent as an offer the client accepts or declines. A "weight has held for three weeks" estimate for the coach, marked Estimate, never applied by itself. Not built: different targets for training and rest days. |
+| 10 Meal plans, recipes and menu | Part | A meal plan for one client, typed by the coach as up to three days of meals with calories and protein; the client sees the days and logs any meal in one tap (marked as entered by hand, since the figures are the coach's). The coach shares recipes from their own recipe book and a menu of the week; a whole-day menu is sized to each client's calories, marked Estimate, and a client can save a recipe. Not built: building a plan from Ember's food list or the planner, attaching a file, a shopping list. |
+| 11 Supplements | Built | A list per client with amount and timing; the client ticks them off; general-guidance wording shown every time. Ticks stay in the client's diary. |
+| 12 Habits and relationship with food | Built | Habits per client (with a mindful-eating starter set), ticked on Today; the coach sees a weekly count. The self check-in kind of form covers the relationship-with-food questions, and carries a line pointing to Bodywhys, Beat and a GP. That line's wording should be checked with someone qualified before launch. |
+| 13 Fibre, drinks, eating out | Part | When a coach sets a fibre target, fibre shows on the client's Today with that target, and in the day's nutrition. Not built: fibre on Today for people without a coach, a drinks group and restaurant chains: each changes the everyday app's reviewed screens, and chains need a decision on where figures come from. |
+| 14 Physique | Built | Measurements (waist, hips, chest, thigh, arm) kept by the client and shared with weight; latest weight, seven-day average, high and low for the coach. Progress photos shared one photo at a time: the coach can open that file and no other, compare two, and loses it the moment the client unshares, pauses or ends. Not built: photos asked for inside a check-in. |
+| 15 Training depth | Part | Programmes, the builder, rehab plans and session history from the first round. A coach can put a link to their own demo video and a note on any exercise; the client gets both during the workout. Not built: a simple and a full view per client, volume per body part, supersets beyond what the prototype has. |
+| 16 Calendar, steps and cardio | Part | A daily step target and a cardio line per client, shown on Today and in the Coach space; the client types the day's steps; weekly averages reach the coach. A coach can suggest a call or event: it goes into the client's calendar only if they accept, and the coach sees the answer. Not built: steps read from the phone or a watch, the coach seeing the client's whole week as a calendar. |
+| 17 Vault | Part | Titles, links and notes shared with every client, including new ones. Links only: files and videos stay where the coach hosts them. Not built: uploads, folders, per-client items. |
+| 18 Group chat | Not built | Needs advice first: one coach's clients seeing each other is a consent question. |
+| 19 Coaches under one business | Not built | |
+| 20 Payments | Not built | Needs a payment provider account and a pricing decision. |
+| 21 Brand | Part | The coach's name and colour in the client's header (first round). Not built: logo, custom domain. |
+
+How the pieces cross between accounts is unchanged in principle: the client's app writes what the coach may see (`coach_status`, and now `coach_weeks`, form answers in `coach_checkins`, and the names of shared photos in `coach_photos`), the coach writes what they set (`coach_assign`), and neither reads the other's rows.
+
 Three rules run through every step:
 
 1. **Both sides, always.** No feature is done until the coach can set it and the client can see and act on it. Each step below has a "Coach" and a "Client" part and neither ships alone.

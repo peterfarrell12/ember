@@ -2,7 +2,7 @@
 // coach side, so every area is checked on and off.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sharedCopy, SHARE_AREAS } from '../src/app/coaching.js';
+import { sharedCopy, SHARE_AREAS, weekSummary, engagement, stall } from '../src/app/coaching.js';
 
 const full = () => ({
   name: 'Aoife',
@@ -169,4 +169,144 @@ test('the copy is bounded: 60 days of history, 14 days of diary, 30 sessions, 12
   assert.equal(Object.keys(c.view.days).length, 14);
   assert.equal(c.view.train.sess.length, 30);
   assert.equal(c.ev.length, 12);
+});
+
+const own = () => ({
+  week: '2026-11-16',
+  hist: {
+    '2026-11-16': { k: 2000, p: 120, n: 5, fi: 20, st: 8000 },
+    '2026-11-17': { k: 2200, p: 140, n: 6, fi: 30, st: 10000 },
+    '2026-11-18': { k: 0, p: 0, n: 0 },
+    '2026-11-19': { k: 1800, p: 100, n: 4, im: 1 },
+    '2026-11-23': { k: 9999, p: 999, n: 9 },
+  },
+  wts: [
+    { d: '2026-11-15', kg: 90 },
+    { d: '2026-11-16', kg: 80.4 },
+    { d: '2026-11-20', kg: 80.0 },
+  ],
+  sess: [
+    { d: '2026-11-17', kind: 'train' },
+    { d: '2026-11-19', kind: 'rehab' },
+    { d: '2026-11-21', kind: 'train' },
+    { d: '2026-11-24', kind: 'train' },
+  ],
+  planned: 3,
+});
+
+test('the summary of a week: averages over the days logged in that week only, cut to what is shared', () => {
+  assert.deepEqual(weekSummary(own(), { food: true, training: true, weight: true, recovery: true }), {
+    week: '2026-11-16',
+    days: 2,
+    kcal: 2100,
+    prot: 130,
+    fibre: 25,
+    kg: 80.2,
+    weighs: 2,
+    sess: 2,
+    plan: 3,
+    steps: 9000,
+  });
+  assert.deepEqual(weekSummary(own(), {}), { week: '2026-11-16' });
+  assert.deepEqual(weekSummary(own(), { weight: true }), { week: '2026-11-16', kg: 80.2, weighs: 2 });
+  const quiet = weekSummary({ week: '2026-11-16', hist: {}, wts: [], sess: [] }, { food: true, weight: true });
+  assert.deepEqual(quiet, { week: '2026-11-16', days: 0, kcal: null, prot: null, fibre: null, kg: null, weighs: 0 });
+});
+
+test('engagement: a share of what was asked for; what is not shared or not asked does not count against them', () => {
+  const base = {
+    thisWeek: '2026-11-23',
+    share: { food: true, training: true, weight: true },
+    st: { logged7: 7, sess7: 3, plan7: 3 },
+    schedule: { every: 1 },
+    checkins: ['2026-11-16', '2026-11-09', '2026-11-02', '2026-10-26'].map(week => ({ week, kind: 'checkin' })),
+    weeks: ['2026-11-16', '2026-11-09', '2026-11-02', '2026-10-26'].map(week => ({ week, data: { weighs: 2 } })),
+  };
+  assert.deepEqual([engagement(base).score, engagement(base).state], [100, 'On track']);
+  const slipping = engagement({ ...base, st: { logged7: 3, sess7: 1, plan7: 3 }, checkins: base.checkins.slice(0, 2) });
+  assert.equal(slipping.state, 'Slipping');
+  assert.equal(slipping.score, Math.round(((2 / 4 + 3 / 7 + 1 / 3 + 4 / 4) / 4) * 100));
+  const behind = engagement({
+    ...base,
+    st: { logged7: 0, sess7: 0, plan7: 3 },
+    checkins: [],
+    weeks: base.weeks.map(w => ({ ...w, data: { weighs: 0 } })),
+  });
+  assert.deepEqual([behind.score, behind.state], [0, 'Behind']);
+  // food not shared and no check-in asked for: only training and weight are judged
+  const narrow = engagement({
+    ...base,
+    share: { training: true, weight: true },
+    schedule: null,
+    st: { logged7: 0, sess7: 3, plan7: 3 },
+  });
+  assert.deepEqual(
+    narrow.parts.map(p => p.key),
+    ['training', 'weight'],
+  );
+  assert.equal(narrow.score, 100);
+  assert.deepEqual(engagement({ thisWeek: '2026-11-23', share: {}, st: {}, weeks: [], checkins: [] }), {
+    score: null,
+    state: 'Not enough yet',
+    parts: [],
+  });
+  // a fortnightly check-in asks for two in four weeks, and a consultation form is not a check-in
+  const two = engagement({
+    ...base,
+    schedule: { every: 2 },
+    checkins: [
+      { week: '2026-11-16', kind: 'checkin' },
+      { week: '2026-11-09', kind: 'consult' },
+    ],
+  });
+  assert.deepEqual(two.parts[0], { key: 'checkins', label: 'Check-ins, last 4 weeks', done: 1, of: 2 });
+});
+
+test('engagement: nothing from before they became a client counts against them', () => {
+  const c = {
+    thisWeek: '2026-11-23',
+    today: '2026-11-26',
+    since: '2026-11-25',
+    share: { food: true, weight: true },
+    st: { logged7: 2 },
+    schedule: { every: 1 },
+    checkins: [],
+    weeks: [{ week: '2026-11-16', data: { weighs: 0 } }],
+  };
+  // joined yesterday: too soon to be judged at all
+  assert.deepEqual([engagement(c).score, engagement(c).state], [null, 'Not enough yet']);
+  // joined three days ago: judged on those days of food, and no check-in or weigh-in week is due yet
+  const fresh = engagement({ ...c, since: '2026-11-24', st: { logged7: 3 } });
+  assert.deepEqual(fresh.parts, [{ key: 'food', label: 'Food logged, last 3 days', done: 3, of: 3 }]);
+  assert.equal(fresh.state, 'On track');
+  // this week's check-in already in: it counts for them
+  const early = engagement({ ...c, checkins: [{ week: '2026-11-23', kind: 'checkin' }] });
+  assert.deepEqual(early.parts[0], { key: 'checkins', label: 'Check-ins, last 1 week', done: 1, of: 1 });
+  // a client of three full weeks who has sent one check-in
+  const three = engagement({ ...c, since: '2026-11-02', checkins: [{ week: '2026-11-09', kind: 'checkin' }] });
+  assert.deepEqual(three.parts[0], { key: 'checkins', label: 'Check-ins, last 3 weeks', done: 1, of: 3 });
+  assert.equal(three.parts.find(p => p.key === 'weight').of, 3);
+});
+
+test('stall: three logged, weighed weeks with weight held give an intake estimate; anything less gives nothing', () => {
+  const wk = (week, kg, kcal, days = 6, weighs = 3) => ({ week, data: { kg, kcal, days, weighs } });
+  const weeks = [wk('2026-11-02', 84.1, 2210), wk('2026-11-09', 84.0, 2180), wk('2026-11-16', 84.05, 2240)];
+  const base = { weeks, thisWeek: '2026-11-23' };
+  assert.deepEqual(stall(base), { from: 84.1, to: 84.05, kcal: 2210, suggest: null, weeks: 3 });
+  assert.equal(stall({ ...base, rate: 0.5, direction: 'lose' }).suggest, 1660);
+  assert.equal(stall({ ...base, rate: 0.25, direction: 'gain' }).suggest, 2490);
+  // weight is moving: not a stall
+  assert.equal(stall({ ...base, weeks: [weeks[0], weeks[1], wk('2026-11-16', 83.6, 2240)] }), null);
+  // a week with thin logging, no weigh-in, or missing altogether: say nothing rather than guess
+  assert.equal(stall({ ...base, weeks: [weeks[0], wk('2026-11-09', 84, 2180, 3), weeks[2]] }), null);
+  assert.equal(stall({ ...base, weeks: [weeks[0], wk('2026-11-09', null, 2180, 6, 0), weeks[2]] }), null);
+  assert.equal(stall({ ...base, weeks: weeks.slice(1) }), null);
+  // weight not shared: the summaries carry no weigh-ins, so there is nothing to work from
+  assert.equal(stall({ ...base, weeks: weeks.map(w => ({ week: w.week, data: { kcal: 2200, days: 7 } })) }), null);
+});
+
+test('weekSummary: habits travel as a count and nothing else', () => {
+  const own = { week: '2026-11-23', hist: {}, wts: [], sess: [], habits: { done: 9, of: 12 } };
+  assert.deepEqual(weekSummary(own, {}), { week: '2026-11-23', hab: { done: 9, of: 12 } });
+  assert.equal(weekSummary({ ...own, habits: { done: 0, of: 0 } }, {}).hab, undefined, 'no habits set: nothing sent');
 });

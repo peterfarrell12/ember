@@ -106,6 +106,9 @@ declare global {
   const SHARE_AREAS: typeof m18.SHARE_AREAS;
   const SHARE_LABEL: typeof m18.SHARE_LABEL;
   const sharedCopy: typeof m18.sharedCopy;
+  const weekSummary: typeof m18.weekSummary;
+  const engagement: typeof m18.engagement;
+  const stall: typeof m18.stall;
   const coachingApi: typeof m18.coachingApi;
   const MIN_AGE: typeof m19.MIN_AGE;
   const CONSENT_VERSION: typeof m19.CONSENT_VERSION;

@@ -4957,3 +4957,51 @@ fieldset.dob legend {
   min-height: 44px;
   line-height: 1.2;
 }
+/* a small table of figures: a client's last weeks, measurements */
+table.mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+table.mini th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 10px 6px 0;
+  white-space: nowrap;
+}
+table.mini td {
+  padding: 7px 10px 7px 0;
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+}
+#brandTag[data-act] {
+  cursor: pointer;
+}
+/* a 1 to 10 or 1 to 5 scale: even boxes, five to a row */
+.opts.scale {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.opts.scale button {
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
+/* the coach's name in the header stays on one line */
+#brandTag[data-act] {
+  display: inline-block;
+  white-space: nowrap;
+  max-width: 30vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+/* on a phone the coach's name takes the place of the wordmark: there is not room for both */
+@media (max-width: 430px) {
+  .brand:has(+ #brandTag[data-act]) .bn {
+    display: none;
+  }
+}
