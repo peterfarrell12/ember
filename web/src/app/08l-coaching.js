@@ -346,14 +346,16 @@ const cgToggles = share =>
   ).join('');
 const CG_PROMISE = `<p class="tiny muted">Your coach sees a copy your app sends, holding only what is switched on here. They never see anything else, they cannot change your diary, and progress photos are not included: you choose those one photo at a time, if you want to. You can change this, pause it or end it at any time, and they stop seeing it at once.</p>`;
 let CJ = null;
-A.cgJoin = async ({ code } = {}) => {
+A.cgJoin = async ({ code, first } = {}) => {
   if (!coachingOn()) return toast('Sign in to join a coach.');
   if (hasCoach()) return A.myCoach();
-  CJ = { code: code || '', share: {}, from: '' };
-  openSheet(
-    `${sh('Join your coach')}<div class="sheet-b" id="cjBody"></div><div class="sheet-f"><button class="btn" data-act="cgJoinGo" id="cjGo">Join</button></div>`,
+  CJ = { code: code || '', share: {}, from: '', first: !!first };
+  const w = openSheet(
+    `${sh('Join your coach')}<div class="sheet-b" id="cjBody"></div><div class="sheet-f stack"><button class="btn" data-act="cgJoinGo" id="cjGo">Join</button>${first ? `<button class="link" data-act="close" style="align-self:center">Not now</button>` : ''}</div>`,
     true,
   );
+  // on the first run this comes before the set-up, which follows whether they join or not (08x-onboard.js)
+  if (first) /** @type {any} */ (w.parentNode)._onClose = obAfterJoin;
   cjDraw();
   if (CJ.code) cjLook();
 };
@@ -374,7 +376,7 @@ function cjDraw() {
   const b = $('#cjBody');
   if (!b || !CJ) return;
   const name = $('#cjName') ? $('#cjName').value : P.coachName || '';
-  b.innerHTML = `${CJ.from ? `<div class="banner">${ic('users')}<span><b>${esc(CJ.from)}</b> has invited you to work with them on Ember.</span></div>` : ''}${CJ.err ? `<div class="banner">${ic('label')}<span>${esc(CJ.err)}</span></div>` : ''}
+  b.innerHTML = `${CJ.first ? `<p class="small">Before anything else, choose what your coach can see. Nothing is switched on until you switch it on, and you can change it at any time.</p>` : ''}${CJ.from ? `<div class="banner">${ic('users')}<span><b>${esc(CJ.from)}</b> has invited you to work with them on Ember.</span></div>` : ''}${CJ.err ? `<div class="banner">${ic('label')}<span>${esc(CJ.err)}</span></div>` : ''}
     <label class="f">Code from your coach<input class="inp" id="cjCode" value="${esc(CJ.code)}" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" style="letter-spacing:.12em;text-transform:uppercase" data-on="cjCode"></label>
     <label class="f">Your name, as your coach will see it<input class="inp" id="cjName" maxlength="40" value="${esc(name)}" autocomplete="name"></label>
     <div class="f">What your coach can see<div class="stack" style="gap:8px;margin-top:6px">${cgToggles(CJ.share)}</div></div>${CG_PROMISE}`;

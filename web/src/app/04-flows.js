@@ -1865,6 +1865,7 @@ A.saveTargets = () => {
     kg: TG.kg,
     act: TG.act,
     goal: tgGoal(),
+    tgSkip: false,
     rate: TG.rate,
     exAdd: TG.exAdd,
     t: { k: TG.t.k, p: TG.t.p || 0, c: TG.t.c || 0, f: TG.t.f || 0, w: TG.t.w || 2000 },
@@ -1999,7 +2000,7 @@ async function boot() {
   }
   if (P.onboarded) dayChecks();
   render();
-  if (!P.onboarded) openTargets(true);
+  if (!P.onboarded) obStart();
   else flushCele();
   offerNewPassword();
   if (signInLinkFailed) toast('That sign-in link has expired or was already used. Ask for a new one.');

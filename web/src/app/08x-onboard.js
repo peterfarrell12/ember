@@ -8,6 +8,10 @@
      log one thing now      the Add sheet with a heading, or a training set-up for people here to train
      day one                the celebration moves to after that first log, then a reminder time (phone app)
 
+   A coach's client (arriving by an invitation) chooses what the coach may see before the set-up, and on day one
+   Today points at the Coach space. A coach (arriving by #coach-start, or opening the coach view for the first
+   time) skips their own targets and gets one sheet: their name and what each new client is sent.
+
    Ember AI asks the first time a photo, voice or chat feature is used, and emails about Ember are an unticked
    choice under You. The furthest step each account reached is kept on the account, so where people stop can be
    counted from Ember's own database.
@@ -109,6 +113,88 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && /^hc[DMY]$/.test(/** @type {HTMLElement} */ (e.target).id || '')) A.consentGo();
 });
 
+/* ---------- where the first run starts, once health information is agreed ----------
+   Called from boot() for an account that is not set up yet. Three ways in:
+     a coach's own sign-up link (#coach-start)   no targets of their own for now: straight to the coach's desk
+     a coach's invitation to a client            what the coach may see is chosen first, then the set-up
+     neither                                     the set-up */
+function obNoteCoachLink() {
+  if (location.hash !== '#coach-start') return;
+  LS.set('ember:ascoach', 1);
+  history.replaceState(null, '', location.pathname + location.search + '#today');
+}
+obNoteCoachLink();
+function obStart() {
+  if (guided() && !DEMO && FEATURES.coach && LS.get('ember:ascoach')) return coachStart();
+  const code = LS.get('ember:coachcode');
+  if (guided() && !DEMO && code && coachingOn() && !hasCoach()) {
+    LS.del('ember:coachcode');
+    return void A.cgJoin({ code, first: true });
+  }
+  openTargets(true);
+}
+/* the join sheet has closed, joined or not: carry on with the set-up */
+function obAfterJoin() {
+  CJ = null;
+  if (P && !P.onboarded) setTimeout(() => !sheets.length && openTargets(true), 0);
+}
+/* A coach's first minutes: no targets sheet (Today offers it later), the coach's desk, and one short sheet. */
+function coachStart() {
+  LS.del('ember:ascoach');
+  Object.assign(P, { onboarded: true, tgSkip: true, ob: '', mode: 'me' });
+  saveProfile();
+  obStep('targets', { as: 'coach' });
+  dayChecks();
+  A.modeToggle(); // into the coach view, which offers the set-up below
+}
+function coachSetupOffer() {
+  if (!coachingOn() || DEMO || P.coachSetup || CO.starter) return;
+  setTimeout(() => !sheets.length && A.coachSetup(), 0);
+}
+A.coachSetup = () => {
+  const st = CO.starter || { msg: '', ck: true, consult: true };
+  const chk = (id, on, title, sub) =>
+    `<button class="chk" id="${id}" data-act="cgPageOpen" aria-pressed="${on ? 'true' : 'false'}"><span class="tb"></span><span><b>${title}</b><small class="muted" style="display:block;font-weight:400">${sub}</small></span></button>`;
+  openSheet(
+    `${sh('Set up your coaching')}<div class="sheet-b"><p class="small">Two things before your first client: how they see you, and what each new client gets from you on day one. You can change all of it later.</p>
+    <label class="f">Your name, as clients will see it<input class="inp" id="csName" maxlength="40" value="${esc(P.coachName || '')}" autocomplete="name"></label>
+    <div class="card stack"><h2>For each new client</h2>
+    <label class="f">A welcome message<textarea class="inp" id="csHello" rows="3" maxlength="600" placeholder="Welcome. Here is how we will work together.">${esc(st.msg || '')}</textarea></label>
+    ${chk('csConsult', st.consult, 'A consultation form', "Ember's starter to begin with. Build your own under Library, Forms.")}
+    ${chk('csCk', st.ck, 'A weekly check-in', 'Their figures for the week arrive with their answers.')}
+    <p class="tiny muted">Sent once, when someone first becomes your client. You see nothing of theirs until they accept and choose what to share.</p></div>
+    <p class="tiny muted">The clients marked Sample on your desk are invented, so you can see how it works. Remove them whenever you like.</p></div>
+    <div class="sheet-f stack"><button class="btn ember" data-act="coachSetupGo">Save and invite a client</button><button class="link" data-act="coachSetupLater" style="align-self:center">Do this later</button></div>`,
+    true,
+  );
+};
+A.coachSetupGo = () => {
+  const name = ($('#csName').value || '').trim();
+  if (!name) return toast('Add the name your clients will see.');
+  P.coachName = name;
+  P.coachSetup = true;
+  saveProfile();
+  if (!CO.starter) {
+    // the clients already here are not new
+    CO.welcomed = CO.welcomed || {};
+    for (const l of CG.clients || []) if (l.client_id) CO.welcomed[l.id] = 1;
+  }
+  CO.starter = {
+    msg: ($('#csHello').value || '').trim().slice(0, 600),
+    ck: $('#csCk').getAttribute('aria-pressed') === 'true',
+    consult: $('#csConsult').getAttribute('aria-pressed') === 'true',
+  };
+  saveCO();
+  closeSheet();
+  render();
+  A.cgInvite();
+};
+A.coachSetupLater = () => {
+  P.coachSetup = true;
+  saveProfile();
+  closeSheet();
+};
+
 /* ---------- log one thing now: straight after the targets are saved ---------- */
 function obAfterTargets() {
   P.ob = 'log';
@@ -170,6 +256,13 @@ function obNext(d) {
       s: 'One thing is enough to light your streak. Saying it is quickest.',
       b: [['add', 'Add food']],
     };
+  if (d.e.length && hasCoach() && !P.obCs)
+    return {
+      i: 'users',
+      t: 'See what ' + CG.coach.coach_name + ' has set for you',
+      s: 'Forms to fill in, messages and your plan are in your Coach space. It opens from your coach\u2019s name at the top.',
+      b: [['obCoachSpace', 'Open my Coach space']],
+    };
   if (d.e.length && d.e.length < 3)
     return {
       i: 'flame',
@@ -179,6 +272,12 @@ function obNext(d) {
     };
   return null;
 }
+
+A.obCoachSpace = () => {
+  P.obCs = 1;
+  saveProfile();
+  A.coachSpace();
+};
 
 /* ---------- a reminder time, chosen at the moment of the first log (phone app only) ---------- */
 function obReminder() {

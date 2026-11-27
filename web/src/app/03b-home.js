@@ -92,6 +92,13 @@ function heroCard(d, t, z) {
 function nextUp(d, t, z) {
   const first = obNext(d);
   if (first) return first;
+  if (P.tgSkip && d.date === today())
+    return {
+      i: 'target',
+      t: 'Set your own targets',
+      s: 'You started as a coach, so Ember has not worked out targets for you yet. It takes a minute.',
+      b: [['openTargets', 'Set my targets']],
+    };
   if (d.date !== today()) return null;
   const h = new Date().getHours(),
     st = streak(),
